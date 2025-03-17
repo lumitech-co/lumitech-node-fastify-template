@@ -1,0 +1,40 @@
+services:
+    postgresdb:
+        image: postgres:16.4
+        container_name: app-postgres-db
+        restart: no
+        environment:
+            POSTGRES_DB: "postgres"
+            POSTGRES_USER: "postgres"
+            POSTGRES_PASSWORD: "12345"
+        ports:
+            - "5432:5432"
+        expose:
+            - "5432"
+        networks:
+            - primary
+        volumes:
+            - "./.volumes/postgresql:/var/lib/postgresql/data"
+
+    nodejs:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: base
+        container_name: app-node-api
+        environment:
+            - .env
+            - PORT=3001
+        ports:
+            - "3001:3001"
+        command: bash -c "npm run prisma:generate && npm run start:dev"
+        networks:
+            - primary
+        volumes:
+            - ./src:/home/node/app/src
+            - ./nodemon.json:/home/node/app/nodemon.json
+
+
+networks:
+    primary:
+        driver: bridge
