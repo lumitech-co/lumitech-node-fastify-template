@@ -1,4 +1,6 @@
 ![image](https://github.com/user-attachments/assets/c5fc1141-7e6c-4603-acd1-ea1e7e99f217)
+![license](https://img.shields.io/github/license/lumitech-co/lumitech-node-fastify-template?style=flat)
+![maintenance](https://img.shields.io/badge/maintenance-active-blue?style=flat)
 
 # Lumitech Node.js Fastify Template 
 Welcome to the Lumitech Node.js Fastify Template. This template provides a well-organized starting point for building back-end applications in Node.js, featuring Swagger-based API documentation, ready-to-use Docker configuration, and Awilix for dependency injection. With well-defined architectural patterns, it helps ensure the code remains maintainable, scalable, and testable, especially as the application grows.
