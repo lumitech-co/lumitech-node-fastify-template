@@ -1,9 +1,5 @@
 <div align="center">
  <img height="160" src="https://github.com/user-attachments/assets/d460817f-058a-4d3f-b75c-b897c954ecdc" />
-<div>
- <img src="https://img.shields.io/github/license/lumitech-co/lumitech-node-fastify-template?style=flat" />
- <img src="https://img.shields.io/badge/maintenance-active-blue?style=flat" />
-</div>
 </div>
 
 # [Lumitech](https://lumitech.co/) Node.js Fastify Template 
