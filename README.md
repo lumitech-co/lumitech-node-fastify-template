@@ -1,5 +1,5 @@
 <div align="center">
- <img height="160" src="https://github.com/user-attachments/assets/d460817f-058a-4d3f-b75c-b897c954ecdc" />
+ <img width="524" src="https://github.com/user-attachments/assets/d460817f-058a-4d3f-b75c-b897c954ecdc" />
 </div>
 
 # [Lumitech](https://lumitech.co/) Node.js Fastify Template 
