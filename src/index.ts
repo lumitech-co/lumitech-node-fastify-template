@@ -1,5 +1,5 @@
 /// <reference types="./types/index.d.ts" />
-import { configureServer } from "./server";
+import { configureServer } from "./server.js";
 
 const main = async () => {
     const fastify = await configureServer();

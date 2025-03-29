@@ -1,1 +1,1 @@
-export * from "./message.schema";
+export * from "./message.schema.js";

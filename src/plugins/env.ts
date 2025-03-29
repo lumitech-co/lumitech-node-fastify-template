@@ -1,8 +1,8 @@
 import fp from "fastify-plugin";
-import S from "fluent-json-schema";
 import fastifyEnv from "@fastify/env";
+import { S } from "fluent-json-schema";
 import { FastifyInstance } from "fastify";
-import { FastifyPlugin } from "@/lib/fastify";
+import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
 
 const configureEnv = async (fastify: FastifyInstance) => {
     await fastify.register(fastifyEnv, {

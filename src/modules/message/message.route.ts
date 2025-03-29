@@ -1,10 +1,10 @@
 import { FastifyInstance } from "fastify";
-import { MessageHandler } from "./message.handler";
+import { MessageHandler } from "./message.handler.js";
 import {
     createMessageBodySchema,
     createMessageResponseSchema,
     fetchMessagesResponseSchema,
-} from "@/lib/validation/message";
+} from "@/lib/validation/message/message.schema.js";
 
 export const createMessageRoutes = (
     fastify: FastifyInstance,

@@ -1,10 +1,15 @@
 import path from "path";
 import fp from "fastify-plugin";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 import { FastifyInstance } from "fastify";
-import { FastifyPlugin } from "@/lib/fastify";
 import { asValue, InjectionMode } from "awilix";
-import { resolverOptionsRegister } from "@/lib/awilix";
+import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
 import { diContainerClassic, fastifyAwilixPlugin } from "@fastify/awilix";
+import { resolverOptionsRegister } from "@/lib/awilix/resolver-registration.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const configureAwilix = async (fastify: FastifyInstance) => {
     await fastify.register(fastifyAwilixPlugin, {
@@ -23,7 +28,7 @@ const configureAwilix = async (fastify: FastifyInstance) => {
     });
 
     // Register dependencies from the application: repositories, services, route handlers
-    fastify.di.loadModules(
+    await fastify.di.loadModules(
         [
             path.join(__dirname, "../modules/**/*.{service,handler}.{js,ts}"),
             path.join(
@@ -35,6 +40,7 @@ const configureAwilix = async (fastify: FastifyInstance) => {
             resolverOptions: {
                 register: resolverOptionsRegister(fastify.di),
             },
+            esModules: true,
         }
     );
 };

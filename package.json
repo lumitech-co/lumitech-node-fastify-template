@@ -1,12 +1,11 @@
 {
-    "name": "lumitech-api-template-fastify",
+    "name": "lumitech-node-fastify-template",
     "version": "0.0.1",
-    "description": "Backend application",
-    "main": "src/index.ts",
+    "description": "Back-end application",
+    "type": "module",
     "scripts": {
         "prebuild": "npm run prisma:generate",
         "build": "rm -rf build && tsc && tsc-alias",
-        "start": "node build/src/index.js",
         "start:dev": "NODE_ENV=development nodemon src/index.ts",
         "commit": "cz",
         "prepare": "husky",
@@ -39,7 +38,7 @@
         "backend",
         "api"
     ],
-    "author": "John Doe",
+    "author": "",
     "license": "ISC",
     "engines": {
         "node": ">=20.0.0"

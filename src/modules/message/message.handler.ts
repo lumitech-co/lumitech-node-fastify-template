@@ -1,7 +1,7 @@
-import { addDIResolverName } from "@/lib/awilix";
-import { MessageService } from "./message.service";
+import { MessageService } from "./message.service.js";
 import { FastifyReply, FastifyRequest } from "fastify";
-import { CreateMessageInput } from "@/lib/validation/message";
+import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { CreateMessageInput } from "@/lib/validation/message/message.schema.js";
 
 export type MessageHandler = {
     createMessage: (
