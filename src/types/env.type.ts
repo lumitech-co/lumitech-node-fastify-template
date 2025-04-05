@@ -5,5 +5,5 @@ export type EnvConfig = {
     PORT: number;
     APPLICATION_SECRET: string;
     APPLICATION_URL: string;
-    DOCS_PASSWORD: string;
+    DOCS_PASSWORD: string | undefined;
 };

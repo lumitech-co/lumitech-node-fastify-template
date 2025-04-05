@@ -23,10 +23,9 @@ const configureEnv = async (fastify: FastifyInstance) => {
                 "APPLICATION_SECRET",
                 "APPLICATION_URL",
                 "PORT",
-                "DOCS_PASSWORD",
             ])
             .valueOf(),
-        dotenv: process.env.NODE_ENV === "development",
+        dotenv: false,
     });
 };
 
