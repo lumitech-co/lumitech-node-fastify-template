@@ -1,7 +1,7 @@
-import { EnvConfig } from "./env.type";
 import { AwilixContainer } from "awilix";
-import { Cradle } from "@fastify/awilix";
+import { EnvConfig } from "./env.type.js";
 import { PrismaClient } from "@prisma/client";
+import { Cradle } from "./di-cointainer.type.ts";
 
 declare module "fastify" {
     // Enhance the Fastify instance with additional properties
@@ -10,16 +10,5 @@ declare module "fastify" {
         config: EnvConfig;
         prisma: PrismaClient;
         di: AwilixContainer<Cradle>;
-    }
-}
-
-declare module "@fastify/awilix" {
-    interface Cradle {
-        log: FastifyBaseLogger;
-        prisma: PrismaClient;
-        config: EnvConfig;
-
-        messageService: MessageService;
-        messageHandler: MessageHandler;
     }
 }
