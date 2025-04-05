@@ -47,7 +47,7 @@ export const configureServer = async (): Promise<FastifyInstance> => {
 
         await fastify.ready();
     } catch (err) {
-        fastify.log.error("Failed to configure server");
+        fastify.log.error("failed to configure server");
         fastify.log.error(err);
 
         process.exit(1);
