@@ -23,10 +23,11 @@
         "baseUrl": ".",
         "typeRoots": ["node_modules/@types", "src/types"],
         "paths": {
-          "@/*": ["src/*"]
+          "@/*": ["src/*"],
+          "@test/*": ["test/*"]
         },
         "outDir": "build",
         "incremental": true
     },
-    "include": ["src/**/*", "**/*.json"]
+    "include": ["src/**/*", "**/*.json", "test/**/*"],
 }
