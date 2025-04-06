@@ -9,8 +9,8 @@
         "start:dev": "NODE_ENV=development tsx watch ./src/index.ts",
         "commit": "cz",
         "prepare": "husky",
-        "lint": "eslint \"src/**/*.ts\" --color",
-        "lint:fix": "eslint --color --fix",
+        "lint": "eslint --ignore-pattern \"test/*\" --color",
+        "lint:fix": "eslint --ignore-pattern \"test/*\" --color --fix",
         "format": "prettier --write",
         "commitlint": "commitlint --edit",
         "prisma:push": "prisma db push --schema src/database/prisma/schema.prisma",
@@ -33,7 +33,7 @@
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [
             "npm run format",
-            "npm run lint:fix"
+            "eslint --ignore-pattern \"test/*\" --color --fix"
         ],
         "**/*.prisma": [
             "npm run prisma:format"
