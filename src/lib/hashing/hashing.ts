@@ -1,13 +1,13 @@
-import bcrypt from "bcrypt";
+import argon2 from "argon2";
 
-const HASHING_SALT_ROUNDS = 10;
-
-const hashPassword = (password: string): string => {
-    return bcrypt.hashSync(password, HASHING_SALT_ROUNDS);
+const hashPassword = (password: string): Promise<string> => {
+    return argon2.hash(password, {
+        type: argon2.argon2id,
+    });
 };
 
-const comparePassword = (password: string, hash: string): boolean => {
-    return bcrypt.compareSync(password, hash);
+const comparePassword = (password: string, hash: string): Promise<boolean> => {
+    return argon2.verify(hash, password);
 };
 
 export const hashing = {

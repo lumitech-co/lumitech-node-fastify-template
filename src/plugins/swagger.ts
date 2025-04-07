@@ -31,17 +31,15 @@ const configureSwagger = async (fastify: FastifyInstance) => {
         ),
     });
 
-    const isProduction = fastify.config.NODE_ENV === "production";
+    const docsPassword = fastify.config.DOCS_PASSWORD;
 
-    if (isProduction) {
-        const basicAuthPassword = fastify.config.DOCS_PASSWORD;
-
+    if (docsPassword) {
         await fastify.register(fastifyBasicAuth, {
             // eslint-disable-next-line max-params
             validate(username, password, _req, _reply, done) {
                 if (
                     username === basicAuthUsername &&
-                    password === basicAuthPassword
+                    password === docsPassword
                 ) {
                     done();
 
@@ -57,7 +55,7 @@ const configureSwagger = async (fastify: FastifyInstance) => {
     await fastify.register(fastifySwaggerUi, {
         routePrefix: "/api/docs",
         uiHooks: {
-            onRequest: isProduction ? fastify.basicAuth : undefined,
+            onRequest: docsPassword ? fastify.basicAuth : undefined,
         },
     });
 };

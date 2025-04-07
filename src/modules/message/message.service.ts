@@ -1,6 +1,5 @@
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
-import { hashing } from "@/lib/hashing/hashing.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
@@ -33,8 +32,6 @@ export const createService = (
             },
         });
 
-        log.info({ text }, "Created message");
-
         return {
             message: "Message created successfully.",
             data: {
@@ -46,8 +43,6 @@ export const createService = (
     getMessages: async () => {
         log.info("Current environment: %s", config.NODE_ENV);
         const messages = await messageRepository.findMany();
-
-        hashing.hashPassword("password");
 
         return {
             message: "Messages fetched successfully.",
