@@ -1,6 +1,11 @@
 import path from "path";
 import autoload from "@fastify/autoload";
 import Fastify, { FastifyInstance } from "fastify";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const envToLogger = {
     development: {
@@ -27,11 +32,13 @@ export const configureServer = async (): Promise<FastifyInstance> => {
     try {
         await fastify.register(autoload, {
             dir: path.join(__dirname, "plugins"),
+            forceESM: true,
         });
 
         await fastify.register(autoload, {
             dir: path.join(__dirname, "modules"),
             dirNameRoutePrefix: false,
+            forceESM: true,
         });
 
         fastify.addHook("onClose", async () => {
@@ -40,7 +47,7 @@ export const configureServer = async (): Promise<FastifyInstance> => {
 
         await fastify.ready();
     } catch (err) {
-        fastify.log.error("Failed to configure server");
+        fastify.log.error("failed to configure server");
         fastify.log.error(err);
 
         process.exit(1);

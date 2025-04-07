@@ -1,5 +1,6 @@
 /// <reference types="./types/index.d.ts" />
-import { configureServer } from "./server";
+import closeWithGrace from "close-with-grace";
+import { configureServer } from "./server.js";
 
 const main = async () => {
     const fastify = await configureServer();
@@ -11,16 +12,21 @@ const main = async () => {
 
     fastify.log.info(`Documentation available at ${address}/api/docs/`);
 
-    const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
+    closeWithGrace(
+        {
+            delay: 500,
+            logger: fastify.log,
+        },
+        async function ({ err, signal }) {
+            if (err) {
+                fastify.log.error(err, "server failed with an error");
+            }
 
-    signals.forEach((signal) => {
-        process.on(signal, async () => {
-            fastify.log.info(`Received ${signal}, closing server`);
+            fastify.log.info("server is closing: %s", signal);
 
             await fastify.close();
-            process.exit(0);
-        });
-    });
+        }
+    );
 };
 
 main().catch((err) => {

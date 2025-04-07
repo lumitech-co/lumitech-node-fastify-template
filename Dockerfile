@@ -1,10 +1,10 @@
-FROM node:20 AS base
+FROM node:22 AS base
 
 WORKDIR /home/node/app
 
 COPY package*.json ./
 
-RUN npm i
+RUN npm ci
 
 COPY . .
 

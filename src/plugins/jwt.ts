@@ -1,7 +1,7 @@
 import fp from "fastify-plugin";
 import fastifyJWT from "@fastify/jwt";
 import { FastifyInstance } from "fastify";
-import { FastifyPlugin } from "@/lib/fastify";
+import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
 
 const configureJwt = async (fastify: FastifyInstance) => {
     fastify.register(fastifyJWT, {

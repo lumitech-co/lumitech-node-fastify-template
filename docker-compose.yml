@@ -32,8 +32,6 @@ services:
             - primary
         volumes:
             - ./src:/home/node/app/src
-            - ./nodemon.json:/home/node/app/nodemon.json
-
 
 networks:
     primary:

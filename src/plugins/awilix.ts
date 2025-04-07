@@ -1,19 +1,22 @@
 import path from "path";
 import fp from "fastify-plugin";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 import { FastifyInstance } from "fastify";
-import { FastifyPlugin } from "@/lib/fastify";
-import { asValue, InjectionMode } from "awilix";
-import { resolverOptionsRegister } from "@/lib/awilix";
-import { diContainerClassic, fastifyAwilixPlugin } from "@fastify/awilix";
+import { asValue, createContainer, InjectionMode } from "awilix";
+import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
+import { resolverOptionsRegister } from "@/lib/awilix/resolver-registration.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const configureAwilix = async (fastify: FastifyInstance) => {
-    await fastify.register(fastifyAwilixPlugin, {
-        disposeOnClose: true,
-        strictBooleanEnforced: true,
+    const container = createContainer({
         injectionMode: InjectionMode.CLASSIC,
+        strict: true,
     });
 
-    fastify.decorate("di", diContainerClassic);
+    fastify.decorate("di", container);
 
     // Register dependencies from plugins and libraries
     fastify.di.register({
@@ -23,7 +26,7 @@ const configureAwilix = async (fastify: FastifyInstance) => {
     });
 
     // Register dependencies from the application: repositories, services, route handlers
-    fastify.di.loadModules(
+    await container.loadModules(
         [
             path.join(__dirname, "../modules/**/*.{service,handler}.{js,ts}"),
             path.join(
@@ -33,13 +36,14 @@ const configureAwilix = async (fastify: FastifyInstance) => {
         ],
         {
             resolverOptions: {
-                register: resolverOptionsRegister(fastify.di),
+                register: resolverOptionsRegister(container),
             },
+            esModules: true,
         }
     );
 };
 
 export default fp(configureAwilix, {
-    name: "awilix",
+    name: FastifyPlugin.Awilix,
     dependencies: [FastifyPlugin.Prisma, FastifyPlugin.Env],
 });

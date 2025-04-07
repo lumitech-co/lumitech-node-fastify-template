@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { createMessageRoutes } from "./message.route";
+import { createMessageRoutes } from "./message.route.js";
 
 // Define the endpoint prefix by providing autoPrefix module property.
 export const autoPrefix = "/api/messages";
