@@ -16,7 +16,8 @@ Welcome to the Lumitech Node.js Fastify Template. This template provides a well-
 - [Swagger](https://swagger.io/) - API documentation;
 - [Awilix](https://github.com/jeffijoe/awilix) - Dependency Injection container;
 - [PostgreSQL](https://www.postgresql.org/) - relational database;
-- [Prisma](https://www.prisma.io/docs/getting-started) - database ORM.
+- [Prisma](https://www.prisma.io/docs/getting-started) - database ORM;
+- [Vitest](https://vitest.dev/) - testing framework.
 
 ## 📌 Getting Started
 
@@ -36,6 +37,11 @@ To run migrations from a host machine:
 4. Name the new migration and verify the SQL code generated;
 5. Run `npm run prisma:migrate:apply` - apply the migration to the database;
 6. Revert the `DATABASE_URL` in `.env`  back to `postgresdb` so that the Node.js container can connect to the database after a rebuild.
+
+### 🧪 Running Tests
+Unit tests ensure individual components function correctly in isolation. The template uses a Vitest testing framework for comprehensive test coverage:
+1. `npm run test:unit` - run all unit tests with detailed output in the terminal;
+2. `npm run test:unit:ui` - launch the interactive UI test runner.
 
 ## ⚙ Key Features
 
@@ -218,6 +224,13 @@ Plugins included:
 #### `src/types`:  
   Global TypeScript types and declarations used across the project.
 
+#### `test`:
+This directory contains all test files organized to mirror the structure of the source code.
+- The `unit` subdirectory contains unit tests that verify the functionality of individual components in isolation.
+  - Tests for library components are in the `lib` subdirectory, ensuring third-party integrations work as expected.
+  - Tests for application modules are in the `modules` subdirectory, organized by feature to test services.
+- Each test file follows the naming convention of `[component-name].test.ts` to clearly identify what's being tested.
+
 #### Project Tree:
 ```
 .
@@ -266,8 +279,15 @@ Plugins included:
 │   │   └── index.d.ts
 │   ├── index.ts
 │   └── server.ts
-├── tsconfig.json
-└── tsconfig.tsbuildinfo
+├── test
+│   └── unit
+│       ├── lib
+│       │   └── ...
+│       └── modules
+│           └── feature
+│               ├── feature-service.test.ts
+│               └── ...
+└── tsconfig.json
 ```
 
 ## ✨ Inspired by
