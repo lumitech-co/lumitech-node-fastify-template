@@ -5,12 +5,13 @@
     "type": "module",
     "scripts": {
         "prebuild": "npm run prisma:generate",
-        "build": "rm -rf build && tsc && tsc-alias",
+        "build": "rm -rf build && tsc -p ./tsconfig.build.json && tsc-alias",
         "start:dev": "NODE_ENV=development tsx watch ./src/index.ts",
         "commit": "cz",
         "prepare": "husky",
-        "lint": "eslint \"src/**/*.{ts,tsx}\" --color",
-        "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --color --fix",
+        "lint": "eslint --ignore-pattern \"test/*\" --color",
+        "lint:fix": "eslint --ignore-pattern \"test/*\" --color --fix",
+        "format": "prettier --write",
         "commitlint": "commitlint --edit",
         "prisma:push": "prisma db push --schema src/database/prisma/schema.prisma",
         "prisma:generate": "prisma generate --schema src/database/prisma/schema.prisma",
@@ -18,7 +19,11 @@
         "prisma:migrate:apply": "prisma migrate dev --schema src/database/prisma/schema.prisma",
         "prisma:migrate:create": "prisma migrate dev --schema src/database/prisma/schema.prisma --create-only",
         "prisma:deploy": "prisma migrate deploy --schema src/database/prisma/schema.prisma",
-        "prisma:format": "prisma format --schema src/database/prisma/schema.prisma"
+        "prisma:format": "prisma format --schema src/database/prisma/schema.prisma",
+        "test": "NODE_OPTIONS='--import tsx' vitest",
+        "test:ui": "NODE_OPTIONS='--import tsx' vitest --ui",
+        "test:unit": "NODE_OPTIONS='--import tsx' vitest test/unit",
+        "test:unit:ui": "NODE_OPTIONS='--import tsx' vitest test/unit --ui"
     },
     "config": {
         "commitizen": {
@@ -27,8 +32,8 @@
     },
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [
-            "npx prettier --write",
-            "npx eslint --fix"
+            "npm run format",
+            "eslint --ignore-pattern \"test/*\" --color --fix"
         ],
         "**/*.prisma": [
             "npm run prisma:format"
@@ -52,6 +57,7 @@
         "@types/pino": "^7.0.5",
         "@typescript-eslint/eslint-plugin": "^8.29.0",
         "@typescript-eslint/parser": "^8.29.0",
+        "@vitest/ui": "^3.1.1",
         "commitizen": "^4.3.1",
         "cz-conventional-changelog": "^3.3.0",
         "eslint": "^9.24.0",
@@ -61,7 +67,10 @@
         "prettier": "^3.5.3",
         "prisma": "^6.5.0",
         "tsx": "^4.19.3",
-        "typescript": "^5.8.3"
+        "typescript": "^5.8.3",
+        "vite-tsconfig-paths": "^5.1.4",
+        "vitest": "^3.1.1",
+        "vitest-mock-extended": "^3.1.0"
     },
     "dependencies": {
         "@fastify/autoload": "^6.3.0",
