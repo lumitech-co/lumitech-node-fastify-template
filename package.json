@@ -14,17 +14,17 @@
         "lint:fix": "eslint --ignore-pattern \"test/*\" --color --fix",
         "format": "prettier --write",
         "commitlint": "commitlint --edit",
-        "prisma:push": "prisma db push --schema src/database/prisma/schema.prisma",
-        "prisma:generate": "prisma generate --schema src/database/prisma/schema.prisma",
-        "prisma:seed": "prisma db seed --schema src/database/prisma/schema.prisma",
-        "prisma:migrate:apply": "prisma migrate dev --schema src/database/prisma/schema.prisma",
-        "prisma:migrate:create": "prisma migrate dev --schema src/database/prisma/schema.prisma --create-only",
-        "prisma:deploy": "prisma migrate deploy --schema src/database/prisma/schema.prisma",
-        "prisma:format": "prisma format --schema src/database/prisma/schema.prisma",
-        "test": "NODE_OPTIONS='--import tsx' vitest",
-        "test:ui": "NODE_OPTIONS='--import tsx' vitest --ui",
-        "test:unit": "NODE_OPTIONS='--import tsx' vitest test/unit",
-        "test:unit:ui": "NODE_OPTIONS='--import tsx' vitest test/unit --ui",
+        "prisma:push": "prisma db push",
+        "prisma:generate": "prisma generate",
+        "prisma:seed": "prisma db seed",
+        "prisma:migrate:apply": "prisma migrate dev",
+        "prisma:migrate:create": "prisma migrate dev --create-only",
+        "prisma:deploy": "prisma migrate deploy",
+        "prisma:format": "prisma format",
+        "test:unit": "vitest -c vitest-unit.config.ts",
+        "test:unit:ui": "vitest -c vitest-unit.config.ts --ui",
+        "test:int": "vitest -c vitest-int.config.ts",
+        "test:int:ui": "vitest -c vitest-int.config.ts --ui",
         "generate:module": "node cli/module-gen/index.js",
         "generate:repository": "node cli/repository-gen/index.js"
     },
@@ -42,6 +42,9 @@
         "**/*.prisma": [
             "npm run prisma:format"
         ]
+    },
+    "prisma": {
+        "schema": "src/database/prisma/schema.prisma"
     },
     "keywords": [
         "backend",
