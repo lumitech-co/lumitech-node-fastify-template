@@ -9,5 +9,10 @@ export default defineConfig({
             ...loadEnv("test", process.cwd(), ""),
             NODE_OPTIONS: "--import tsx",
         },
+        server: {
+            deps: {
+                inline: ["@fastify/autoload"],
+            },
+        },
     },
 });
