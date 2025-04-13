@@ -1,8 +1,7 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import { beforeEach } from "vitest";
+import { Client } from "pg";
 import { randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
 
 const generateDatabaseURL = (schema: string) => {
     if (!process.env.DATABASE_URL) {
@@ -21,11 +20,9 @@ const generateDatabaseURL = (schema: string) => {
  *
  * Running migrations with manual execution is 3x faster then running "npx prisma deploy" cli command.
  * */
-const runMigrationFiles = async (prisma: PrismaClient, schema: string) => {
+const runMigrationFiles = async (client: Client, schema: string) => {
     try {
-        await prisma.$executeRawUnsafe(
-            `CREATE SCHEMA IF NOT EXISTS "${schema}"`
-        );
+        await client.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
 
         const migrationsDir = path.join(
             process.cwd(),
@@ -57,27 +54,31 @@ const runMigrationFiles = async (prisma: PrismaClient, schema: string) => {
 
             const migrationSQL = await fs.readFile(migrationFilePath, "utf-8");
 
-            await prisma.$executeRawUnsafe(migrationSQL);
+            await client.query(migrationSQL);
         }
     } catch (error) {
         console.error("Migration process failed:", error);
     }
 };
 
-beforeEach(async () => {
+export const setupDatabase = async (): Promise<() => Promise<void>> => {
     const schema = randomUUID();
     const databaseURL = generateDatabaseURL(schema);
 
-    const prisma = new PrismaClient();
+    const client = new Client({
+        connectionString: databaseURL,
+        options: `-c search_path="${schema}"`,
+    });
+
+    await client.connect();
+
     process.env.DATABASE_URL = databaseURL;
 
-    await runMigrationFiles(prisma, schema);
+    await runMigrationFiles(client, schema);
 
     return async () => {
-        await prisma.$executeRawUnsafe(
-            `DROP SCHEMA IF EXISTS "${schema}" CASCADE`
-        );
+        await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
 
-        await prisma.$disconnect();
+        await client.end();
     };
-});
+};

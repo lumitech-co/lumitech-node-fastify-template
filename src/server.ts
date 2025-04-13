@@ -19,6 +19,13 @@ const envToLogger = {
     },
     production: true,
     test: {
+        transport: {
+            target: "pino-pretty",
+            options: {
+                translateTime: "HH:MM:ss Z",
+                ignore: "pid,hostname",
+            },
+        },
         level: "fatal",
     },
 };

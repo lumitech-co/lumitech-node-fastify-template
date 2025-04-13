@@ -5,7 +5,7 @@ export default mergeConfig(
     defaultConfig,
     defineConfig({
         test: {
-            setupFiles: "./test/int/setup.ts",
+            setupFiles: "./test/int/setup/index.ts",
             include: ["test/int/**/*.test.ts"],
         },
     })
