@@ -23,6 +23,7 @@
         "prisma:format": "prisma format",
         "test:unit": "vitest -c vitest-unit.config.ts",
         "test:unit:ui": "vitest -c vitest-unit.config.ts --ui",
+        "test:unit:ci": "vitest run -c vitest-unit.config.ts --reporter verbose",
         "test:int": "vitest -c vitest-int.config.ts",
         "test:int:ui": "vitest -c vitest-int.config.ts --ui",
         "generate:module": "node cli/module-gen/index.js",
