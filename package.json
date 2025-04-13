@@ -24,7 +24,8 @@
         "test:unit:ui": "vitest -c vitest-unit.config.ts --ui",
         "test:unit:ci": "vitest run -c vitest-unit.config.ts --reporter verbose",
         "test:int": "vitest -c vitest-int.config.ts",
-        "test:int:ui": "vitest -c vitest-int.config.ts --ui"
+        "test:int:ui": "vitest -c vitest-int.config.ts --ui",
+        "test:int:ci": "vitest run -c vitest-int.config.ts --reporter verbose"
     },
     "config": {
         "commitizen": {
