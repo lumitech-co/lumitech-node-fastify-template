@@ -58,6 +58,7 @@ const runMigrationFiles = async (client: Client, schema: string) => {
         }
     } catch (error) {
         console.error("Migration process failed:", error);
+        throw new Error("Migration failed");
     }
 };
 

@@ -1,16 +1,16 @@
 import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GET /api/messages", () => {
     let server: FastifyInstance;
 
     beforeEach(async () => {
         server = await configureServer();
-    });
 
-    afterEach(async () => {
-        await server.close();
+        return async () => {
+            await server.close();
+        };
     });
 
     it("should fetch messages", async () => {
