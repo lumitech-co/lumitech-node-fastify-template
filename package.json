@@ -23,7 +23,8 @@
         "test": "NODE_OPTIONS='--import tsx' vitest",
         "test:ui": "NODE_OPTIONS='--import tsx' vitest --ui",
         "test:unit": "NODE_OPTIONS='--import tsx' vitest test/unit",
-        "test:unit:ui": "NODE_OPTIONS='--import tsx' vitest test/unit --ui"
+        "test:unit:ui": "NODE_OPTIONS='--import tsx' vitest test/unit --ui",
+        "generate-module": "node cli/module-generator.js"
     },
     "config": {
         "commitizen": {
