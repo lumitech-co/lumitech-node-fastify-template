@@ -21,7 +21,7 @@ const schemaPath = path.join(process.cwd(), "src/lib/validation", moduleName);
 
 const diContainerPath = path.join(
     process.cwd(),
-    "src/types/di-cointainer.type.ts"
+    "src/types/di-container.type.ts"
 );
 
 const files = ["handler.ts", "service.ts", "route.ts", "index.ts"];
