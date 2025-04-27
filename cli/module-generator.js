@@ -1,4 +1,3 @@
-// eslint-disable
 import fs from "fs";
 import path from "path";
 import { templates } from "./templates.js";
@@ -7,17 +6,17 @@ const moduleName = process.argv[2];
 
 if (!moduleName) {
     console.error(
-        "❌ Please provide a module name. Example: node cli/create-module.ts authCustomModule"
+        "❌ Please provide a module name. Example: npm run generate-module authCustomModule"
     );
 
     process.exit(1);
 }
 
-const nameCamel = moduleName;
+const nameCamel = moduleName.charAt(0).toLowerCase() + moduleName.slice(1);
 const namePascal = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
 
-const modulePath = path.join(process.cwd(), "src/modules", moduleName);
-const schemaPath = path.join(process.cwd(), "src/lib/validation", moduleName);
+const modulePath = path.join(process.cwd(), "src/modules", nameCamel);
+const schemaPath = path.join(process.cwd(), "src/lib/validation", nameCamel);
 
 const diContainerPath = path.join(
     process.cwd(),
@@ -26,8 +25,8 @@ const diContainerPath = path.join(
 
 const files = ["handler.ts", "service.ts", "route.ts", "index.ts"];
 
-if (fs.existsSync(modulePath)) {
-    console.error(`❌ Module "${moduleName}" already exists!`);
+if (fs.existsSync(nameCamel)) {
+    console.error(`❌ Module "${nameCamel}" already exists!`);
     process.exit(1);
 }
 
@@ -36,10 +35,11 @@ console.log(`📁 Created folder: ${modulePath}`);
 
 files.forEach((file) => {
     const fileType = file.replace(".ts", "");
-    const filePath = path.join(modulePath, `${nameCamel}.${file}`);
+    const filePath = path.join(modulePath, `${nameCamel}.${file}`); // route.ts -> moduleName.route.ts
 
     let content = `// ${file} for ${namePascal}\n`;
 
+    // if templates object contains fileType as a key
     if (templates[fileType]) {
         content = templates[fileType](namePascal, nameCamel);
     }
