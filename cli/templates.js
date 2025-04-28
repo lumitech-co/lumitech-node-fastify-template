@@ -12,12 +12,12 @@ export const create${namePascal}Handler = (): ${namePascal}Handler => {
 addDIResolverName(create${namePascal}Handler, "${nameCamel}Handler");
 `.trim(),
 
-    route: (namePascal, nameCamel) =>
+    route: (namePascal, nameCamel, nameKebab) =>
         `
 import { FastifyInstance } from "fastify";
-import { ${namePascal}Handler } from "./${nameCamel}.handler.js";
+import { ${namePascal}Handler } from "./${nameKebab}.handler.js";
 
-enum ${nameCamel}Routes {}
+enum ${namePascal}Routes {}
 
 export const create${namePascal}Routes = (
     fastify: FastifyInstance,
@@ -25,13 +25,13 @@ export const create${namePascal}Routes = (
 ) => {};
 `.trim(),
 
-    index: (namePascal, nameCamel) =>
+    index: (namePascal, nameCamel, nameKebab) =>
         `
   import { FastifyInstance } from "fastify";
-import { create${namePascal}Routes } from "./${nameCamel}.route.js";
+import { create${namePascal}Routes } from "./${nameKebab}.route.js";
 
 // Define the endpoint prefix by providing autoPrefix module property.
-export const autoPrefix = "/api/${nameCamel}";
+export const autoPrefix = "/api/${nameKebab}";
 
 export default async function (fastify: FastifyInstance) {
     const ${nameCamel}Handler = fastify.di.resolve("${nameCamel}Handler");
