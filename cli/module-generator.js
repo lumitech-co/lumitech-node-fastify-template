@@ -22,6 +22,12 @@ const nameKebab = moduleName
 const modulePath = path.join(process.cwd(), "src/modules", nameCamel);
 const schemaPath = path.join(process.cwd(), "src/lib/validation", nameCamel);
 
+const repositoryPath = path.join(
+    process.cwd(),
+    "src/database/repositories",
+    nameCamel
+);
+
 const diContainerPath = path.join(
     process.cwd(),
     "src/types/di-container.type.ts"
@@ -34,6 +40,7 @@ if (fs.existsSync(modulePath)) {
     process.exit(1);
 }
 
+// MODULE
 fs.mkdirSync(modulePath, { recursive: true });
 console.log(`📁 Created folder: ${modulePath}`);
 
@@ -52,18 +59,17 @@ files.forEach((file) => {
     console.log(`📄 Created file: ${filePath}`);
 });
 
-// create schema folder
+// VALIDATION SCHEMA
 fs.mkdirSync(schemaPath, { recursive: true });
 console.log(`📁 Created schema folder: ${schemaPath}`);
-// create schema file
+
 const schemaFilePath = path.join(schemaPath, `${nameKebab}.schema.ts`);
 fs.writeFileSync(schemaFilePath, `// Schema for ${nameKebab}\n`);
 console.log("✅ Schema created successfully!");
 
-// read content from di-container.ts
+// EXTEND Cradle TYPE
 let diContent = fs.readFileSync(diContainerPath, "utf8");
 
-// Insert imports if not already there
 if (!diContent.includes(`${namePascal}Service`)) {
     const importMarker = 'import { EnvConfig } from "./env.type.js";';
 
@@ -74,21 +80,27 @@ import { ${namePascal}Handler } from "@/modules/${nameCamel}/${nameKebab}.handle
     diContent = diContent.replace(importMarker, `${importMarker}${newImports}`);
 }
 
-// Insert into Cradle type if not already there
 if (!diContent.includes(`${nameCamel}Service`)) {
-    const cradleMarker = "messageHandler: MessageHandler;";
+    const marker = "config: EnvConfig;";
 
     const newCradleProps = `\n
     ${nameCamel}Service: ${namePascal}Service;
     ${nameCamel}Handler: ${namePascal}Handler;`;
 
-    diContent = diContent.replace(
-        cradleMarker,
-        `${cradleMarker}${newCradleProps}`
-    );
+    diContent = diContent.replace(marker, `${marker}${newCradleProps}`);
 }
 
-// Save changes
 fs.writeFileSync(diContainerPath, diContent);
-
 console.log(`✅ DI container updated with ${nameCamel} service and handler.`);
+
+// REPOSITORY
+fs.mkdirSync(repositoryPath, { recursive: true });
+console.log(`📁 Created repository folder: ${schemaPath}`);
+
+const repositoryFilePath = path.join(
+    repositoryPath,
+    `${nameKebab}.repository.ts`
+);
+
+fs.writeFileSync(repositoryFilePath, `// Repository for ${nameKebab}\n`);
+console.log("✅ Schema created successfully!");
