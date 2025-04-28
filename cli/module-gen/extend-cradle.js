@@ -13,8 +13,8 @@ export const extendCradle = (namePascal, nameCamel, nameKebab) => {
         const importMarker = 'import { EnvConfig } from "./env.type.js";';
 
         const newImports = `
-import { ${namePascal}Service } from "@/modules/${nameCamel}/${nameKebab}.service.js";
-import { ${namePascal}Handler } from "@/modules/${nameCamel}/${nameKebab}.handler.js";`;
+import { ${namePascal}Service } from "@/modules/${nameKebab}/${nameKebab}.service.js";
+import { ${namePascal}Handler } from "@/modules/${nameKebab}/${nameKebab}.handler.js";`;
 
         diContent = diContent.replace(
             importMarker,
@@ -22,15 +22,13 @@ import { ${namePascal}Handler } from "@/modules/${nameCamel}/${nameKebab}.handle
         );
     }
 
-    if (!diContent.includes(`${nameCamel}Service`)) {
-        const marker = "config: EnvConfig;";
+    const marker = "config: EnvConfig;";
 
-        const newCradleProps = `\n
+    const newCradleProps = `\n
     ${nameCamel}Service: ${namePascal}Service;
     ${nameCamel}Handler: ${namePascal}Handler;`;
 
-        diContent = diContent.replace(marker, `${marker}${newCradleProps}`);
-    }
+    diContent = diContent.replace(marker, `${marker}${newCradleProps}`);
 
     fs.writeFileSync(diContainerPath, diContent);
 

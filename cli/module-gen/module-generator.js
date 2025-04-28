@@ -3,10 +3,10 @@ import path from "path";
 import { templates } from "./templates.js";
 
 export const generateModule = (nameCamel, namePascal, nameKebab) => {
-    const modulePath = path.join(process.cwd(), "src/modules", nameCamel);
+    const modulePath = path.join(process.cwd(), "src/modules", nameKebab);
 
     if (fs.existsSync(modulePath)) {
-        console.error(`❌ Module "${nameCamel}" already exists!`);
+        console.error(`❌ Module "${nameKebab}" already exists!`);
         process.exit(1);
     }
 
