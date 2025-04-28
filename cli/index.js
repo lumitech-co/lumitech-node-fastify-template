@@ -4,6 +4,7 @@ import { extendCradle } from "./extend-cradle.js";
 import { generateSchema } from "./shema-generator.js";
 import { generateModule } from "./module-generator.js";
 import { generateRepository } from "./repository-generator.js";
+// import { extendDIResolvers } from './di-resolvers-generator.js'
 
 const moduleName = process.argv[2];
 
@@ -47,3 +48,6 @@ extendCradle(namePascal, nameCamel, nameKebab);
 
 // REPOSITORY
 generateRepository(repositoryPath, nameKebab);
+
+// DI RESOLVERS
+// extendDIResolvers(nameCamel); // uncomment after https://github.com/lumitech-co/lumitech-node-fastify-template/pull/8 is merged
