@@ -3,8 +3,8 @@ import path from "path";
 import { extendCradle } from "./extend-cradle.js";
 import { generateSchema } from "./shema-generator.js";
 import { generateModule } from "./module-generator.js";
-import { generateRepository } from "./repository-generator.js";
-// import { extendDIResolvers } from './di-resolvers-generator.js'
+// import { generateRepository } from "./repository-generator.js";
+import { extendDIResolvers } from "./di-resolvers-generator.js";
 
 const moduleName = process.argv[2];
 
@@ -26,12 +26,6 @@ const nameKebab = moduleName
 const modulePath = path.join(process.cwd(), "src/modules", nameCamel);
 const schemaPath = path.join(process.cwd(), "src/lib/validation", nameCamel);
 
-const repositoryPath = path.join(
-    process.cwd(),
-    "src/database/repositories",
-    nameCamel
-);
-
 if (fs.existsSync(modulePath)) {
     console.error(`❌ Module "${nameCamel}" already exists!`);
     process.exit(1);
@@ -47,7 +41,7 @@ generateSchema(schemaPath, nameKebab);
 extendCradle(namePascal, nameCamel, nameKebab);
 
 // REPOSITORY
-generateRepository(repositoryPath, nameKebab);
+// generateRepository(repositoryPath, nameKebab);
 
 // DI RESOLVERS
-// extendDIResolvers(nameCamel); // uncomment after https://github.com/lumitech-co/lumitech-node-fastify-template/pull/8 is merged
+extendDIResolvers(nameCamel);
