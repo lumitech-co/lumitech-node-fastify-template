@@ -51,4 +51,4 @@ export const createService = (
     },
 });
 
-addDIResolverName(createService, "messageService");
+addDIResolverName(createService, "messageHandler");
