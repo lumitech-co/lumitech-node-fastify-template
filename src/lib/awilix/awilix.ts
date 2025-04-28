@@ -1,6 +1,5 @@
 import { RESOLVER } from "awilix";
-import { FastifyInstance } from "fastify";
-import { DI_RESOLVERS, DiResolversValues } from "./di-resolvers.js";
+import { DI_RESOLVERS } from "./di-resolvers.js";
 
 /**
  * Adds Awilix RESOLVER property to a service, repository, handler etc. function.
@@ -25,11 +24,4 @@ export const addDIResolverName = <T extends object>(
             name: name,
         },
     });
-};
-
-export const resolveDI = <T>(
-    fastify: FastifyInstance,
-    name: DiResolversValues
-): T => {
-    return fastify.di.resolve(name) as unknown as T;
 };
