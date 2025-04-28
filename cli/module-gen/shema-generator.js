@@ -1,7 +1,13 @@
 import fs from "fs";
 import path from "path";
 
-export const generateSchema = (schemaPath, nameKebab) => {
+export const generateSchema = (nameKebab) => {
+    const schemaPath = path.join(
+        process.cwd(),
+        "src/lib/validation",
+        nameKebab
+    );
+
     fs.mkdirSync(schemaPath, { recursive: true });
     console.log(`📁 Created schema folder: ${schemaPath}`);
 
