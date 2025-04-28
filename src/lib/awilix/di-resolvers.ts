@@ -1,6 +1,7 @@
 export const DI_RESOLVERS = {
     messageHandler: "messageHandler",
     messageService: "messageService",
+    messageRepository: "messageRepository",
 } as const;
 
 export type DiResolversKeys = keyof typeof DI_RESOLVERS;
