@@ -1,5 +1,5 @@
 import { RESOLVER } from "awilix";
-import { DI_RESOLVERS } from "./di-resolvers.js";
+import { DIResolversKeys } from "./di-resolvers.js";
 
 /**
  * Adds Awilix RESOLVER property to a service, repository, handler etc. function.
@@ -17,7 +17,7 @@ import { DI_RESOLVERS } from "./di-resolvers.js";
  */
 export const addDIResolverName = <T extends object>(
     fn: T,
-    name: keyof typeof DI_RESOLVERS
+    name: DIResolversKeys
 ): T => {
     return Object.assign(fn, {
         [RESOLVER]: {

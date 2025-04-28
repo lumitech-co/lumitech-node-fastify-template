@@ -1,8 +1,8 @@
-export const DI_RESOLVERS = {
+const DI_RESOLVERS = {
     messageHandler: "messageHandler",
     messageService: "messageService",
     messageRepository: "messageRepository",
 } as const;
 
-export type DiResolversKeys = keyof typeof DI_RESOLVERS;
-export type DiResolversValues = (typeof DI_RESOLVERS)[DiResolversKeys];
+export type DIResolversKeys = keyof typeof DI_RESOLVERS;
+export type DIResolversValues = (typeof DI_RESOLVERS)[DIResolversKeys];
