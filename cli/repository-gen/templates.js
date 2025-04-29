@@ -1,12 +1,4 @@
 export const templates = {
-    model: (namePascal, nameCamel) =>
-        `
-model ${namePascal} {
-  id        Int      @id @default(autoincrement())
-  @@map("${nameCamel}")
-}
-`.trim(),
-
     repository: (nameCamel, namePascal) =>
         `
 import { PrismaClient } from "@prisma/client";
