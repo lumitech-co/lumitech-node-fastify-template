@@ -1,5 +1,5 @@
 import { RESOLVER } from "awilix";
-import { Cradle } from "@/types/di-cointainer.type.js";
+import { Cradle } from "@/types/di-container.type.js";
 
 /**
  * Adds Awilix RESOLVER property to a service, repository, handler etc. function.
