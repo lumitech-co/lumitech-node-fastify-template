@@ -4,7 +4,10 @@ import { PrismaClient } from "@prisma/client";
 import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
 
 const configurePrisma = async (fastify: FastifyInstance) => {
-    const prisma = new PrismaClient();
+    const prisma = new PrismaClient({
+        datasourceUrl: fastify.config.DATABASE_URL,
+    });
+
     await prisma.$connect();
 
     fastify.decorate("prisma", prisma);
@@ -16,4 +19,5 @@ const configurePrisma = async (fastify: FastifyInstance) => {
 
 export default fp(configurePrisma, {
     name: FastifyPlugin.Prisma,
+    dependencies: [FastifyPlugin.Env],
 });
