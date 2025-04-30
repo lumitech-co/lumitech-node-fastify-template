@@ -10,7 +10,7 @@ export type Cradle = {
     prisma: PrismaClient;
     config: EnvConfig;
 
+    messageRepository: MessageRepository;
     messageService: MessageService;
     messageHandler: MessageHandler;
-    messageRepository: MessageRepository;
 };
