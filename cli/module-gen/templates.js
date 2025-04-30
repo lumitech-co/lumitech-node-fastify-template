@@ -42,13 +42,13 @@ export default async function (fastify: FastifyInstance) {
 
     service: (namePascal, nameCamel) =>
         `
-  import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { addDIResolverName } from "@/lib/awilix/awilix.js";
 
-  export type ${namePascal}Service = {};
+export type ${namePascal}Service = {};
 
-  export const create${nameCamel}Service = (): ${namePascal}Service => ({});
+export const create${nameCamel}Service = (): ${namePascal}Service => ({});
 
-  addDIResolverName(create${nameCamel}Service, "${nameCamel}Service");
+addDIResolverName(create${nameCamel}Service, "${nameCamel}Service");
 
   `.trim(),
 };

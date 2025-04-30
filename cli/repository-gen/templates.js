@@ -1,12 +1,6 @@
 export const templates = {
-    model: (namePascal, nameCamel) => `
-model ${namePascal} {
-  id        Int      @id @default(autoincrement())
-  @@map("${nameCamel}")
-}
-`,
-
-    repository: (nameCamel, namePascal) => `
+    repository: (nameCamel, namePascal) =>
+        `
 import { PrismaClient } from "@prisma/client";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { BaseRepository, generateRepository } from "../generate.repository.js";
@@ -24,5 +18,5 @@ export const create${namePascal}Repository = (
 };
 
 addDIResolverName(create${namePascal}Repository, "${nameCamel}Repository");
-  `,
+`.trim(),
 };

@@ -1,6 +1,5 @@
 import { extendCradle } from "./extend-cradle.js";
 import { generateRepository } from "./generate-repository.js";
-import { generatePrismSchema } from "./generate-prisma-schema.js";
 
 const entityName = process.argv[2];
 
@@ -17,6 +16,5 @@ const nameKebab = entityName
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .toLowerCase();
 
-generatePrismSchema(namePascal, nameCamel);
 generateRepository(nameCamel, namePascal, nameKebab);
 extendCradle(namePascal, nameCamel, nameKebab);
