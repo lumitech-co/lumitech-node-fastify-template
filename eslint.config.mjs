@@ -68,8 +68,6 @@ export default [
                 },
             ],
 
-            "max-params": ["error", 3],
-
             "id-denylist": ["error", "cb", "item", "i", "el"],
 
             "padding-line-between-statements": [
@@ -108,8 +106,6 @@ export default [
                     next: ["case", "default", "return"],
                 },
             ],
-
-            "func-style": ["error", "expression"],
         },
     },
     {
@@ -125,4 +121,3 @@ export default [
         },
     },
 ];
-
