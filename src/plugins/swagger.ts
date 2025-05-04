@@ -35,7 +35,6 @@ const configureSwagger = async (fastify: FastifyInstance) => {
 
     if (docsPassword) {
         await fastify.register(fastifyBasicAuth, {
-            // eslint-disable-next-line max-params
             validate(username, password, _req, _reply, done) {
                 if (
                     username === basicAuthUsername &&
