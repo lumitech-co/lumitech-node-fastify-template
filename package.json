@@ -9,6 +9,7 @@
         "start:dev": "NODE_ENV=development tsx watch --include \"src/**/*\" ./src/index.ts",
         "commit": "cz",
         "prepare": "husky",
+        "tsc-check": "tsc --noEmit",
         "lint": "eslint --ignore-pattern \"test/*\" --color",
         "lint:fix": "eslint --ignore-pattern \"test/*\" --color --fix",
         "format": "prettier --write",
@@ -35,7 +36,8 @@
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [
             "npm run format",
-            "eslint --ignore-pattern \"test/*\" --color --fix"
+            "eslint --ignore-pattern \"test/*\" --color --fix",
+            "bash -c 'npm run tsc-check'"
         ],
         "**/*.prisma": [
             "npm run prisma:format"

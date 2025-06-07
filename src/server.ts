@@ -39,6 +39,9 @@ export const configureServer = async (): Promise<FastifyInstance> => {
             dir: path.join(__dirname, "modules"),
             dirNameRoutePrefix: false,
             forceESM: true,
+
+            maxDepth: 1,
+            matchFilter: /\/index\.(ts|js)$/,
         });
 
         fastify.addHook("onClose", async () => {
