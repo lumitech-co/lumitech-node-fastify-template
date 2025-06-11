@@ -18,7 +18,16 @@ const envToLogger = {
         },
     },
     production: true,
-    test: false,
+    test: {
+        transport: {
+            target: "pino-pretty",
+            options: {
+                translateTime: "HH:MM:ss Z",
+                ignore: "pid,hostname",
+            },
+        },
+        level: "fatal",
+    },
 };
 
 export const configureServer = async (): Promise<FastifyInstance> => {
@@ -50,8 +59,7 @@ export const configureServer = async (): Promise<FastifyInstance> => {
 
         await fastify.ready();
     } catch (err) {
-        fastify.log.error("failed to configure server");
-        fastify.log.error(err);
+        fastify.log.fatal(err, "failed to configure server");
 
         process.exit(1);
     }

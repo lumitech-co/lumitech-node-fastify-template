@@ -39,9 +39,16 @@ To run migrations from a host machine:
 6. Revert the `DATABASE_URL` in `.env`  back to `postgresdb` so that the Node.js container can connect to the database after a rebuild.
 
 ### 🧪 Running Tests
-Unit tests ensure individual components function correctly in isolation. The template uses a Vitest testing framework for comprehensive test coverage:
+The template uses a Vitest testing framework for test coverage.
+
+#### Unit Tests
 1. `npm run test:unit` - run all unit tests with detailed output in the terminal;
 2. `npm run test:unit:ui` - launch the interactive UI test runner.
+
+#### Integration Tests
+To run integration tests:
+1. `docker compose -f docker-compose.test.yml up` - run test container;
+2. `npm run test:int` - launch integration tests.
 
 ## ⚙ Key Features
 
@@ -229,6 +236,9 @@ This directory contains all test files organized to mirror the structure of the 
 - The `unit` subdirectory contains unit tests that verify the functionality of individual components in isolation.
   - Tests for library components are in the `lib` subdirectory, ensuring third-party integrations work as expected.
   - Tests for application modules are in the `modules` subdirectory, organized by feature to test services.
+- The `int` subdirectory contains integration tests that verify the behavior of multiple components working together within a runtime environment (e.g., service logic interacting with the database or external APIs).
+  - Tests are organized by module to mirror the application structure.
+  - The `setup` folder provides shared utilities like database migrations initialization and teardown logic.
 - Each test file follows the naming convention of `[component-name].test.ts` to clearly identify what's being tested.
 
 #### Project Tree:
@@ -280,6 +290,10 @@ This directory contains all test files organized to mirror the structure of the 
 │   ├── index.ts
 │   └── server.ts
 ├── test
+│   ├── int
+│   │   ├── modules
+│   │   │   └── ...
+│   │   └── setup
 │   └── unit
 │       ├── lib
 │       │   └── ...

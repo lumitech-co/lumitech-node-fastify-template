@@ -1,0 +1,15 @@
+services:
+    postgresdb:
+        image: postgres:16.4
+        container_name: test-postgres-db
+        restart: no
+        environment:
+            POSTGRES_DB: "postgres"
+            POSTGRES_USER: "postgres"
+            POSTGRES_PASSWORD: "12345"
+        ports:
+            - "5433:5432"
+        expose:
+            - "5433"
+        volumes:
+            - "./.volumes/test-postgresql:/var/lib/postgresql/data"
