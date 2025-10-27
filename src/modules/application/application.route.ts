@@ -1,8 +1,10 @@
 import { FastifyInstance } from "fastify";
+import { ApplicationHandler } from "./application.handler.js";
 
-export const autoPrefix = "/api";
-
-export default async function (fastify: FastifyInstance) {
+export const createApplicationRoutes = (
+    fastify: FastifyInstance,
+    applicationHandler: ApplicationHandler
+) => {
     fastify.get(
         "/ping",
         {
@@ -11,8 +13,6 @@ export default async function (fastify: FastifyInstance) {
                 summary: "Check application health status",
             },
         },
-        async (_request, reply) => {
-            return reply.status(200).send("pong");
-        }
+        applicationHandler.healthChecker
     );
-}
+};
