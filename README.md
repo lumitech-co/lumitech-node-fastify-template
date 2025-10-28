@@ -183,6 +183,31 @@ await userRepository.delete({
 });
 ```
 
+### ⚙️ ER Diagram Generation
+This project automatically generates an **Entity Relationship (ER) diagram** based on your **Prisma schema**.
+
+The generator is located in `src/database/prisma/schema.prisma`.
+
+```typescript
+generator dbml {
+  provider            = "prisma-dbml-generator"
+  output              = "../dbml"
+  outputName          = "schema.dbml"
+  projectName         = "Project Name"
+  projectDatabaseType = "PostgreSQL"
+  projectNote         = "ER Diagram"
+}
+```
+
+To generate ER diagram run command: `npm run prisma:diagram`
+
+After that you'll find `src/database/dbml/schema.dbml`.
+
+To visualize your ER diagram:
+1. Open [dbdiagram.io](https://dbdiagram.io/)
+2. Paste the contents of schema.dbml into the editor
+3. The diagram will be rendered automatically
+
 ### 📜 Commits Format
 
 We use Commitlint to ensure that commit messages adhere to the conventional commit format. This standardizes the commit history and simplifies changelog generation.
