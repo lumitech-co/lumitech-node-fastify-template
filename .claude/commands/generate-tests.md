@@ -55,10 +55,6 @@ I'll follow these steps:
 - End-to-end user workflows
 
 ### Framework-Specific Tests
-
-- **React**: Component testing with React Testing Library
-- **Vue**: Component testing with Vue Test Utils
-- **Angular**: Component and service testing with TestBed
 - **Node.js**: API endpoint and middleware testing
 
 ## Testing Best Practices

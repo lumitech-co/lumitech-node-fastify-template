@@ -170,3 +170,4 @@ export default fp(configurePlugin, {
 - Validate inputs with Zod schemas
 - Use `@/` path alias for imports from src
 - **No inline comments** - Do not add comments after lines of code. JSDoc comments for functions/methods are allowed when they add meaningful context (e.g., security considerations, non-obvious behavior)
+- **No barrel files** - Do not create `index.ts` files that re-export from other files. Import directly from the source file instead
