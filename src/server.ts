@@ -7,6 +7,30 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// GCP Cloud Logging reads a string `severity` field; Pino emits a numeric
+// `level`, so without this mapping every entry shows up as INFO.
+// https://github.com/pinojs/pino/blob/main/docs/help.md#mapping-pino-log-levels-to-google-cloud-logging-stackdriver-severity-levels
+const pinoLevelToGcpSeverity: Record<string, string> = {
+    trace: "DEBUG",
+    debug: "DEBUG",
+    info: "INFO",
+    warn: "WARNING",
+    error: "ERROR",
+    fatal: "CRITICAL",
+};
+
+const gcpLogger = {
+    messageKey: "message",
+    formatters: {
+        level(label: string, number: number) {
+            return {
+                severity: pinoLevelToGcpSeverity[label] ?? "INFO",
+                level: number,
+            };
+        },
+    },
+};
+
 const envToLogger = {
     development: {
         transport: {
@@ -17,7 +41,7 @@ const envToLogger = {
             },
         },
     },
-    production: true,
+    production: gcpLogger,
     test: {
         transport: {
             target: "pino-pretty",
@@ -35,7 +59,7 @@ export const configureServer = async (): Promise<FastifyInstance> => {
         logger:
             envToLogger[
                 process.env.NODE_ENV as "development" | "production" | "test"
-            ] ?? true,
+            ] ?? gcpLogger,
     });
 
     try {
