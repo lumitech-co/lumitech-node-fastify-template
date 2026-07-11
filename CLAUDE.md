@@ -35,6 +35,64 @@ This creates:
 - `src/database/repositories/<name>/` - Repository file extending BaseRepository
 - Updates `src/types/di-container.type.ts` with new type
 
+## Architecture Rules (non-negotiable)
+
+These rules are hard constraints. If a task cannot be done without breaking one of them,
+stop and ask instead of working around it.
+
+### 1. Everything goes through Awilix
+Every route, handler, service, repository and lib that has dependencies is a factory
+function registered in the container via `addDIResolverName()` and typed in
+`src/types/di-container.type.ts`. No manual `new`/`import`-and-call of another layer,
+no singletons created outside the container.
+
+### 2. Database access only through repositories
+- All Prisma calls and all SQL (`$queryRaw` / `$executeRaw`) live **only** in
+  `src/database/repositories/**`. Services, handlers, routes, plugins and utils must
+  never touch `prisma.*` directly.
+- **The only exception:** transactions. A service may inject `prisma` solely to open
+  `prisma.$transaction(...)` and pass the transaction client down to repository methods.
+  Business queries inside the transaction still go through repositories.
+
+### 3. No database calls in loops
+Never call a repository inside `for` / `while` / `map` / `forEach`. Use bulk operations
+(`createMany`, `updateMany`, `deleteMany`, `findMany` with `where: { id: { in: [...] } }`)
+or a single transaction. If a loop looks unavoidable, redesign the query.
+
+### 4. Function signatures
+Every function that is **not** an Awilix factory must:
+- take **exactly one argument** — a primitive or a single object (`(p: { a, b }) => ...`);
+- **always return a value.** No `void` helpers, no side-effect-only functions.
+
+Awilix factories are the only functions allowed multiple parameters (that's how
+dependencies are injected by name).
+
+### 5. Constants and types placement
+- Module constants → `src/modules/<name>/<name>.constant.ts`
+- Module types → `src/modules/<name>/<name>.type.ts`
+- Global constants → `src/lib/constants/`
+- Global types → `src/types/`
+- **The only place a constant may live outside a `*.constant.ts` file** is next to the
+  Zod schema that uses it (e.g. a min/max length or an enum used inside
+  `src/lib/validation/<module>/<module>.schema.ts`).
+
+### 6. Third-party libraries go through plugins
+Any additional library (cache, queue, storage, mailer, …) is wired as a Fastify plugin in
+`src/plugins/`, registered with `fastify-plugin`, declared in `FastifyPlugin`
+(`src/lib/fastify/fastify.constant.ts`), and exposed to the code through the Awilix
+container. Never import a client/SDK directly inside a service.
+
+### 7. Validation only via Zod
+All input/output validation — body, params, query, headers, env, external API responses —
+goes through Zod schemas in `src/lib/validation/<module>/<module>.schema.ts`. No manual
+`if (!x) throw`, no ad-hoc type casts as a substitute for validation. Types are derived
+with `z.infer`, never hand-written in parallel to a schema.
+
+### 8. Typed JSON in Prisma
+Every `Json` column must be typed at the Prisma level (typed JSON via
+`/// [TypeName]` + `prisma-json-types-generator`), so it arrives in the code already
+typed. Casting `Prisma.JsonValue` to a type inside a service is forbidden.
+
 ## Architecture
 
 ### Layered Architecture
@@ -168,6 +226,9 @@ export default fp(configurePlugin, {
 - Register all DI dependencies with `addDIResolverName()`
 - Keep handlers thin - delegate to services
 - Validate inputs with Zod schemas
+- Non-factory functions: one argument, always return a value (see Architecture Rules #4)
+- Prisma only inside repositories; `$transaction` is the single exception (see Architecture Rules #2)
+- Never query the database inside a loop (see Architecture Rules #3)
 - Use `@/` path alias for imports from src
 - **No inline comments** - Do not add comments after lines of code. JSDoc comments for functions/methods are allowed when they add meaningful context (e.g., security considerations, non-obvious behavior)
 - **No barrel files** - Do not create `index.ts` files that re-export from other files. Import directly from the source file instead
