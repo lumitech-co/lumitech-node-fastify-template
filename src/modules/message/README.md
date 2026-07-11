@@ -160,12 +160,14 @@ type ErrorResponse = {
 
 ### Files
 
-| File                    | Purpose                              |
-|-------------------------|--------------------------------------|
-| `index.ts`              | Module entry, exports `autoPrefix`   |
-| `message.route.ts`      | Route definitions with Zod schemas   |
-| `message.handler.ts`    | Request/response handling            |
-| `message.service.ts`    | Business logic                       |
+| File                    | Purpose                                          |
+|-------------------------|--------------------------------------------------|
+| `index.ts`              | Module entry, exports `autoPrefix`               |
+| `message.route.ts`      | Tag, route enum and route definitions with Zod   |
+| `message.handler.ts`    | `MessageHandler` type, request/response handling |
+| `message.service.ts`    | `MessageService` type, business logic            |
+| `message.type.ts`       | Payload types for the module utilities           |
+| `message.util.ts`       | Module utilities (`diffObjects` example)         |
 
 ### Related Files
 
@@ -205,7 +207,7 @@ const createMessageBodySchema = z.object({
     text: z.string(),
 });
 
-const messageSchema = z.object({
+const defaultMessageSchema = z.object({
     id: z.number(),
     text: z.string(),
     createdAt: z.date(),
@@ -214,32 +216,38 @@ const messageSchema = z.object({
 const createMessageResponseSchema = z.object({
     message: z.string(),
     data: z.object({
-        message: messageSchema,
+        message: defaultMessageSchema,
     }),
 });
 
 const fetchMessagesResponseSchema = z.object({
     message: z.string(),
     data: z.object({
-        messages: z.array(messageSchema),
+        messages: z.array(defaultMessageSchema),
     }),
 });
 ```
+
+Response messages come from `RESPONSE_MESSAGES.message` in
+`src/lib/messages/messages.constant.ts` — `created`, `fetched` and `notFound`.
 
 ---
 
 ## Repository Methods
 
-The `MessageRepository` extends `BaseRepository<"message">` with:
+`MessageRepository` is `BaseRepository<"message">` (the Prisma delegate methods wired by
+`generateRepository`) plus one hand-written method:
 
-| Method            | Description                                    |
-|-------------------|------------------------------------------------|
-| `create`          | Create a new message                           |
-| `findMany`        | Fetch all messages                             |
-| `findUnique`      | Find message by unique field                   |
-| `findUniqueOrFail`| Find or throw NotFoundError                    |
-| `update`          | Update a message                               |
-| `delete`          | Delete a message                               |
+| Method                                                                  | Description                                        |
+|-------------------------------------------------------------------------|----------------------------------------------------|
+| `create`, `createMany`                                                  | Insert one or many messages                        |
+| `findUnique`, `findFirst`, `findMany`, `count`                          | Read messages                                      |
+| `update`, `updateMany`, `upsert`                                        | Update messages                                    |
+| `delete`, `deleteMany`                                                  | Delete messages                                    |
+| `findUniqueOrFail`                                                      | Find or throw `NotFoundError` with `notFound`      |
+
+The current endpoints use `create` and `findMany`; `findUniqueOrFail` is available for
+routes that fetch a single message.
 
 ---
 
