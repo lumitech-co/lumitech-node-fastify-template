@@ -197,7 +197,9 @@ anonymous too, but still passes options (`dependencies: [FastifyPlugin.Env]` and
 All application data — body, params, query, headers, external API responses — is validated
 with Zod schemas in `src/lib/validation/<module>/<module>.schema.ts`. No manual
 `if (!x) throw`, no ad-hoc type casts as a substitute for validation. Types are derived
-with `z.infer`, never hand-written in parallel to a schema.
+with `z.infer`, never hand-written in parallel to a schema. This includes the contents of
+a Prisma `Json` column — being typed by `prisma-json-types-generator` does not exempt it
+from validation (see Architecture Rules #8).
 
 **Exceptions:**
 - Environment variables are validated by `@fastify/env` with `fluent-json-schema` in
@@ -208,12 +210,48 @@ with `z.infer`, never hand-written in parallel to a schema.
   yet — the cast is correct there and must not be "fixed" into a Zod parse.
 
 ### 8. Typed JSON in Prisma
-Every `Json` column must be typed at the Prisma level (typed JSON via
-`/// [TypeName]` + `prisma-json-types-generator`), so it arrives in the code already
-typed. Casting `Prisma.JsonValue` to a type inside a service is forbidden.
+A `Json` column is never left untyped. Adding one to `schema.prisma` always means doing
+**both** of the following — a `Json` field with only one of them is incomplete:
 
-The schema currently has no `Json` column, so `prisma-json-types-generator` is not
-installed yet — add it together with the first `Json` field.
+**a) Type it at the Prisma level** with `prisma-json-types-generator` (already installed,
+declared as the `json` generator in `schema.prisma`), so the value arrives in the code
+already typed and never has to be cast:
+```prisma
+model Message {
+  /// [MessageMeta]
+  meta Json?
+}
+```
+The referenced type is declared in the global `PrismaJson` namespace in
+`src/types/prisma-json.d.ts`. After editing the schema run `npm run prisma:generate` —
+the field then comes back as `PrismaJson.MessageMeta | null`, not `Prisma.JsonValue`.
+Casting `Prisma.JsonValue` to a type inside a service, handler or repository is forbidden:
+the Prisma types are the single source of truth, and a cast silently bypasses them.
+
+**b) Validate it with a Zod schema.** The Prisma type is a compile-time guarantee only —
+it says nothing about what a client actually sent, and JSON is exactly where unvalidated
+shapes leak into the database. So every `Json` column that is written from a request (or
+from any external source) gets a Zod schema in
+`src/lib/validation/<module>/<module>.schema.ts`, used in the route schema like any other
+body/query field, and mirrored in the response schema when the column is returned:
+```typescript
+// src/lib/validation/message/message.schema.ts
+const messageMetaSchema = z.object({
+    source: z.enum(["web", "mobile", "api"]),
+    tags: z.array(z.string()).optional(),
+});
+
+const createMessageBodySchema = z.object({
+    text: z.string(),
+    meta: messageMetaSchema.optional(),
+});
+```
+Keep the Zod schema and the `PrismaJson` type in sync — the Zod schema is what guards the
+boundary, the `PrismaJson` type is what the rest of the code sees. Never write a `Json`
+value that has not been through a Zod parse.
+
+Pin the generator to the major line that matches the installed Prisma (Prisma 6 →
+`prisma-json-types-generator@^3`); newer majors declare a Prisma 7 peer and fail to install.
 
 ### 9. Migrations are only created by `prisma:migrate:create`
 The only way to produce a migration is to edit `src/database/prisma/schema.prisma` and run:
@@ -424,6 +462,8 @@ export default fp(configurePlugin, {
 - Register all DI dependencies with `addDIResolverName()`
 - Keep handlers thin - delegate to services
 - Validate inputs with Zod schemas
+- A Prisma `Json` column is always both typed (`/// [TypeName]` + `PrismaJson` namespace)
+  and validated by a Zod schema — never one without the other (see Architecture Rules #8)
 - Service methods and our own utils: at most one argument, always return a value
   (see Architecture Rules #4). Awilix factories, Fastify handlers/plugins/route registrars
   keep their natural signatures — do not rewrite them

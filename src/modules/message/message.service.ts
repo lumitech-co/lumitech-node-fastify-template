@@ -26,14 +26,15 @@ export const createService = (
     config: EnvConfig
 ): MessageService => ({
     createMessage: async ({ payload }) => {
-        const { text } = payload;
+        const { text, meta } = payload;
 
         const message = await messageRepository.create({
-            data: { text },
+            data: { text, meta },
             select: {
                 id: true,
                 createdAt: true,
                 text: true,
+                meta: true,
             },
         });
 
