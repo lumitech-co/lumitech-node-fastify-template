@@ -10,30 +10,31 @@ export const generateModule = (nameCamel, namePascal, nameKebab) => {
         process.exit(1);
     }
 
+    const nameUpper = nameKebab.replace(/-/g, "_").toUpperCase();
+
     fs.mkdirSync(modulePath, { recursive: true });
     console.log(`📁 Created folder: ${modulePath}`);
 
-    const routeContent = templates["route"](namePascal, nameCamel, nameKebab);
+    const typeContent = templates["type"](nameKebab);
+    const typeFilePath = path.join(modulePath, `${nameKebab}.type.ts`);
+    fs.writeFileSync(typeFilePath, typeContent);
+
+    const routeContent = templates["route"](
+        namePascal,
+        nameCamel,
+        nameKebab,
+        nameUpper
+    );
+
     const routeFilePath = path.join(modulePath, `${nameKebab}.route.ts`);
     fs.writeFileSync(routeFilePath, routeContent);
 
-    const handlerContent = templates["handler"](
-        namePascal,
-        nameCamel,
-        nameKebab
-    );
-
+    const handlerContent = templates["handler"](namePascal, nameCamel);
     const handlerFilePath = path.join(modulePath, `${nameKebab}.handler.ts`);
     fs.writeFileSync(handlerFilePath, handlerContent);
 
+    const serviceContent = templates["service"](namePascal, nameCamel);
     const serviceFilePath = path.join(modulePath, `${nameKebab}.service.ts`);
-
-    const serviceContent = templates["service"](
-        namePascal,
-        nameCamel,
-        nameKebab
-    );
-
     fs.writeFileSync(serviceFilePath, serviceContent);
 
     const indexContent = templates["index"](namePascal, nameCamel, nameKebab);

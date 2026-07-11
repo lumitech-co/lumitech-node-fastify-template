@@ -5,17 +5,23 @@ import fastifySwaggerUi from "@fastify/swagger-ui";
 import fastifyBasicAuth from "@fastify/basic-auth";
 import { FastifyInstance } from "fastify";
 import { UnauthorizedError } from "@/lib/errors/errors.js";
-import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
-
-const basicAuthUsername = "admin";
+import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
+import {
+    SWAGGER_API_TITLE,
+    SWAGGER_API_VERSION,
+    SWAGGER_BASIC_AUTH_USERNAME,
+    SWAGGER_INVALID_CREDENTIALS_ERROR,
+    SWAGGER_OPENAPI_VERSION,
+    SWAGGER_ROUTE_PREFIX,
+} from "@/lib/constants/swagger.constant.js";
 
 const configureSwagger = async (fastify: FastifyInstance) => {
     await fastify.register(fastifySwagger, {
         openapi: {
-            openapi: "3.1.0",
+            openapi: SWAGGER_OPENAPI_VERSION,
             info: {
-                title: "Fastify template API",
-                version: "0.1.0",
+                title: SWAGGER_API_TITLE,
+                version: SWAGGER_API_VERSION,
             },
         },
         transform: fastifyTypeProviderZod.jsonSchemaTransform,
@@ -27,7 +33,7 @@ const configureSwagger = async (fastify: FastifyInstance) => {
         await fastify.register(fastifyBasicAuth, {
             validate(username, password, _req, _reply, done) {
                 if (
-                    username === basicAuthUsername &&
+                    username === SWAGGER_BASIC_AUTH_USERNAME &&
                     password === docsPassword
                 ) {
                     done();
@@ -35,14 +41,14 @@ const configureSwagger = async (fastify: FastifyInstance) => {
                     return;
                 }
 
-                done(UnauthorizedError("Invalid credentials"));
+                done(new UnauthorizedError(SWAGGER_INVALID_CREDENTIALS_ERROR));
             },
             authenticate: true,
         });
     }
 
     await fastify.register(fastifySwaggerUi, {
-        routePrefix: "/api/docs",
+        routePrefix: SWAGGER_ROUTE_PREFIX,
         uiHooks: {
             onRequest: docsPassword ? fastify.basicAuth : undefined,
         },

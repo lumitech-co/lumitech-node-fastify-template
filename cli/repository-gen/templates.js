@@ -1,11 +1,20 @@
 export const templates = {
     repository: (nameCamel, namePascal) =>
         `
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { NotFoundError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { BaseRepository, generateRepository } from "../generate.repository.js";
+import { generateRepository } from "../generate.repository.js";
+import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
+import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import { BaseRepository } from "@/database/repositories/repository.type.js";
 
-export type ${namePascal}Repository = BaseRepository<"${nameCamel}"> & {};
+export type ${namePascal}Repository = BaseRepository<"${nameCamel}"> & {
+    findUniqueOrFail: FindUniqueOrFail<
+        Prisma.${namePascal}FindUniqueArgs,
+        Prisma.$${namePascal}Payload
+    >;
+};
 
 export const create${namePascal}Repository = (
     prisma: PrismaClient
@@ -14,6 +23,15 @@ export const create${namePascal}Repository = (
 
     return {
         ...repository,
+        findUniqueOrFail: async (args) => {
+            const ${nameCamel} = await prisma.${nameCamel}.findUnique(args);
+
+            if (!${nameCamel}) {
+                throw new NotFoundError(RESPONSE_MESSAGES.${nameCamel}.notFound);
+            }
+
+            return ${nameCamel};
+        },
     };
 };
 

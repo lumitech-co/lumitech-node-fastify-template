@@ -1,13 +1,15 @@
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { HEALTH_CHECK_RESPONSE } from "./application.constant.js";
+import { HealthCheckResponse } from "@/lib/validation/application/application.schema.js";
 
 export type ApplicationService = {
-    healthChecker: () => Promise<string>;
+    healthChecker: () => Promise<HealthCheckResponse>;
 };
 
-export const createApplicationService = (): ApplicationService => ({
+export const createService = (): ApplicationService => ({
     healthChecker: async () => {
-        return "pong";
+        return HEALTH_CHECK_RESPONSE;
     },
 });
 
-addDIResolverName(createApplicationService, "applicationService");
+addDIResolverName(createService, "applicationService");

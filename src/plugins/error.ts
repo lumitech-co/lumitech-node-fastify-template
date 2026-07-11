@@ -1,5 +1,9 @@
 import fp from "fastify-plugin";
 import { FastifyInstance } from "fastify";
+import {
+    INTERNAL_SERVER_ERROR_RESPONSE,
+    INTERNAL_SERVER_ERROR_STATUS_CODE,
+} from "@/lib/constants/error.constant.js";
 
 const configureErrorHandler = async (fastify: FastifyInstance) => {
     fastify.setErrorHandler((error, request, reply) => {
@@ -10,12 +14,9 @@ const configureErrorHandler = async (fastify: FastifyInstance) => {
             // Returning a generic error message instead.
             // Do not use an Error instance reply value because it creates
             // an error log with unnecessary stack trace.
-            return reply.status(500).send({
-                statusCode: 500,
-                code: "500",
-                error: "Internal Server Error",
-                message: "Internal Server Error",
-            });
+            return reply
+                .status(INTERNAL_SERVER_ERROR_STATUS_CODE)
+                .send(INTERNAL_SERVER_ERROR_RESPONSE);
         }
 
         // Use parent error handler with the predefined error.

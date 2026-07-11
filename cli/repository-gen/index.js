@@ -1,4 +1,5 @@
 import { extendCradle } from "./extend-cradle.js";
+import { extendMessages } from "./extend-messages.js";
 import { generateRepository } from "./generate-repository.js";
 
 const entityName = process.argv[2];
@@ -17,4 +18,5 @@ const nameKebab = entityName
     .toLowerCase();
 
 generateRepository(nameCamel, namePascal, nameKebab);
+extendMessages(namePascal, nameCamel);
 extendCradle(namePascal, nameCamel, nameKebab);

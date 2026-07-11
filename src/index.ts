@@ -1,6 +1,7 @@
 /// <reference types="./types/index.d.ts" />
 import closeWithGrace from "close-with-grace";
 import { configureServer } from "./server.js";
+import { SWAGGER_ROUTE_PREFIX } from "@/lib/constants/swagger.constant.js";
 
 const main = async () => {
     const fastify = await configureServer();
@@ -10,7 +11,9 @@ const main = async () => {
         host: fastify.config.HOST,
     });
 
-    fastify.log.info(`Documentation available at ${address}/api/docs/`);
+    fastify.log.info(
+        `Documentation available at ${address}${SWAGGER_ROUTE_PREFIX}/`
+    );
 
     closeWithGrace(
         {

@@ -3,37 +3,15 @@ import autoload from "@fastify/autoload";
 import Fastify, { FastifyInstance } from "fastify";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import { ENV_TO_LOGGER } from "@/lib/constants/logger.constant.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const envToLogger = {
-    development: {
-        transport: {
-            target: "pino-pretty",
-            options: {
-                translateTime: "HH:MM:ss Z",
-                ignore: "pid,hostname",
-            },
-        },
-    },
-    production: true,
-    test: {
-        transport: {
-            target: "pino-pretty",
-            options: {
-                translateTime: "HH:MM:ss Z",
-                ignore: "pid,hostname",
-            },
-        },
-        level: "fatal",
-    },
-};
-
 export const configureServer = async (): Promise<FastifyInstance> => {
     const fastify = Fastify({
         logger:
-            envToLogger[
+            ENV_TO_LOGGER[
                 process.env.NODE_ENV as "development" | "production" | "test"
             ] ?? true,
     });

@@ -1,8 +1,10 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { generateRepository } from "../generate.repository.js";
 import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
-import { BaseRepository, generateRepository } from "../generate.repository.js";
+import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import { BaseRepository } from "@/database/repositories/repository.type.js";
 
 export type MessageRepository = BaseRepository<"message"> & {
     findUniqueOrFail: FindUniqueOrFail<
@@ -22,7 +24,7 @@ export const createMessageRepository = (
             const message = await prisma.message.findUnique(args);
 
             if (!message) {
-                throw new NotFoundError("Message not found.");
+                throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
             }
 
             return message;
