@@ -6,4 +6,5 @@ export enum FastifyPlugin {
     Env = "env",
     Jwt = "jwt",
     Awilix = "awilix",
+    GcpStorage = "gcpStorage",
 }
