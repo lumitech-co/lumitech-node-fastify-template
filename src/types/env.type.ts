@@ -10,4 +10,5 @@ export type EnvConfig = {
     GCP_CLIENT_EMAIL: string | undefined;
     GCP_PRIVATE_KEY: string | undefined;
     GCP_BUCKET_NAME: string;
+    GCP_STORAGE_API_ENDPOINT: string | undefined;
 };

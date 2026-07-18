@@ -21,6 +21,7 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .prop("GCP_CLIENT_EMAIL", S.string())
             .prop("GCP_PRIVATE_KEY", S.string())
             .prop("GCP_BUCKET_NAME", S.string())
+            .prop("GCP_STORAGE_API_ENDPOINT", S.string())
             .required([
                 "NODE_ENV",
                 "DATABASE_URL",
