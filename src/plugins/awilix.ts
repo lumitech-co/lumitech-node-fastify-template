@@ -24,6 +24,7 @@ const configureAwilix = async (fastify: FastifyInstance) => {
         prisma: asValue(fastify.prisma),
         config: asValue(fastify.config),
         gcpStorageClient: asValue(fastify.gcpStorageClient),
+        awsS3Client: asValue(fastify.awsS3Client),
     });
 
     // Register dependencies from the application: repositories, services, route handlers
@@ -51,5 +52,6 @@ export default fp(configureAwilix, {
         FastifyPlugin.Prisma,
         FastifyPlugin.Env,
         FastifyPlugin.GcpStorage,
+        FastifyPlugin.AwsS3,
     ],
 });

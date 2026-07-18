@@ -2,23 +2,12 @@ import { Storage } from "@google-cloud/storage";
 import { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { SIGNED_URL_EXPIRES_IN_MS } from "./gcpBucket.constant.js";
-
-export type DeleteFilePayload = {
-    key: string;
-};
-
-export type DeleteFolderPayload = {
-    prefix: string;
-};
-
-export type CreateUploadSignedUrlPayload = {
-    key: string;
-    contentType: string;
-};
-
-export type CreateReadSignedUrlPayload = {
-    key: string;
-};
+import {
+    DeleteFilePayload,
+    DeleteFolderPayload,
+    CreateUploadSignedUrlPayload,
+    CreateReadSignedUrlPayload,
+} from "./gcpBucket.type.js";
 
 export type GcpBucketService = {
     deleteFile: (payload: DeleteFilePayload) => Promise<void>;

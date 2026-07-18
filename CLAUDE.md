@@ -115,10 +115,27 @@ export const diffObjects = ({ oldObj, newObj }: DiffObjectsPayload) => { ... };
 ### 5. Constants and types placement
 - Module constants → `src/modules/<name>/<name>.constant.ts`
 - Module types → `src/modules/<name>/<name>.type.ts`
-- **Exception:** the `<Name>Service` and `<Name>Handler` types stay in the same file as
-  their factory (`<name>.service.ts` / `<name>.handler.ts`), together with their payload
-  types. Everything else the module needs (util payloads, internal shapes) goes to
-  `<name>.type.ts`.
+- **Exception:** the `<Name>Service` and `<Name>Handler` types themselves stay in the same
+  file as their factory (`<name>.service.ts` / `<name>.handler.ts`). Their payload/response
+  types stay there too **only when every field is a primitive** (`string`, `number`,
+  `boolean`, `Date`, or a union of those). The moment a payload/response type has a
+  non-primitive field — an object, an array, an imported type, an enum-like literal
+  union of objects — it goes to `<name>.type.ts` instead, and the service/handler file
+  imports it from there. Everything else the module needs (util payloads, internal
+  shapes) goes to `<name>.type.ts` too.
+  ```typescript
+  // message.type.ts
+  export type CreateMessagePayload = {
+      payload: CreateMessageInput; // non-primitive field -> lives here, not in message.service.ts
+  };
+
+  // message.service.ts
+  import { CreateMessagePayload } from "./message.type.js";
+
+  export type MessageService = {
+      createMessage: (payload: CreateMessagePayload) => Promise<CreateMessageResponse>;
+  };
+  ```
 - Repository types → the same file as the repository factory
   (`src/database/repositories/<name>/<name>.repository.ts`); a repository never gets its own
   `<name>.type.ts` (`BaseRepository` itself lives in

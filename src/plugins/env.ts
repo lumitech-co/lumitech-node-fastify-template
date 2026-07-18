@@ -22,6 +22,11 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .prop("GCP_PRIVATE_KEY", S.string())
             .prop("GCP_BUCKET_NAME", S.string())
             .prop("GCP_STORAGE_API_ENDPOINT", S.string())
+            .prop("AWS_REGION", S.string())
+            .prop("AWS_ACCESS_KEY_ID", S.string())
+            .prop("AWS_SECRET_ACCESS_KEY", S.string())
+            .prop("AWS_S3_BUCKET_NAME", S.string())
+            .prop("AWS_S3_ENDPOINT", S.string())
             .required([
                 "NODE_ENV",
                 "DATABASE_URL",
@@ -29,6 +34,8 @@ const configureEnv = async (fastify: FastifyInstance) => {
                 "APPLICATION_URL",
                 "PORT",
                 "GCP_BUCKET_NAME",
+                "AWS_REGION",
+                "AWS_S3_BUCKET_NAME",
             ])
             .valueOf(),
         dotenv: false,
