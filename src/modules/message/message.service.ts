@@ -30,12 +30,6 @@ export const createService = (
 
         const message = await messageRepository.create({
             data: { text, meta },
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
-            },
         });
 
         return {

@@ -4,7 +4,7 @@
 Node.js Fastify backend template with TypeScript, featuring:
 - **Fastify** - HTTP framework
 - **Awilix** - Dependency Injection container
-- **Prisma** - Database ORM (PostgreSQL)
+- **Drizzle ORM** - Database toolkit (PostgreSQL, `node-postgres` driver)
 - **Zod** - Schema validation
 - **Swagger** - API documentation
 
@@ -29,11 +29,15 @@ This creates:
 ### Creating a New Repository
 **Never create a repository by hand — always run the generator first:**
 ```bash
-npm run generate:repository <entityName>
+npm run generate:repository <entityName> [tableName]
 ```
+The table must already exist in `src/database/drizzle/schema.ts` - the generator refuses to
+run otherwise. `tableName` defaults to `<entityName>s`; pass it explicitly when the exported
+table constant is named differently.
+
 This creates:
 - `src/database/repositories/<name>/<name>.repository.ts` - the `<Name>Repository` type and the
-  factory (with `findUniqueOrFail`) in a single file
+  factory (with `findByIdOrFail`) in a single file
 - Updates `src/lib/messages/messages.constant.ts` with the entity's `notFound` message
 - Updates `src/types/di-container.type.ts` with new type
 
@@ -72,20 +76,31 @@ export default async function (fastify: FastifyInstance) {
 ```
 
 ### 2. Database access only through repositories
-- All Prisma calls and all SQL (`$queryRaw` / `$executeRaw`) live **only** in
-  `src/database/repositories/**`. Services, handlers, routes, plugins and utils must
-  never touch `prisma.*` directly.
-- `src/plugins/prisma.ts` is outside this rule: it owns the client lifecycle
-  (`new PrismaClient()`, `$connect`, `$disconnect`) and decorates Fastify with it.
+- All Drizzle queries and all raw SQL (`db.execute`, the `sql` template tag) live **only**
+  in `src/database/repositories/**`. Services, handlers, routes, plugins and utils must
+  never touch `db.select` / `db.insert` / `db.update` / `db.delete` directly.
+- Drizzle's `where` is an SQL expression (`eq`, `and`, `inArray`, ...), not a plain object.
+  Those expressions are built **inside the repository**; a service passes primitives
+  (`{ id }`, `{ ids }`) and the repository turns them into SQL. A service that imports
+  `eq` from `drizzle-orm` has leaked the query layer.
+- `src/plugins/drizzle.ts` is outside this rule: it owns the connection lifecycle
+  (`new Pool()`, `drizzle(pool, { schema })`, `pool.end()`) and decorates Fastify with it.
   No other plugin may query the database.
-- **The only exception:** transactions. A service may inject `prisma` solely to open
-  `prisma.$transaction(...)` and pass the transaction client down to repository methods.
-  Business queries inside the transaction still go through repositories.
+- **The only exception:** transactions. A service may inject `db` solely to open
+  `db.transaction(...)` and pass the transaction client down to repository methods via
+  their `tx` option. Business queries inside the transaction still go through repositories:
+```typescript
+await db.transaction(async (tx) => {
+    const message = await messageRepository.create({ data, tx });
+    await auditRepository.create({ data: { messageId: message.id }, tx });
+    return message;
+});
+```
 
 ### 3. No database calls in loops
 Never call a repository inside `for` / `while` / `map` / `forEach`. Use bulk operations
-(`createMany`, `updateMany`, `deleteMany`, `findMany` with `where: { id: { in: [...] } }`)
-or a single transaction. If a loop looks unavoidable, redesign the query.
+(`createMany`, a single `update` / `delete` with an `inArray(...)` condition, `findMany`
+with `where: inArray(table.id, ids)`) or a single transaction. If a loop looks unavoidable, redesign the query.
 
 ### 4. Function signatures
 The rule applies to exactly two kinds of functions:
@@ -110,7 +125,7 @@ export const diffObjects = ({ oldObj, newObj }: DiffObjectsPayload) => { ... };
   many parameters as they have dependencies — that is how Awilix injects by name;
 - `addDIResolverName(fn, "name")` and the rest of the Awilix wiring;
 - Fastify route handlers `(request, reply)`, plugins `(fastify)`, route registrars
-  `(fastify, handler)` and the infrastructure helper `generateRepository(prisma, model)`.
+  `(fastify, handler)` and the infrastructure helper `generateRepository(db, table)`.
 
 ### 5. Constants and types placement
 - Module constants → `src/modules/<name>/<name>.constant.ts`
@@ -122,7 +137,8 @@ export const diffObjects = ({ oldObj, newObj }: DiffObjectsPayload) => { ... };
 - Repository types → the same file as the repository factory
   (`src/database/repositories/<name>/<name>.repository.ts`); a repository never gets its own
   `<name>.type.ts` (`BaseRepository` itself lives in
-  `src/database/repositories/repository.type.ts`)
+  `src/database/repositories/repository.type.ts`, and `Database` / `Transaction` in
+  `src/database/drizzle/drizzle.type.ts`)
 - Lib types → `src/lib/<name>/<name>.type.ts`
 - Global constants → `src/lib/constants/`
 - Global types → `src/types/`
@@ -188,7 +204,7 @@ directly. The moment such a wrapper needs configuration or lifecycle, it becomes
 
 A plugin needs a name in `FastifyPlugin` (`src/lib/constants/fastify.constant.ts`) when it
 is referenced by another plugin's `dependencies`, or when it is a foundational plugin other
-code is expected to depend on (`prisma`, `env`, `jwt`, `awilix`). Plugins that nothing
+code is expected to depend on (`drizzle`, `env`, `jwt`, `awilix`). Plugins that nothing
 depends on — `cors`, `error`, `zod` — stay anonymous: `fp(configure, {})`. `swagger` is
 anonymous too, but still passes options (`dependencies: [FastifyPlugin.Env]` and
 `encapsulate: false`, so it can see the routes it documents).
@@ -198,8 +214,8 @@ All application data — body, params, query, headers, external API responses �
 with Zod schemas in `src/lib/validation/<module>/<module>.schema.ts`. No manual
 `if (!x) throw`, no ad-hoc type casts as a substitute for validation. Types are derived
 with `z.infer`, never hand-written in parallel to a schema. This includes the contents of
-a Prisma `Json` column — being typed by `prisma-json-types-generator` does not exempt it
-from validation (see Architecture Rules #8).
+a `jsonb` column — being typed with Drizzle's `$type<>()` does not exempt it from
+validation (see Architecture Rules #8).
 
 **Exceptions:**
 - Environment variables are validated by `@fastify/env` with `fluent-json-schema` in
@@ -209,31 +225,14 @@ from validation (see Architecture Rules #8).
   config. This runs before the env plugin is loaded, so `fastify.config` does not exist
   yet — the cast is correct there and must not be "fixed" into a Zod parse.
 
-### 8. Typed JSON in Prisma
-A `Json` column is never left untyped. Adding one to `schema.prisma` always means doing
-**both** of the following — a `Json` field with only one of them is incomplete:
+### 8. Typed JSON columns
+A `jsonb` column is never left untyped. Adding one to `src/database/drizzle/schema.ts`
+always means doing **both** of the following — a `jsonb` field with only one of them is
+incomplete:
 
-**a) Type it at the Prisma level** with `prisma-json-types-generator` (already installed,
-declared as the `json` generator in `schema.prisma`), so the value arrives in the code
-already typed and never has to be cast:
-```prisma
-model Message {
-  /// [MessageMeta]
-  meta Json?
-}
-```
-The referenced type is declared in the global `PrismaJson` namespace in
-`src/types/prisma-json.d.ts`. After editing the schema run `npm run prisma:generate` —
-the field then comes back as `PrismaJson.MessageMeta | null`, not `Prisma.JsonValue`.
-Casting `Prisma.JsonValue` to a type inside a service, handler or repository is forbidden:
-the Prisma types are the single source of truth, and a cast silently bypasses them.
-
-**b) Validate it with a Zod schema.** The Prisma type is a compile-time guarantee only —
-it says nothing about what a client actually sent, and JSON is exactly where unvalidated
-shapes leak into the database. So every `Json` column that is written from a request (or
-from any external source) gets a Zod schema in
-`src/lib/validation/<module>/<module>.schema.ts`, used in the route schema like any other
-body/query field, and mirrored in the response schema when the column is returned:
+**a) Validate it with a Zod schema.** The Zod schema in
+`src/lib/validation/<module>/<module>.schema.ts` is the **single source of truth** for the
+shape. It guards the boundary and it is what the TypeScript type is derived from:
 ```typescript
 // src/lib/validation/message/message.schema.ts
 const messageMetaSchema = z.object({
@@ -241,38 +240,53 @@ const messageMetaSchema = z.object({
     tags: z.array(z.string()).optional(),
 });
 
+type MessageMeta = z.infer<typeof messageMetaSchema>;
+
 const createMessageBodySchema = z.object({
     text: z.string(),
     meta: messageMetaSchema.optional(),
 });
 ```
-Keep the Zod schema and the `PrismaJson` type in sync — the Zod schema is what guards the
-boundary, the `PrismaJson` type is what the rest of the code sees. Never write a `Json`
-value that has not been through a Zod parse.
 
-Pin the generator to the major line that matches the installed Prisma (Prisma 6 →
-`prisma-json-types-generator@^3`); newer majors declare a Prisma 7 peer and fail to install.
+**b) Type the column with that inferred type** via Drizzle's `$type<>()`, so the value
+arrives in the code already typed and never has to be cast:
+```typescript
+// src/database/drizzle/schema.ts
+import { MessageMeta } from "@/lib/validation/message/message.schema.js";
 
-### 9. Migrations are only created by `prisma:migrate:create`
-The only way to produce a migration is to edit `src/database/prisma/schema.prisma` and run:
-```bash
-npm run prisma:migrate:create   # prisma migrate dev --create-only
-npm run prisma:migrate:apply    # prisma migrate dev — applies it
+export const messages = pgTable("messages", {
+    meta: jsonb("meta").$type<MessageMeta>(),
+});
 ```
-`--create-only` writes the SQL but does not run it, so the generated migration is reviewed
-before it touches the database.
+Because the column type is `z.infer`red from the schema, the two can never drift — do not
+hand-write a parallel interface for a `jsonb` column, and never cast an untyped JSON value
+inside a service, handler or repository. Never write a `jsonb` value that has not been
+through a Zod parse.
+
+### 9. Migrations are only created by `db:migrate:create`
+The only way to produce a migration is to edit `src/database/drizzle/schema.ts` and run:
+```bash
+npm run db:migrate:create   # drizzle-kit generate — writes the SQL, does not run it
+npm run db:migrate:apply    # drizzle-kit migrate — applies it
+```
+`drizzle-kit generate` writes the SQL and the snapshot but does not touch the database, so
+the generated migration is reviewed before it is applied.
 
 Forbidden:
-- writing or editing a file under `src/database/prisma/migrations/**` by hand, or creating the
-  migration folder yourself — the SQL is generated from the schema, never authored;
-- `prisma migrate dev` without `--create-only` as the *first* step (it creates and applies in
-  one go, leaving no review point);
-- `npm run prisma:push` (`prisma db push`) to change a schema that has migrations — it mutates
-  the database without recording a migration and desyncs the migration history.
+- writing or editing a file under `src/database/drizzle/migrations/**` by hand, or creating
+  the migration or `meta/` folder yourself — the SQL and the snapshot are generated from the
+  schema, never authored. A hand-edited snapshot desyncs every future diff;
+- `npm run db:push` (`drizzle-kit push`) to change a schema that has migrations — it mutates
+  the database without recording a migration and desyncs the migration history. It is for
+  throwaway local experiments only;
+- adding a table to `schema.ts` without generating the matching migration.
 
-Editing a migration that Prisma has already generated is allowed only when the schema alone
-cannot express the change (a data backfill, a custom index). If a generated migration would be
-destructive, stop and ask instead of hand-editing it.
+Editing a migration that drizzle-kit has already generated is allowed only when the schema
+alone cannot express the change (a data backfill, a custom index) — and then only the `.sql`
+file, never the snapshot. If a generated migration would be destructive, stop and ask
+instead of hand-editing it.
+
+`npm run db:check` verifies the migration folder is consistent; run it if a diff looks wrong.
 
 ## Architecture
 
@@ -323,7 +337,7 @@ All dependencies must be declared in `src/types/di-container.type.ts`:
 ```typescript
 export type Cradle = {
     log: FastifyBaseLogger;
-    prisma: PrismaClient;
+    db: Database;
     config: EnvConfig;
     // ... services, handlers, repositories
 };
@@ -334,9 +348,8 @@ export type Cradle = {
 ```
 src/
 ├── database/
-│   ├── dbml/            # Generated ER diagram (npm run prisma:diagram) - never edit by hand
-│   ├── prisma/          # Schema, migrations and Prisma helper types
-│   └── repositories/    # Data access layer (all Prisma calls live here)
+│   ├── drizzle/         # schema.ts, generated migrations/ and the Database/Transaction types
+│   └── repositories/    # Data access layer (all Drizzle queries live here)
 ├── lib/
 │   ├── awilix/          # DI helpers
 │   ├── constants/       # Global constants
@@ -371,27 +384,28 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Repository Pattern
-The repository type and its factory live in the same `<name>.repository.ts` file. Every
-repository exposes `findUniqueOrFail`, which throws `NotFoundError` with the entity's message
-from `RESPONSE_MESSAGES`:
+The repository type and its factory live in the same `<name>.repository.ts` file.
+`generateRepository(db, table)` supplies the shared CRUD surface; every repository adds
+`findByIdOrFail`, which throws `NotFoundError` with the entity's message from
+`RESPONSE_MESSAGES`. Every method takes one options object and accepts an optional `tx`:
 ```typescript
 // src/database/repositories/message/message.repository.ts
-export type MessageRepository = BaseRepository<"message"> & {
-    findUniqueOrFail: FindUniqueOrFail<
-        Prisma.MessageFindUniqueArgs,
-        Prisma.$MessagePayload
-    >;
+export type Message = Entity<typeof messages>;
+
+export type MessageRepository = BaseRepository<typeof messages> & {
+    findByIdOrFail: (args: FindMessageByIdOrFailArgs) => Promise<Message>;
 };
 
-export const createMessageRepository = (
-    prisma: PrismaClient
-): MessageRepository => {
-    const repository = generateRepository(prisma, "Message");
+export const createMessageRepository = (db: Database): MessageRepository => {
+    const repository = generateRepository(db, messages);
 
     return {
         ...repository,
-        findUniqueOrFail: async (args) => {
-            const message = await prisma.message.findUnique(args);
+        findByIdOrFail: async ({ id, tx }) => {
+            const message = await repository.findFirst({
+                where: eq(messages.id, id),
+                tx,
+            });
 
             if (!message) {
                 throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
@@ -404,6 +418,9 @@ export const createMessageRepository = (
 
 addDIResolverName(createMessageRepository, "messageRepository");
 ```
+`BaseRepository` returns whole rows on purpose — shaping the payload is the job of the Zod
+response schema on the route. A query that needs a join, an aggregate or a partial select
+gets its own method on the specific repository, next to `findByIdOrFail`.
 
 ### Route Registration
 Routes use Zod schemas for validation and OpenAPI docs; the tag and the path enum are
@@ -430,7 +447,7 @@ Plugins declare dependencies via fastify-plugin:
 ```typescript
 export default fp(configurePlugin, {
     name: FastifyPlugin.PluginName,
-    dependencies: [FastifyPlugin.Env, FastifyPlugin.Prisma],
+    dependencies: [FastifyPlugin.Env, FastifyPlugin.Drizzle],
 });
 ```
 
@@ -438,15 +455,15 @@ export default fp(configurePlugin, {
 
 ### Add a new feature module
 1. Run `npm run generate:module featureName`
-2. Define Prisma model in `src/database/prisma/schema.prisma`
+2. Define the table in `src/database/drizzle/schema.ts`
 3. Run `npm run generate:repository featureName`
 4. Implement service logic
 5. Define routes with Zod schemas
 
 ### Add database model
-1. Edit `src/database/prisma/schema.prisma`
-2. Run `npm run prisma:migrate:create`
-3. Run `npm run prisma:migrate:apply`
+1. Edit `src/database/drizzle/schema.ts`
+2. Run `npm run db:migrate:create`
+3. Run `npm run db:migrate:apply`
 4. Run `npm run generate:repository modelName`
 
 ### Run tests
@@ -456,18 +473,18 @@ export default fp(configurePlugin, {
 ## Important Conventions
 - New modules and repositories are scaffolded only with `npm run generate:module` /
   `npm run generate:repository` — never written by hand (see Architecture Rules #0)
-- Migrations are created only with `npm run prisma:migrate:create` and never hand-written
+- Migrations are created only with `npm run db:migrate:create` and never hand-written
   (see Architecture Rules #9)
 - Use factory functions, not classes
 - Register all DI dependencies with `addDIResolverName()`
 - Keep handlers thin - delegate to services
 - Validate inputs with Zod schemas
-- A Prisma `Json` column is always both typed (`/// [TypeName]` + `PrismaJson` namespace)
-  and validated by a Zod schema — never one without the other (see Architecture Rules #8)
+- A `jsonb` column is always both validated by a Zod schema and typed with `$type<z.infer<...>>()`
+  from that same schema — never one without the other (see Architecture Rules #8)
 - Service methods and our own utils: at most one argument, always return a value
   (see Architecture Rules #4). Awilix factories, Fastify handlers/plugins/route registrars
   keep their natural signatures — do not rewrite them
-- Prisma only inside repositories; `$transaction` is the single exception (see Architecture Rules #2)
+- Drizzle queries only inside repositories; `db.transaction` is the single exception (see Architecture Rules #2)
 - Never query the database inside a loop (see Architecture Rules #3)
 - Client-facing messages come from `RESPONSE_MESSAGES` (see Architecture Rules #5a)
 - Route tag, route paths and `autoPrefix` stay with the routes, not in `*.constant.ts`

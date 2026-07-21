@@ -16,7 +16,7 @@ Welcome to the Lumitech Node.js Fastify Template. This template provides a well-
 - [Swagger](https://swagger.io/) - API documentation;
 - [Awilix](https://github.com/jeffijoe/awilix) - Dependency Injection container;
 - [PostgreSQL](https://www.postgresql.org/) - relational database;
-- [Prisma](https://www.prisma.io/docs/getting-started) - database ORM;
+- [Drizzle ORM](https://orm.drizzle.team/docs/overview) - database toolkit;
 - [Vitest](https://vitest.dev/) - testing framework.
 
 ## 📌 Getting Started
@@ -26,16 +26,16 @@ Welcome to the Lumitech Node.js Fastify Template. This template provides a well-
 2. Create a `.env` file from `.env.example`;
 3. Launch Docker Compose with the `docker compose up` command.
 
-### ⚙️ Running Prisma Migrations
+### ⚙️ Running Database Migrations
 Since both the Node.js server and PostgreSQL database run inside Docker containers, the database connection uses the [docker compose network](https://docs.docker.com/compose/networking/).
 Inside the Node.js container, use `postgresdb` as the database host.
 
 To run migrations from a host machine:
 1. Launch docker containers - `docker compose up`;
 2. Update the `.env` file, changing `DATABASE_URL` host from `postgresdb` to `localhost`;
-3. Run `npm run prisma:migrate:create` - create SQL migration file;
+3. Run `npm run db:migrate:create` - generate the SQL migration file;
 4. Name the new migration and verify the SQL code generated;
-5. Run `npm run prisma:migrate:apply` - apply the migration to the database;
+5. Run `npm run db:migrate:apply` - apply the migration to the database;
 6. Revert the `DATABASE_URL` in `.env`  back to `postgresdb` so that the Node.js container can connect to the database after a rebuild.
 
 ### 🧪 Running Tests
@@ -164,49 +164,32 @@ fastify.post(
 ```
 
 ### ⚙️ Repository Generation
-The template provides an automatic repository generator based on the Prisma Schema data model.
+The template provides an automatic repository generator based on the Drizzle table definitions.
 It includes a set of commonly used CRUD operations for any entity.
 
 The generator is located in `src/database/repositories/generate.repository.ts`.
 
 ```typescript
-const userRepository = generateRepository(prismaClient, "User");
+const userRepository = generateRepository(db, users);
 
 const user = await userRepository.create({
-    data: {},
-    select: {},
+    data: { email: "a@b.c" },
 });
 
-// Methods available: create, update, delete, etc.
+// Methods available: findMany, findFirst, count, create, createMany, update, delete
 await userRepository.delete({
-    where: {},
+    where: eq(users.id, user.id),
 });
 ```
 
-### ⚙️ ER Diagram Generation
-This project automatically generates an **Entity Relationship (ER) diagram** based on your **Prisma schema**.
+### ⚙️ Inspecting the Schema
+Drizzle ships a database browser instead of a generated ER diagram file.
 
-The generator is located in `src/database/prisma/schema.prisma`.
+Run `npm run db:studio` and open the printed URL to browse tables, rows and relations
+against the database your `DATABASE_URL` points at.
 
-```typescript
-generator dbml {
-  provider            = "prisma-dbml-generator"
-  output              = "../dbml"
-  outputName          = "schema.dbml"
-  projectName         = "Project Name"
-  projectDatabaseType = "PostgreSQL"
-  projectNote         = "ER Diagram"
-}
-```
-
-To generate ER diagram run command: `npm run prisma:diagram`
-
-After that you'll find `src/database/dbml/schema.dbml`.
-
-To visualize your ER diagram:
-1. Open [dbdiagram.io](https://dbdiagram.io/)
-2. Paste the contents of schema.dbml into the editor
-3. The diagram will be rendered automatically
+`npm run db:check` verifies that the generated migrations in
+`src/database/drizzle/migrations` are consistent with each other.
 
 ### 📜 Commits Format
 
@@ -229,7 +212,7 @@ The project is organized into several parts to promote a modular design and sepa
 
 #### `src/database`:  
 This directory manages everything related to data persistence and interaction with the database.  
-- The `prisma` subfolder houses the Prisma schema (`schema.prisma`) and migration files that define the application's data model to the database.  
+- The `drizzle` subfolder houses the table definitions (`schema.ts`), the generated `migrations/` folder and the `Database` / `Transaction` types.  
 - The `repositories` subfolder contains repository modules for each entity. These repositories provide a unified API for CRUD operations (e.g., in `generate.repository.ts`) and custom logic for data access (e.g., `message.repository.ts` for the Message model).
 
 #### `src/modules`:  
@@ -243,7 +226,7 @@ Each module includes:
 The directory is dedicated to Fastify plugins which extend the server capabilities. Each file registers a plugin that adds functionality to the Fastify instance.  
 Plugins included:  
 - **Environment Configuration** (`env.ts`): Loads and validates environment variables.  
-- **Database Management** (`prisma.ts`): Sets up a `PrismaClient` and manages database connection.  
+- **Database Management** (`drizzle.ts`): Sets up a `pg` connection pool, wraps it with Drizzle and manages its lifecycle.  
 - **Authentication** (`jwt.ts`): Configures JSON Web Token handling for security.  
 - **API Documentation** (`swagger.ts` and `zod.ts`): Integrates Swagger for API documentation and Zod for schema validation.  
 - **Dependency Injection** (`awilix.ts`): Registers and manages service dependencies using Awilix.  
@@ -279,11 +262,11 @@ This directory contains all test files organized to mirror the structure of the 
 ├── README.md
 ├── src
 │   ├── database
-│   │   ├── prisma
+│   │   ├── drizzle
 │   │   │   ├── migrations
 │   │   │   │   └── ...
-│   │   │   ├── prisma.type.ts
-│   │   │   └── schema.prisma
+│   │   │   ├── drizzle.type.ts
+│   │   │   └── schema.ts
 │   │   └── repositories
 │   │       ├── generate.repository.ts
 │   │       └── ...
@@ -306,7 +289,7 @@ This directory contains all test files organized to mirror the structure of the 
 │   │   ├── env.ts
 │   │   ├── error.ts
 │   │   ├── jwt.ts
-│   │   ├── prisma.ts
+│   │   ├── drizzle.ts
 │   │   ├── swagger.ts
 │   │   └── zod.ts
 │   ├── types

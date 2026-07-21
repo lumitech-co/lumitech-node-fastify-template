@@ -30,9 +30,6 @@ jobs:
             - name: Install dependencies
               run: npm i
 
-            - name: Generate prisma schema
-              run: npm run prisma:generate
-
             - name: Run integration tests
               run: npm run test:int:ci
 

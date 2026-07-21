@@ -1,30 +1,41 @@
 export const templates = {
-    repository: (nameCamel, namePascal) =>
+    repository: (nameCamel, namePascal, tableName) =>
         `
-import { Prisma, PrismaClient } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { ${tableName} } from "@/database/drizzle/schema.js";
 import { NotFoundError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { generateRepository } from "../generate.repository.js";
-import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import { BaseRepository } from "@/database/repositories/repository.type.js";
+import { Database, Transaction } from "@/database/drizzle/drizzle.type.js";
+import {
+    BaseRepository,
+    Entity,
+} from "@/database/repositories/repository.type.js";
 
-export type ${namePascal}Repository = BaseRepository<"${nameCamel}"> & {
-    findUniqueOrFail: FindUniqueOrFail<
-        Prisma.${namePascal}FindUniqueArgs,
-        Prisma.$${namePascal}Payload
-    >;
+export type ${namePascal} = Entity<typeof ${tableName}>;
+
+export type Find${namePascal}ByIdOrFailArgs = {
+    id: number;
+    tx?: Transaction;
+};
+
+export type ${namePascal}Repository = BaseRepository<typeof ${tableName}> & {
+    findByIdOrFail: (args: Find${namePascal}ByIdOrFailArgs) => Promise<${namePascal}>;
 };
 
 export const create${namePascal}Repository = (
-    prisma: PrismaClient
+    db: Database
 ): ${namePascal}Repository => {
-    const repository = generateRepository(prisma, "${namePascal}");
+    const repository = generateRepository(db, ${tableName});
 
     return {
         ...repository,
-        findUniqueOrFail: async (args) => {
-            const ${nameCamel} = await prisma.${nameCamel}.findUnique(args);
+        findByIdOrFail: async ({ id, tx }) => {
+            const ${nameCamel} = await repository.findFirst({
+                where: eq(${tableName}.id, id),
+                tx,
+            });
 
             if (!${nameCamel}) {
                 throw new NotFoundError(RESPONSE_MESSAGES.${nameCamel}.notFound);

@@ -17,6 +17,8 @@ const nameKebab = entityName
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .toLowerCase();
 
-generateRepository(nameCamel, namePascal, nameKebab);
+const tableName = process.argv[3] ?? `${nameCamel}s`;
+
+generateRepository(nameCamel, namePascal, nameKebab, tableName);
 extendMessages(namePascal, nameCamel);
 extendCradle(namePascal, nameCamel, nameKebab);

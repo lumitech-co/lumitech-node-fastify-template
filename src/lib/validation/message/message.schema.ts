@@ -27,6 +27,8 @@ const createMessageBodySchema = z.object({
     meta: messageMetaSchema.optional(),
 });
 
+type MessageMeta = z.infer<typeof messageMetaSchema>;
+
 type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 
 const createMessageResponseSchema = z.object({
@@ -55,6 +57,7 @@ export {
 };
 
 export type {
+    MessageMeta,
     CreateMessageInput,
     CreateMessageResponse,
     FetchMessagesResponse,

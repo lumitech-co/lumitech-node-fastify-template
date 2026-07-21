@@ -27,7 +27,7 @@ services:
             - PORT=3001
         ports:
             - "3001:3001"
-        command: bash -c "npm run prisma:generate && npm run start:dev"
+        command: bash -c "npm run db:deploy && npm run start:dev"
         networks:
             - primary
         volumes:

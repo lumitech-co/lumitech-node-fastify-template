@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
+import { messages } from "@/database/drizzle/schema.js";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GET /api/messages", () => {
@@ -20,9 +21,7 @@ describe("GET /api/messages", () => {
             id: 1,
         };
 
-        await server.prisma.message.create({
-            data: mockData,
-        });
+        await server.db.insert(messages).values(mockData);
 
         const response = await server.inject({
             method: "GET",

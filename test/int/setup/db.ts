@@ -18,7 +18,8 @@ const generateDatabaseURL = (schema: string) => {
 /**
  * Run prisma migrations manually to increase the performance.
  *
- * Running migrations with manual execution is 3x faster then running "npx prisma deploy" cli command.
+ * Running migrations with manual execution is 3x faster then running the
+ * "drizzle-kit migrate" cli command.
  * */
 const runMigrationFiles = async ({
     client,
@@ -36,29 +37,16 @@ const runMigrationFiles = async ({
             process.cwd(),
             "src",
             "database",
-            "prisma",
+            "drizzle",
             "migrations"
         );
 
-        const migrationDirs = await fs.readdir(migrationsDir);
-
-        const validDirs = migrationDirs
-            .filter((file) => file !== "migration_lock.toml")
+        const migrationFiles = (await fs.readdir(migrationsDir))
+            .filter((file) => file.endsWith(".sql"))
             .sort();
 
-        for (const dir of validDirs) {
-            const dirPath = path.join(migrationsDir, dir);
-            const dirFiles = await fs.readdir(dirPath);
-
-            const migrationFile = dirFiles.find((file) =>
-                file.endsWith(".sql")
-            );
-
-            if (!migrationFile) {
-                throw new Error(`No migration file found in ${dirPath}`);
-            }
-
-            const migrationFilePath = path.join(dirPath, migrationFile);
+        for (const migrationFile of migrationFiles) {
+            const migrationFilePath = path.join(migrationsDir, migrationFile);
 
             const migrationSQL = await fs.readFile(migrationFilePath, "utf-8");
 

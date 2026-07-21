@@ -2,7 +2,7 @@
  * Fastify plugin names
  */
 export enum FastifyPlugin {
-    Prisma = "prisma",
+    Drizzle = "drizzle",
     Env = "env",
     Jwt = "jwt",
     Awilix = "awilix",

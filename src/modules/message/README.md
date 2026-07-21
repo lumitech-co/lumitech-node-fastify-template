@@ -235,18 +235,19 @@ Response messages come from `RESPONSE_MESSAGES.message` in
 
 ## Repository Methods
 
-`MessageRepository` is `BaseRepository<"message">` (the Prisma delegate methods wired by
-`generateRepository`) plus one hand-written method:
+`MessageRepository` is `BaseRepository<typeof messages>` (the shared CRUD surface wired by
+`generateRepository`) plus one hand-written method. Every method takes a single options
+object and accepts an optional `tx` to run inside a transaction:
 
-| Method                                                                  | Description                                        |
-|-------------------------------------------------------------------------|----------------------------------------------------|
-| `create`, `createMany`                                                  | Insert one or many messages                        |
-| `findUnique`, `findFirst`, `findMany`, `count`                          | Read messages                                      |
-| `update`, `updateMany`, `upsert`                                        | Update messages                                    |
-| `delete`, `deleteMany`                                                  | Delete messages                                    |
-| `findUniqueOrFail`                                                      | Find or throw `NotFoundError` with `notFound`      |
+| Method                        | Description                                        |
+|-------------------------------|----------------------------------------------------|
+| `create`, `createMany`        | Insert one or many messages                        |
+| `findFirst`, `findMany`, `count` | Read messages                                   |
+| `update`                      | Update messages matching a `where` expression      |
+| `delete`                      | Delete messages matching a `where` expression      |
+| `findByIdOrFail`              | Find by id or throw `NotFoundError` with `notFound`|
 
-The current endpoints use `create` and `findMany`; `findUniqueOrFail` is available for
+The current endpoints use `create` and `findMany`; `findByIdOrFail` is available for
 routes that fetch a single message.
 
 ---
