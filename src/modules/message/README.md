@@ -13,7 +13,7 @@ API module for managing messages in the system.
 | Method | Path              | Description          | Auth |
 |--------|-------------------|----------------------|------|
 | POST   | /api/messages/    | Create a new message | No   |
-| GET    | /api/messages/    | Fetch all messages   | No   |
+| GET    | /api/messages/    | Fetch messages (cursor paginated) | No   |
 
 ---
 
@@ -81,15 +81,25 @@ type CreateMessageResponse = {
 
 ## GET /api/messages/
 
-Fetches all messages from the database.
+Fetches messages newest-first using **cursor pagination** keyed on the message `id`.
 
 ### Request
 
-No parameters required.
+Query parameters (all optional):
+
+| Param    | Type   | Default | Description                                                        |
+|----------|--------|---------|--------------------------------------------------------------------|
+| `limit`  | number | `20`    | Page size, between `1` and `100`.                                  |
+| `cursor` | number | —       | Return messages with `id` **less than** this value (the previous page's `nextCursor`). Omit for the first page. |
+
+Messages are ordered by `id` descending, so the cursor walks from newest to oldest.
 
 ### Response
 
 **Status:** 200 OK
+
+`nextCursor` is the `id` to pass as `cursor` for the next page, or `null` when the last
+page has been reached.
 
 ```typescript
 type FetchMessagesResponse = {
@@ -100,11 +110,12 @@ type FetchMessagesResponse = {
             text: string;
             createdAt: Date;
         }>;
+        nextCursor: number | null;
     };
 };
 ```
 
-**Example:**
+**Example:** `GET /api/messages?limit=2`
 
 ```json
 {
@@ -112,19 +123,22 @@ type FetchMessagesResponse = {
     "data": {
         "messages": [
             {
-                "id": 1,
-                "text": "Hello, world!",
-                "createdAt": "2024-01-15T10:30:00.000Z"
+                "id": 5,
+                "text": "Newest message",
+                "createdAt": "2024-01-15T12:00:00.000Z"
             },
             {
-                "id": 2,
+                "id": 4,
                 "text": "Another message",
                 "createdAt": "2024-01-15T11:00:00.000Z"
             }
-        ]
+        ],
+        "nextCursor": 4
     }
 }
 ```
+
+Fetch the next page with `GET /api/messages?limit=2&cursor=4`.
 
 ---
 
@@ -188,10 +202,14 @@ curl -X POST http://localhost:3000/api/messages/ \
   -d '{"text": "Hello, world!"}'
 ```
 
-### Fetch All Messages
+### Fetch Messages (paginated)
 
 ```bash
-curl http://localhost:3000/api/messages/
+# first page
+curl "http://localhost:3000/api/messages?limit=2"
+
+# next page, using nextCursor from the previous response
+curl "http://localhost:3000/api/messages?limit=2&cursor=4"
 ```
 
 ---
@@ -220,10 +238,16 @@ const createMessageResponseSchema = z.object({
     }),
 });
 
+const fetchMessagesQuerySchema = z.object({
+    cursor: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 const fetchMessagesResponseSchema = z.object({
     message: z.string(),
     data: z.object({
         messages: z.array(defaultMessageSchema),
+        nextCursor: z.number().nullable(),
     }),
 });
 ```
@@ -246,9 +270,11 @@ object and accepts an optional `tx` to run inside a transaction:
 | `update`                      | Update messages matching a `where` expression      |
 | `delete`                      | Delete messages matching a `where` expression      |
 | `findByIdOrFail`              | Find by id or throw `NotFoundError` with `notFound`|
+| `findPage`                    | Cursor-paginated page (`{ items, nextCursor }`) newest-first by `id` |
 
-The current endpoints use `create` and `findMany`; `findByIdOrFail` is available for
-routes that fetch a single message.
+The current endpoints use `create` and `findPage`; `findByIdOrFail` is available for
+routes that fetch a single message. `findPage` builds its cursor `where`/`orderBy`
+internally, so the service only passes `{ cursor, limit }`.
 
 ---
 

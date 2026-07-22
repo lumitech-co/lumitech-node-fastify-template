@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+const MESSAGES_PAGE_MIN_LIMIT = 1;
+const MESSAGES_PAGE_MAX_LIMIT = 100;
+const MESSAGES_PAGE_DEFAULT_LIMIT = 20;
+
 const messageMetaSchema = z.object({
     source: z.enum(["web", "mobile", "api"]),
     locale: z.string().optional(),
@@ -31,6 +35,18 @@ type MessageMeta = z.infer<typeof messageMetaSchema>;
 
 type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 
+const fetchMessagesQuerySchema = z.object({
+    cursor: z.coerce.number().int().positive().optional(),
+    limit: z.coerce
+        .number()
+        .int()
+        .min(MESSAGES_PAGE_MIN_LIMIT)
+        .max(MESSAGES_PAGE_MAX_LIMIT)
+        .default(MESSAGES_PAGE_DEFAULT_LIMIT),
+});
+
+type FetchMessagesQuery = z.infer<typeof fetchMessagesQuerySchema>;
+
 const createMessageResponseSchema = z.object({
     message: z.string(),
     data: z.object({
@@ -44,6 +60,7 @@ const fetchMessagesResponseSchema = z.object({
     message: z.string(),
     data: z.object({
         messages: z.array(defaultMessageSchema),
+        nextCursor: z.number().nullable(),
     }),
 });
 
@@ -52,6 +69,7 @@ type FetchMessagesResponse = z.infer<typeof fetchMessagesResponseSchema>;
 export {
     messageMetaSchema,
     createMessageBodySchema,
+    fetchMessagesQuerySchema,
     createMessageResponseSchema,
     fetchMessagesResponseSchema,
 };
@@ -59,6 +77,7 @@ export {
 export type {
     MessageMeta,
     CreateMessageInput,
+    FetchMessagesQuery,
     CreateMessageResponse,
     FetchMessagesResponse,
 };

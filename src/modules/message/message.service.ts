@@ -5,6 +5,7 @@ import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
     CreateMessageInput,
+    FetchMessagesQuery,
     CreateMessageResponse,
     FetchMessagesResponse,
 } from "@/lib/validation/message/message.schema.js";
@@ -13,11 +14,17 @@ export type CreateMessagePayload = {
     payload: CreateMessageInput;
 };
 
+export type GetMessagesPayload = {
+    query: FetchMessagesQuery;
+};
+
 export type MessageService = {
     createMessage: (
         payload: CreateMessagePayload
     ) => Promise<CreateMessageResponse>;
-    getMessages: () => Promise<FetchMessagesResponse>;
+    getMessages: (
+        payload: GetMessagesPayload
+    ) => Promise<FetchMessagesResponse>;
 };
 
 export const createService = (
@@ -40,13 +47,18 @@ export const createService = (
         };
     },
 
-    getMessages: async () => {
+    getMessages: async ({ query }) => {
         log.info("Current environment: %s", config.NODE_ENV);
-        const messages = await messageRepository.findMany();
+        const { cursor, limit } = query;
+
+        const { items, nextCursor } = await messageRepository.findPage({
+            cursor,
+            limit,
+        });
 
         return {
             message: RESPONSE_MESSAGES.message.fetched,
-            data: { messages },
+            data: { messages: items, nextCursor },
         };
     },
 });
