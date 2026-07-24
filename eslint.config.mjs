@@ -51,6 +51,29 @@ export default [
             semi: ["error", "always"],
 
             "no-console": "warn",
+
+            // log.trace()/log.debug() are suppressed in GCP (logger level is
+            // 'info'), so they never reach Cloud Logging yet add noise. Flag
+            // them so they aren't committed. `warn` keeps CI/commits green for
+            // the existing intentional debug calls.
+            "no-restricted-syntax": [
+                "warn",
+                {
+                    // log.trace() / log.debug() — direct logger reference
+                    selector:
+                        "CallExpression[callee.object.name=/^(log|logger)$/][callee.property.name=/^(trace|debug)$/]",
+                    message:
+                        "log.trace()/log.debug() are suppressed in GCP (logger level is 'info') and add noise — use log.info() or higher, or remove before committing.",
+                },
+                {
+                    // *.log.trace() / *.log.debug() — request.log, fastify.log, this.log
+                    selector:
+                        "CallExpression[callee.object.property.name='log'][callee.property.name=/^(trace|debug)$/]",
+                    message:
+                        "log.trace()/log.debug() are suppressed in GCP (logger level is 'info') and add noise — use log.info() or higher, or remove before committing.",
+                },
+            ],
+
             "no-param-reassign": "error",
             "default-case": "off",
             "consistent-return": "off",

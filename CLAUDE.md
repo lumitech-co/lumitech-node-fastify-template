@@ -152,6 +152,8 @@ a custom index); if a generated migration would be destructive, stop and ask.
   with `prisma:migrate:create` (Rule 9).
 - Use factory functions, not classes; register all DI with `addDIResolverName()`.
 - Keep handlers thin — delegate to services. Validate inputs with Zod.
+- **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
+  offset/skip-based).
 - Prisma only inside repositories; `$transaction` is the single exception (Rule 2). Never
   query the database in a loop (Rule 3).
 - Client-facing messages come from `RESPONSE_MESSAGES` (Rule 5a).
