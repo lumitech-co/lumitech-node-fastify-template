@@ -26,7 +26,7 @@ describe("message.util - diffObjects", () => {
         const obj1 = { name: "John", age: 25 };
         const obj2 = { name: "John", age: 25 };
 
-        const result = diffObjects(obj1, obj2);
+        const result = diffObjects({ oldObj: obj1, newObj: obj2 });
 
         expect(result).toEqual({});
     });
@@ -35,7 +35,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { name: "John", age: 25, active: true };
         const newObj = { name: "Jane", age: 25, active: false };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             name: "Jane",
@@ -47,7 +47,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { tags: ["user"], items: [1, 2, 3] };
         const newObj = { tags: ["user", "admin"], items: [1, 2, 3, 4] };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             tags: ["user", "admin"],
@@ -59,7 +59,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { tags: ["user", "admin"], numbers: [1, 2, 3] };
         const newObj = { tags: ["user", "admin"], numbers: [1, 2, 3] };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({});
     });
@@ -71,7 +71,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { created: oldDate, updated: oldDate };
         const newObj = { created: oldDate, updated: newDate };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             updated: newDate,
@@ -85,7 +85,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { created: date1 };
         const newObj = { created: date2 };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({});
     });
@@ -111,7 +111,7 @@ describe("message.util - diffObjects", () => {
             },
         };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             price: 12.99,
@@ -126,7 +126,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { value: null, other: "test", missing: undefined };
         const newObj = { value: "something", other: null, missing: undefined };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             value: "something",
@@ -149,7 +149,7 @@ describe("message.util - diffObjects", () => {
             birthday: new Date("1997-04-12"),
         };
 
-        const result = diffObjects(oldP, newP);
+        const result = diffObjects({ oldObj: oldP, newObj: newP });
 
         expect(result).toEqual({
             age: 29,
@@ -174,7 +174,7 @@ describe("message.util - diffObjects", () => {
             data: { items: ["a", "b", "c"] },
         };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             matrix: [
@@ -189,7 +189,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = {};
         const newObj = { name: "test" };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             name: "test",
@@ -200,7 +200,7 @@ describe("message.util - diffObjects", () => {
         const oldObj = { a: 1, b: 2, c: 3 };
         const newObj = { a: 1, b: 3, d: 4 };
 
-        const result = diffObjects(oldObj, newObj);
+        const result = diffObjects({ oldObj, newObj });
 
         expect(result).toEqual({
             b: 3,

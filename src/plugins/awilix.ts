@@ -4,7 +4,7 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FastifyInstance } from "fastify";
 import { asValue, createContainer, InjectionMode } from "awilix";
-import { FastifyPlugin } from "@/lib/fastify/fastify.constant.js";
+import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import { resolverOptionsRegister } from "@/lib/awilix/resolver-registration.js";
 
 const __filename = fileURLToPath(import.meta.url);

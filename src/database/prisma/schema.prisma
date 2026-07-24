@@ -2,6 +2,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator json {
+  provider = "prisma-json-types-generator"
+}
+
 generator dbml {
   provider            = "prisma-dbml-generator"
   output              = "../dbml"
@@ -21,6 +25,9 @@ model Message {
   createdAt DateTime @default(now()) @map("created_at")
 
   text String
+
+  /// [MessageMeta]
+  meta Json?
 
   @@map("messages")
 }

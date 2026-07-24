@@ -1,4 +1,5 @@
 import argon2 from "argon2";
+import { ComparePasswordPayload } from "./hashing.type.js";
 
 const hashPassword = (password: string): Promise<string> => {
     return argon2.hash(password, {
@@ -6,7 +7,10 @@ const hashPassword = (password: string): Promise<string> => {
     });
 };
 
-const comparePassword = (password: string, hash: string): Promise<boolean> => {
+const comparePassword = ({
+    password,
+    hash,
+}: ComparePasswordPayload): Promise<boolean> => {
     return argon2.verify(hash, password);
 };
 

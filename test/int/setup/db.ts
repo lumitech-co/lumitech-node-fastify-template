@@ -19,8 +19,19 @@ const generateDatabaseURL = (schema: string) => {
  * Run prisma migrations manually to increase the performance.
  *
  * Running migrations with manual execution is 3x faster then running "npx prisma deploy" cli command.
+ *
+ * Prisma emits schema-qualified names ("public"."table"), so every occurrence is rewritten to the
+ * per-test schema — otherwise the statement targets "public" instead of the isolated test schema.
  * */
-const runMigrationFiles = async (client: Client, schema: string) => {
+const runMigrationFiles = async ({
+    client,
+    schema,
+}: {
+    client: Client;
+    schema: string;
+}): Promise<string[]> => {
+    const appliedMigrations: string[] = [];
+
     try {
         await client.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
 
@@ -54,12 +65,18 @@ const runMigrationFiles = async (client: Client, schema: string) => {
 
             const migrationSQL = await fs.readFile(migrationFilePath, "utf-8");
 
-            await client.query(migrationSQL);
+            await client.query(
+                migrationSQL.replaceAll(`"public".`, `"${schema}".`)
+            );
+
+            appliedMigrations.push(migrationFilePath);
         }
     } catch (error) {
         console.error("Migration process failed:", error);
         throw new Error("Migration failed");
     }
+
+    return appliedMigrations;
 };
 
 export const setupDatabase = async (): Promise<() => Promise<void>> => {
@@ -75,7 +92,7 @@ export const setupDatabase = async (): Promise<() => Promise<void>> => {
 
     process.env.DATABASE_URL = databaseURL;
 
-    await runMigrationFiles(client, schema);
+    await runMigrationFiles({ client, schema });
 
     return async () => {
         await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

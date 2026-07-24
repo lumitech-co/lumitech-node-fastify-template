@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from "fastify";
+import { FastifyReply, FastifyRequest } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { ApplicationService } from "./application.service.js";
 
@@ -9,7 +9,7 @@ export type ApplicationHandler = {
     ) => Promise<void>;
 };
 
-export const createApplicationHandler = (
+export const createHandler = (
     applicationService: ApplicationService
 ): ApplicationHandler => {
     return {
@@ -21,4 +21,4 @@ export const createApplicationHandler = (
     };
 };
 
-addDIResolverName(createApplicationHandler, "applicationHandler");
+addDIResolverName(createHandler, "applicationHandler");

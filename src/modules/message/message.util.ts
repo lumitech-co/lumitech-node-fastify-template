@@ -1,3 +1,5 @@
+import { DiffObjectsPayload, IsEqualPayload } from "./message.type.js";
+
 /**
  * Example function.
  *
@@ -7,17 +9,17 @@
 export const diffObjects = <
     T extends Record<string, unknown>,
     K extends Record<string, unknown>,
->(
-        oldObj: T,
-        newObj: K
-    ): Partial<K> => {
+>({
+        oldObj,
+        newObj,
+    }: DiffObjectsPayload<T, K>): Partial<K> => {
     const diff: Partial<K> = {};
 
     for (const key in newObj) {
         const oldValue = oldObj[key];
         const newValue = newObj[key];
 
-        if (!isEqual(oldValue, newValue)) {
+        if (!isEqual({ a: oldValue, b: newValue })) {
             diff[key] = newValue;
         }
     }
@@ -25,7 +27,7 @@ export const diffObjects = <
     return diff;
 };
 
-const isEqual = (a: unknown, b: unknown): boolean => {
+const isEqual = ({ a, b }: IsEqualPayload): boolean => {
     if (a === b) {
         return true;
     }
@@ -41,7 +43,7 @@ const isEqual = (a: unknown, b: unknown): boolean => {
     if (Array.isArray(a) && Array.isArray(b)) {
         return (
             a.length === b.length &&
-            a.every((val, index) => isEqual(val, b[index]))
+            a.every((val, index) => isEqual({ a: val, b: b[index] }))
         );
     }
 
@@ -54,7 +56,7 @@ const isEqual = (a: unknown, b: unknown): boolean => {
 
         return (
             aKeys.length === bKeys.length &&
-            aKeys.every((key) => isEqual(aObj[key], bObj[key]))
+            aKeys.every((key) => isEqual({ a: aObj[key], b: bObj[key] }))
         );
     }
 

@@ -1,6 +1,7 @@
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
     CreateMessageInput,
@@ -8,10 +9,14 @@ import {
     FetchMessagesResponse,
 } from "@/lib/validation/message/message.schema.js";
 
+export type CreateMessagePayload = {
+    payload: CreateMessageInput;
+};
+
 export type MessageService = {
-    createMessage: (p: {
-        payload: CreateMessageInput;
-    }) => Promise<CreateMessageResponse>;
+    createMessage: (
+        payload: CreateMessagePayload
+    ) => Promise<CreateMessageResponse>;
     getMessages: () => Promise<FetchMessagesResponse>;
 };
 
@@ -21,19 +26,20 @@ export const createService = (
     config: EnvConfig
 ): MessageService => ({
     createMessage: async ({ payload }) => {
-        const { text } = payload;
+        const { text, meta } = payload;
 
         const message = await messageRepository.create({
-            data: { text },
+            data: { text, meta },
             select: {
                 id: true,
                 createdAt: true,
                 text: true,
+                meta: true,
             },
         });
 
         return {
-            message: "Message created successfully.",
+            message: RESPONSE_MESSAGES.message.created,
             data: {
                 message,
             },
@@ -45,7 +51,7 @@ export const createService = (
         const messages = await messageRepository.findMany();
 
         return {
-            message: "Messages fetched successfully.",
+            message: RESPONSE_MESSAGES.message.fetched,
             data: { messages },
         };
     },

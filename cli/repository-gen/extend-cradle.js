@@ -30,7 +30,5 @@ import { ${namePascal}Repository } from "@/database/repositories/${nameKebab}/${
 
     fs.writeFileSync(diContainerPath, diContent);
 
-    console.log(
-        `✅ DI container updated with ${nameCamel} service and handler.`
-    );
+    console.log(`✅ DI container updated with ${nameCamel} repository.`);
 };
