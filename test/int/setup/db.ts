@@ -19,6 +19,9 @@ const generateDatabaseURL = (schema: string) => {
  * Run prisma migrations manually to increase the performance.
  *
  * Running migrations with manual execution is 3x faster then running "npx prisma deploy" cli command.
+ *
+ * Prisma emits schema-qualified names ("public"."table"), so every occurrence is rewritten to the
+ * per-test schema — otherwise the statement targets "public" instead of the isolated test schema.
  * */
 const runMigrationFiles = async ({
     client,
@@ -62,7 +65,9 @@ const runMigrationFiles = async ({
 
             const migrationSQL = await fs.readFile(migrationFilePath, "utf-8");
 
-            await client.query(migrationSQL);
+            await client.query(
+                migrationSQL.replaceAll(`"public".`, `"${schema}".`)
+            );
 
             appliedMigrations.push(migrationFilePath);
         }
