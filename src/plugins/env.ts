@@ -12,6 +12,7 @@ const configureEnv = async (fastify: FastifyInstance) => {
                 S.string().enum(["development", "production", "test"])
             )
             .prop("DATABASE_URL", S.string())
+            .prop("REDIS_URL", S.string())
             .prop("APPLICATION_SECRET", S.string())
             .prop("APPLICATION_URL", S.string())
             .prop("PORT", S.number())
@@ -30,6 +31,7 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .required([
                 "NODE_ENV",
                 "DATABASE_URL",
+                "REDIS_URL",
                 "APPLICATION_SECRET",
                 "APPLICATION_URL",
                 "PORT",

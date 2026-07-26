@@ -1,3 +1,4 @@
+import { Redis } from "ioredis";
 import { AwilixContainer } from "awilix";
 import { EnvConfig } from "./env.type.js";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -12,5 +13,6 @@ declare module "fastify" {
         di: AwilixContainer<Cradle>;
         gcpStorageClient: Storage;
         awsS3Client: S3Client;
+        redis: Redis;
     }
 }

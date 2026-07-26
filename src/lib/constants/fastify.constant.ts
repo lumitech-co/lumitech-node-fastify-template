@@ -8,4 +8,5 @@ export enum FastifyPlugin {
     Awilix = "awilix",
     GcpStorage = "gcpStorage",
     AwsS3 = "awsS3",
+    Redis = "redis",
 }

@@ -1,0 +1,11 @@
+export const REDIS_CONNECT_TIMEOUT_MS = 2000;
+
+export const REDIS_COMMAND_TIMEOUT_MS = 300;
+
+export const REDIS_KEEP_ALIVE_MS = 10000;
+
+export const REDIS_MAX_RETRIES_PER_REQUEST = 1;
+
+export const REDIS_RETRY_BACKOFF_STEP_MS = 200;
+
+export const REDIS_RETRY_BACKOFF_MAX_MS = 2000;

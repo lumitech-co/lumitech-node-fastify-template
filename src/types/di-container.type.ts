@@ -1,3 +1,4 @@
+import { Redis } from "ioredis";
 import { EnvConfig } from "./env.type.js";
 import { FastifyBaseLogger } from "fastify";
 import { S3Client } from "@aws-sdk/client-s3";
@@ -17,6 +18,7 @@ export type Cradle = {
     config: EnvConfig;
     gcpStorageClient: Storage;
     awsS3Client: S3Client;
+    redis: Redis;
 
     applicationService: ApplicationService;
     applicationHandler: ApplicationHandler;

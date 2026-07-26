@@ -104,6 +104,7 @@
         "fastify": "^5.6.0",
         "fastify-type-provider-zod": "^6.0.0",
         "fluent-json-schema": "^6.0.0",
+        "ioredis": "^5.11.1",
         "pino-pretty": "^13.1.1",
         "tsc-alias": "^1.8.16",
         "zod": "^4.1.9"

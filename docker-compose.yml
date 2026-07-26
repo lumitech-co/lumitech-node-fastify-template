@@ -48,6 +48,20 @@ services:
             - "/var/run/docker.sock:/var/run/docker.sock"
             - "./scripts/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh"
 
+    redis:
+        image: redis:7.4-alpine
+        container_name: app-redis
+        restart: no
+        command: redis-server --appendonly yes
+        ports:
+            - "6379:6379"
+        expose:
+            - "6379"
+        networks:
+            - primary
+        volumes:
+            - "./.volumes/redis:/data"
+
     nodejs:
         build:
             context: .
