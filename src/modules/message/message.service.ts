@@ -2,6 +2,8 @@ import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
 import { CreateMessagePayload } from "./message.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { CacheService } from "@/lib/cache/cache.service.js";
+import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
@@ -18,6 +20,7 @@ export type MessageService = {
 
 export const createService = (
     messageRepository: MessageRepository,
+    cacheService: CacheService,
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
@@ -33,6 +36,8 @@ export const createService = (
                 meta: true,
             },
         });
+
+        await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
 
         return {
             message: RESPONSE_MESSAGES.message.created,
