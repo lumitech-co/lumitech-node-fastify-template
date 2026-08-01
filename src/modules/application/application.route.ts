@@ -15,6 +15,9 @@ export const createApplicationRoutes = (
     fastify.get(
         ApplicationRoute.HealthCheck,
         {
+            config: {
+                rateLimit: false,
+            },
             schema: {
                 tags: [APPLICATION_TAG],
                 summary: "Check application health status",

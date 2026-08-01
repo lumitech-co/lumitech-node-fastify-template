@@ -217,6 +217,34 @@ await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
 expensive call. It is **fail-open by design**: a Redis outage or timeout is logged and
 reported as a miss, never as a failed request.
 
+### Rate Limiting
+`@fastify/rate-limit` is registered globally in `src/plugins/rateLimit.ts` using the same
+Redis client as caching (`fastify.redis`), so limits are shared across instances. Every
+route gets `RATE_LIMIT_DEFAULT_MAX` requests per `RATE_LIMIT_DEFAULT_TIME_WINDOW` unless it
+overrides or disables this via `config.rateLimit`:
+```typescript
+fastify.get(
+    MessageRoute.Root,
+    {
+        config: {
+            rateLimit: {
+                max: MESSAGE_RATE_LIMIT_MAX,
+                timeWindow: MESSAGE_RATE_LIMIT_TIME_WINDOW,
+            },
+        },
+        schema: { ... },
+    },
+    messageHandler.getMessages
+);
+```
+Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /ping` so
+health checks from the load balancer never trip the limit. Clients are identified by
+`request.ip`; `trustProxy: true` is set on the Fastify instance in `src/server.ts` so this
+resolves the real client IP behind a proxy/load balancer instead of the proxy's own IP.
+Exceeding the limit returns `429` with a body shaped like the rest of the app's errors
+(`statusCode` / `error` / `message`). Like the cache plugin, it is **fail-open**
+(`skipOnError: true`) — a Redis outage disables rate limiting rather than failing requests.
+
 ### Typed JSON in Prisma
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
 ```prisma

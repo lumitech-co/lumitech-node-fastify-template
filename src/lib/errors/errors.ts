@@ -10,6 +10,8 @@ const UnauthorizedError = createError("401", "%s", 401);
 
 const ConflictError = createError("409", "%s", 409);
 
+const RateLimitError = createError("429", "%s", 429);
+
 const InternalServerError = createError("500", "%s", 500);
 
 const DefaultInternalServerError = createError(
@@ -26,4 +28,5 @@ export {
     DefaultInternalServerError,
     BadRequestError,
     InternalServerError,
+    RateLimitError,
 };
