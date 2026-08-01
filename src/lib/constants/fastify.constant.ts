@@ -10,6 +10,7 @@ export enum FastifyPlugin {
     AwsS3 = "awsS3",
     Redis = "redis",
     RateLimit = "rateLimit",
+    IpBan = "ipBan",
 }
 
 /**

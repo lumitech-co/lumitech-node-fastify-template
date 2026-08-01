@@ -237,13 +237,59 @@ fastify.get(
     messageHandler.getMessages
 );
 ```
-Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /ping` so
+Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /api/ping` so
 health checks from the load balancer never trip the limit. Clients are identified by
-`request.ip`; `trustProxy: true` is set on the Fastify instance in `src/server.ts` so this
-resolves the real client IP behind a proxy/load balancer instead of the proxy's own IP.
-Exceeding the limit returns `429` with a body shaped like the rest of the app's errors
-(`statusCode` / `error` / `message`). Like the cache plugin, it is **fail-open**
-(`skipOnError: true`) — a Redis outage disables rate limiting rather than failing requests.
+`request.ip`; `src/server.ts` sets `trustProxy: TRUSTED_PROXY_HOPS` so this resolves the
+real client IP behind a proxy/load balancer instead of the proxy's own IP — **update that
+constant if the number of proxies in front of the app changes**. Exceeding the limit
+returns `429` with a body shaped like the rest of the app's errors (`statusCode` / `error`
+/ `message`). Like the cache plugin, it is **fail-open** (`skipOnError: true`) — a Redis
+outage disables rate limiting rather than failing requests.
+
+### Banning Route Scanners
+`src/plugins/ipBan.ts` blocks IPs that probe for routes the app does not serve
+(`/wp-admin`, `/.env`, `/main.ts`). It owns the Fastify `notFoundHandler`: a 404 under a
+known prefix is an honest mistake and is ignored, a 404 anywhere else counts as a probe.
+```typescript
+export const IP_BAN_ALLOWED_PREFIXES = ["/api/", "/.well-known/"];
+
+export const IP_BAN_ALLOWED_PATHS = ["/", "/favicon.ico"];
+```
+The lists are deliberately minimal — this is a JSON API, so almost nothing legitimately
+lives outside `/api/`, and that prefix already covers Swagger UI and its assets (its HTML
+links its own favicon relatively, so the docs page never asks for the root one).
+`/.well-known/` is kept for the RFC 8615 family: the ACME challenge used to renew TLS
+certificates when TLS terminates on the app rather than the load balancer, plus
+`apple-app-site-association` / `assetlinks.json`, which Apple and Google fetch themselves
+when a mobile app declares this domain. `/` and `/favicon.ico` cover a developer pasting
+the API URL into a browser. Add `/assets/` (or whatever prefix is chosen) as soon as
+`@fastify/static` is registered — today the app serves no static files.
+
+`IP_BAN_MAX_ATTEMPTS` is `1`: one request outside those lists is enough, since nothing a
+real client does should land there. The counter machinery stays in place, so raising the
+constant turns it into "N probes within `IP_BAN_ATTEMPTS_WINDOW_SECONDS`" without any code
+change. **Keep the two lists in sync with the app** — with a threshold of 1 they are the
+only thing standing between legitimate traffic and a `IP_BAN_DURATION_SECONDS` ban, so a
+path the frontend requests but the lists do not cover bans every visitor that loads it.
+
+The ban is enforced in an `onRequest` hook before anything else runs, so a banned IP is
+refused on every route, not just unknown ones. It answers `403` with
+`code: "IP_BANNED"` — the status matches what `@fastify/rate-limit` returns for its own
+bans, and the `code` field is what distinguishes an infrastructure ban from an
+authorization failure.
+
+Bans are short on purpose (`IP_BAN_DURATION_SECONDS`, one hour) and there is no unban
+endpoint. A ban is worth most in its first seconds — it kills the scanner's burst, and
+after that extra hours buy nothing while the collateral grows: an IP is not a stable
+identity, since addresses get reassigned and carrier NAT puts many subscribers behind one.
+A returning scanner is re-banned by its first request anyway, so a short TTL costs
+protection nothing. It also bounds self-inflicted damage: if a release starts requesting a
+path the lists do not cover, every visitor is banned, and those bans have to drain on their
+own — a long TTL would keep the outage running long after the fix ships. To lift one early,
+drop the key: `redis-cli DEL ipban:<ip>`.
+
+Like caching and rate limiting, the guard is **fail-open** — if Redis is unreachable the
+lookup is logged and treated as "not banned" rather than failing the request.
 
 ### Typed JSON in Prisma
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
