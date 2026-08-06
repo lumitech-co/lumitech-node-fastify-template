@@ -17,4 +17,5 @@ export type EnvConfig = {
     AWS_SECRET_ACCESS_KEY: string | undefined;
     AWS_S3_BUCKET_NAME: string;
     AWS_S3_ENDPOINT: string | undefined;
+    CORS_ORIGINS: string;
 };
