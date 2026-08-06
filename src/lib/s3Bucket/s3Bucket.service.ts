@@ -61,12 +61,25 @@ export const createS3BucketService = (
                     .map(({ Key }) => ({ Key }));
 
                 if (objects.length > 0) {
-                    await awsS3Client.send(
+                    const deleteResponse = await awsS3Client.send(
                         new DeleteObjectsCommand({
                             Bucket: bucket,
                             Delete: { Objects: objects },
                         })
                     );
+
+                    if (
+                        deleteResponse.Errors &&
+                        deleteResponse.Errors.length > 0
+                    ) {
+                        const failedKeys = deleteResponse.Errors.map(
+                            ({ Key }) => Key
+                        ).join(", ");
+
+                        throw new Error(
+                            `Failed to delete objects from S3 bucket "${bucket}": ${failedKeys}`
+                        );
+                    }
                 }
 
                 continuationToken = listResponse.NextContinuationToken;

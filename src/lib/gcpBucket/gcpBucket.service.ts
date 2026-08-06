@@ -28,7 +28,7 @@ export const createGcpBucketService = (
 
     return {
         deleteFile: async ({ key }) => {
-            await bucket.file(key).delete();
+            await bucket.file(key).delete({ ignoreNotFound: true });
         },
 
         deleteFolder: async ({ prefix }) => {

@@ -27,7 +27,7 @@ services:
             - "./.volumes/test-gcp-storage:/data"
 
     aws-s3:
-        image: localstack/localstack
+        image: localstack/localstack:3.8.1
         container_name: test-aws-s3
         restart: no
         environment:
@@ -39,5 +39,4 @@ services:
         expose:
             - "4566"
         volumes:
-            - "/var/run/docker.sock:/var/run/docker.sock"
             - "./scripts/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh"
