@@ -1,7 +1,10 @@
 import { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { SIGNED_URL_EXPIRES_IN_SECONDS } from "./s3Bucket.constant.js";
+import {
+    AWS_S3_BUCKET_NOT_CONFIGURED,
+    SIGNED_URL_EXPIRES_IN_SECONDS,
+} from "./s3Bucket.constant.js";
 import {
     DeleteFilePayload,
     DeleteFolderPayload,
@@ -18,8 +21,8 @@ import {
 } from "@aws-sdk/client-s3";
 
 export type S3BucketService = {
-    deleteFile: (payload: DeleteFilePayload) => Promise<void>;
-    deleteFolder: (payload: DeleteFolderPayload) => Promise<void>;
+    deleteFile: (payload: DeleteFilePayload) => Promise<string>;
+    deleteFolder: (payload: DeleteFolderPayload) => Promise<string>;
     createUploadSignedUrl: (
         payload: CreateUploadSignedUrlPayload
     ) => Promise<string>;
@@ -32,16 +35,27 @@ export const createS3BucketService = (
     awsS3Client: S3Client,
     config: EnvConfig
 ): S3BucketService => {
-    const bucket = config.AWS_S3_BUCKET_NAME;
+    const requireBucket = (): string => {
+        if (!config.AWS_S3_BUCKET_NAME) {
+            throw new Error(AWS_S3_BUCKET_NOT_CONFIGURED);
+        }
+
+        return config.AWS_S3_BUCKET_NAME;
+    };
 
     return {
         deleteFile: async ({ key }) => {
+            const bucket = requireBucket();
+
             await awsS3Client.send(
                 new DeleteObjectCommand({ Bucket: bucket, Key: key })
             );
+
+            return key;
         },
 
         deleteFolder: async ({ prefix }) => {
+            const bucket = requireBucket();
             let continuationToken: string | undefined;
 
             do {
@@ -84,9 +98,13 @@ export const createS3BucketService = (
 
                 continuationToken = listResponse.NextContinuationToken;
             } while (continuationToken);
+
+            return prefix;
         },
 
         createUploadSignedUrl: async ({ key, contentType }) => {
+            const bucket = requireBucket();
+
             const command = new PutObjectCommand({
                 Bucket: bucket,
                 Key: key,
@@ -99,6 +117,8 @@ export const createS3BucketService = (
         },
 
         createReadSignedUrl: async ({ key }) => {
+            const bucket = requireBucket();
+
             const command = new GetObjectCommand({ Bucket: bucket, Key: key });
 
             return getSignedUrl(awsS3Client, command, {
