@@ -1,17 +1,13 @@
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
+import { CreateMessagePayload } from "./message.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
-    CreateMessageInput,
     CreateMessageResponse,
     FetchMessagesResponse,
 } from "@/lib/validation/message/message.schema.js";
-
-export type CreateMessagePayload = {
-    payload: CreateMessageInput;
-};
 
 export type MessageService = {
     createMessage: (

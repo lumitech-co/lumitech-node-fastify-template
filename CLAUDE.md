@@ -74,8 +74,11 @@ route registrars `(fastify, handler)`, and `generateRepository(prisma, model)`.
 - Module constants → `src/modules/<name>/<name>.constant.ts`
 - Module types → `src/modules/<name>/<name>.type.ts`
 - **Exception:** the `<Name>Service` / `<Name>Handler` types stay in the same file as their
-  factory (`<name>.service.ts` / `<name>.handler.ts`), with their payload types. Everything
-  else the module needs goes to `<name>.type.ts`.
+  factory (`<name>.service.ts` / `<name>.handler.ts`). Their payload/response types stay
+  there too **only when every field is a primitive** (`string`, `number`, `boolean`, `Date`,
+  or a union of those); the moment one has a non-primitive field — an object, an array, an
+  imported type — it moves to `<name>.type.ts` and the service/handler imports it from
+  there. Everything else the module needs goes to `<name>.type.ts`.
 - Repository types → the same file as the repository factory; a repository never gets its
   own `<name>.type.ts` (`BaseRepository` lives in `repositories/repository.type.ts`).
 - Lib types → `src/lib/<name>/<name>.type.ts`; global constants → `src/lib/constants/`;

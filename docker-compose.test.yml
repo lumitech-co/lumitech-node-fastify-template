@@ -13,3 +13,30 @@ services:
             - "5433"
         volumes:
             - "./.volumes/test-postgresql:/var/lib/postgresql/data"
+
+    gcp-storage:
+        image: fsouza/fake-gcs-server:1.52.2
+        container_name: test-gcp-storage
+        restart: no
+        command: -scheme http -public-host localhost:4443 -port 4443
+        ports:
+            - "4443:4443"
+        expose:
+            - "4443"
+        volumes:
+            - "./.volumes/test-gcp-storage:/data"
+
+    aws-s3:
+        image: localstack/localstack:3.8.1
+        container_name: test-aws-s3
+        restart: no
+        environment:
+            SERVICES: "s3"
+            AWS_DEFAULT_REGION: "us-east-1"
+            AWS_S3_BUCKET_NAME: "test-bucket"
+        ports:
+            - "4566:4566"
+        expose:
+            - "4566"
+        volumes:
+            - "./scripts/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh"
