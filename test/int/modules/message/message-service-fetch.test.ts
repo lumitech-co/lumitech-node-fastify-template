@@ -47,7 +47,7 @@ describe("GET /api/messages", () => {
         });
     });
 
-    it("should fetch messages", async () => {
+    it("should return an empty list when there are no messages", async () => {
         const response = await server.inject({
             method: "GET",
             url: "/api/messages",
