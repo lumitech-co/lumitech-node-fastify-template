@@ -176,6 +176,47 @@ export const RESPONSE_MESSAGES = {
 throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
+### Response Caching
+Any route caches its response by declaring a `cache` config — no handler or service
+change is needed. The `cache` plugin looks the entry up in `preHandler` and stores the
+serialized body in `onSend`:
+```typescript
+fastify.get(
+    MessageRoute.Root,
+    {
+        config: {
+            cache: {
+                ttl: MESSAGE_CACHE_TTL_SECONDS,
+                namespace: MESSAGE_CACHE_NAMESPACE,
+            },
+        },
+        schema: { ... },
+    },
+    messageHandler.getMessages
+);
+```
+Every field is optional — `config: { cache: {} }` caches with the default TTL under a
+namespace derived from the route method and path. The rest of the options tune the key:
+- `ttl` — per-route lifetime in seconds (`CACHE_DEFAULT_TTL_SECONDS` otherwise);
+- `namespace` — the group `cacheService.invalidate()` drops at once;
+- `varyByHeaders` — headers the response depends on (`accept-language`, …);
+- `varyBy` — any request-derived discriminator, e.g. `(request) => request.user.id`;
+- `enabled` — skips the cache for a request when it returns `false`.
+
+The key is `cache:<namespace>:<hash>` where the hash covers path, sorted query string,
+vary headers and the `varyBy` value — so `?a=1&b=2` and `?b=2&a=1` are one entry.
+Responses answer with an `x-cache: HIT | MISS` header. Only `GET`/`HEAD` and only `200`
+responses are stored.
+
+Writes drop the namespace they invalidate, from the service that owns them:
+```typescript
+await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
+```
+`cacheService` is also usable directly for anything narrower than a whole response —
+`get` / `set` / `remove` / `invalidate`, plus `wrap` for read-through around an
+expensive call. It is **fail-open by design**: a Redis outage or timeout is logged and
+reported as a miss, never as a failed request.
+
 ### Typed JSON in Prisma
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
 ```prisma
