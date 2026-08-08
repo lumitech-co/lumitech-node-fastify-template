@@ -35,9 +35,6 @@ const configureEnv = async (fastify: FastifyInstance) => {
                 "APPLICATION_SECRET",
                 "APPLICATION_URL",
                 "PORT",
-                "GCP_BUCKET_NAME",
-                "AWS_REGION",
-                "AWS_S3_BUCKET_NAME",
             ])
             .valueOf(),
         dotenv: false,

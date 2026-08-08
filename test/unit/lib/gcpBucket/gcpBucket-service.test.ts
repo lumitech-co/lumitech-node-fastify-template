@@ -2,6 +2,7 @@ import { Storage } from "@google-cloud/storage";
 import { describe, expect, it, vi } from "vitest";
 import { EnvConfig } from "@/types/env.type.js";
 import { createGcpBucketService } from "@/lib/gcpBucket/gcpBucket.service.js";
+import { GCP_BUCKET_NOT_CONFIGURED } from "@/lib/gcpBucket/gcpBucket.constant.js";
 
 const config = { GCP_BUCKET_NAME: "test-bucket" } as EnvConfig;
 
@@ -33,10 +34,28 @@ describe("gcpBucket.service - createGcpBucketService", () => {
             config
         );
 
-        await gcpBucketService.deleteFile({ key: "avatars/user-1.png" });
+        const deletedKey = await gcpBucketService.deleteFile({
+            key: "avatars/user-1.png",
+        });
 
+        expect(deletedKey).toBe("avatars/user-1.png");
         expect(bucketMock.file).toHaveBeenCalledWith("avatars/user-1.png");
         expect(fileMock.delete).toHaveBeenCalledOnce();
+    });
+
+    it("should throw when the bucket name is not configured", async () => {
+        const { storageClientMock, bucketMock } = createStorageClientMock();
+
+        const gcpBucketService = createGcpBucketService(
+            storageClientMock as unknown as Storage,
+            {} as EnvConfig
+        );
+
+        await expect(
+            gcpBucketService.deleteFile({ key: "avatars/user-1.png" })
+        ).rejects.toThrow(GCP_BUCKET_NOT_CONFIGURED);
+
+        expect(bucketMock.file).not.toHaveBeenCalled();
     });
 
     it("should delete all files under a folder prefix", async () => {

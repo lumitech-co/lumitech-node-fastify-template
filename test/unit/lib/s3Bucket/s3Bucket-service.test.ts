@@ -1,7 +1,10 @@
 import { EnvConfig } from "@/types/env.type.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createS3BucketService } from "@/lib/s3Bucket/s3Bucket.service.js";
-import { SIGNED_URL_EXPIRES_IN_SECONDS } from "@/lib/s3Bucket/s3Bucket.constant.js";
+import {
+    AWS_S3_BUCKET_NOT_CONFIGURED,
+    SIGNED_URL_EXPIRES_IN_SECONDS,
+} from "@/lib/s3Bucket/s3Bucket.constant.js";
 import {
     S3Client,
     GetObjectCommand,
@@ -39,8 +42,11 @@ describe("s3Bucket.service - createS3BucketService", () => {
 
         const s3BucketService = createS3BucketService(client, config);
 
-        await s3BucketService.deleteFile({ key: "avatars/user-1.png" });
+        const deletedKey = await s3BucketService.deleteFile({
+            key: "avatars/user-1.png",
+        });
 
+        expect(deletedKey).toBe("avatars/user-1.png");
         expect(sendMock).toHaveBeenCalledOnce();
 
         const command = sendMock.mock.calls[0][0];
@@ -50,6 +56,43 @@ describe("s3Bucket.service - createS3BucketService", () => {
             Bucket: "test-bucket",
             Key: "avatars/user-1.png",
         });
+    });
+
+    it("should throw when the bucket name is not configured", async () => {
+        const { sendMock, client } = createS3ClientMock();
+
+        const s3BucketService = createS3BucketService(client, {} as EnvConfig);
+
+        await expect(
+            s3BucketService.deleteFile({ key: "avatars/user-1.png" })
+        ).rejects.toThrow(AWS_S3_BUCKET_NOT_CONFIGURED);
+
+        expect(sendMock).not.toHaveBeenCalled();
+    });
+
+    it("should throw when a delete batch reports per-object errors", async () => {
+        const { sendMock, client } = createS3ClientMock();
+
+        sendMock.mockImplementation(async (command) => {
+            if (command instanceof ListObjectsV2Command) {
+                return {
+                    Contents: [{ Key: "avatars/user-1/a.png" }],
+                    NextContinuationToken: undefined,
+                };
+            }
+
+            return {
+                Errors: [
+                    { Key: "avatars/user-1/a.png", Message: "AccessDenied" },
+                ],
+            };
+        });
+
+        const s3BucketService = createS3BucketService(client, config);
+
+        await expect(
+            s3BucketService.deleteFolder({ prefix: "avatars/user-1/" })
+        ).rejects.toThrow("avatars/user-1/a.png");
     });
 
     it("should delete all files under a folder prefix, across pages", async () => {
