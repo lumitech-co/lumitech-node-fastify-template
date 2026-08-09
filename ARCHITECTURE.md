@@ -203,10 +203,16 @@ namespace derived from the route method and path. The rest of the options tune t
 - `varyBy` — any request-derived discriminator, e.g. `(request) => request.user.id`;
 - `enabled` — skips the cache for a request when it returns `false`.
 
-The key is `cache:<namespace>:<hash>` where the hash covers path, sorted query string,
-vary headers and the `varyBy` value — so `?a=1&b=2` and `?b=2&a=1` are one entry.
-Responses answer with an `x-cache: HIT | MISS` header. Only `GET`/`HEAD` and only `200`
-responses are stored.
+The key is `cache:<namespace>:<hash>` where the hash covers the HTTP method, path, sorted
+query string, vary headers and the `varyBy` value — so `?a=1&b=2` and `?b=2&a=1` are one
+entry. Responses answer with an `x-cache: HIT | MISS` header. Only `GET`/`HEAD` and only
+`200` responses are stored.
+
+> **Caching an authenticated route? The cache key has no notion of _who_ is asking.**
+> Path, query and (opt-in) vary headers are all it sees, so a plain `config: { cache: {} }`
+> on a per-user endpoint will serve the first user's response to everyone else. Always add
+> a `varyBy` discriminator (`(request) => request.user.id`) — or a `varyByHeaders` entry
+> that carries identity — before caching anything that isn't identical for every caller.
 
 Writes drop the namespace they invalidate, from the service that owns them:
 ```typescript
@@ -214,8 +220,14 @@ await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
 ```
 `cacheService` is also usable directly for anything narrower than a whole response —
 `get` / `set` / `remove` / `invalidate`, plus `wrap` for read-through around an
-expensive call. It is **fail-open by design**: a Redis outage or timeout is logged and
-reported as a miss, never as a failed request.
+expensive call. `wrap` is **single-flight**: on a miss it takes a short-lived Redis lock
+(`SET … NX PX`) so only one caller runs the resolver while the rest wait for that result,
+collapsing the cache-stampede on an expired hot key. It is **fail-open by design**: a
+Redis outage or timeout is logged and reported as a miss, never as a failed request — and
+a failed lock just falls back to computing the value directly. The route-level response
+cache (`preHandler`/`onSend`) does **not** take this lock, so a hot uncached route can
+still see concurrent misses; reach for `cacheService.wrap` inside the service when that
+matters.
 
 ### Typed JSON in Prisma
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
