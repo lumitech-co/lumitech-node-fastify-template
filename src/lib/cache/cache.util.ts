@@ -43,6 +43,7 @@ export const createRouteCacheKey = ({
     return createCacheKey({
         namespace,
         segments: [
+            request.method,
             pathname,
             searchParams.toString(),
             headers,

@@ -16,6 +16,14 @@ export type RemoveCachePayload = {
     key: string;
 };
 
+export type AcquireLockPayload = {
+    lockKey: string;
+};
+
+export type SleepPayload = {
+    ms: number;
+};
+
 export type InvalidateCachePayload = {
     namespace: string;
 };
