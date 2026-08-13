@@ -10,11 +10,11 @@ export type EnvConfig = {
     GCP_PROJECT_ID: string | undefined;
     GCP_CLIENT_EMAIL: string | undefined;
     GCP_PRIVATE_KEY: string | undefined;
-    GCP_BUCKET_NAME: string;
+    GCP_BUCKET_NAME: string | undefined;
     GCP_STORAGE_API_ENDPOINT: string | undefined;
-    AWS_REGION: string;
+    AWS_REGION: string | undefined;
     AWS_ACCESS_KEY_ID: string | undefined;
     AWS_SECRET_ACCESS_KEY: string | undefined;
-    AWS_S3_BUCKET_NAME: string;
+    AWS_S3_BUCKET_NAME: string | undefined;
     AWS_S3_ENDPOINT: string | undefined;
 };

@@ -3,3 +3,5 @@ const MS_PER_MINUTE = 60 * 1000;
 
 export const SIGNED_URL_EXPIRES_IN_MS =
     SIGNED_URL_EXPIRES_IN_MINUTES * MS_PER_MINUTE;
+
+export const GCP_BUCKET_NOT_CONFIGURED = "GCP_BUCKET_NAME is not configured.";
