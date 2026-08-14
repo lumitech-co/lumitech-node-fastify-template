@@ -1,19 +1,7 @@
+# Postgres is not here: the integration lane starts its own throwaway instance
+# with Testcontainers (test/int/setup/global.ts). These are the emulators that
+# have no in-process equivalent.
 services:
-    postgresdb:
-        image: postgres:16.4
-        container_name: test-postgres-db
-        restart: no
-        environment:
-            POSTGRES_DB: "postgres"
-            POSTGRES_USER: "postgres"
-            POSTGRES_PASSWORD: "12345"
-        ports:
-            - "5433:5432"
-        expose:
-            - "5433"
-        volumes:
-            - "./.volumes/test-postgresql:/var/lib/postgresql/data"
-
     gcp-storage:
         image: fsouza/fake-gcs-server:1.52.2
         container_name: test-gcp-storage

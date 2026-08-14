@@ -238,4 +238,4 @@ src/
 
 ### Run tests
 - Unit: `npm run test:unit`
-- Integration: `docker compose -f docker-compose.test.yml up` then `npm run test:int`
+- Integration: `npm run test:int` (Testcontainers starts Postgres itself; just needs Docker running). Add `docker compose -f docker-compose.test.yml up` only when a test needs the storage emulators.
