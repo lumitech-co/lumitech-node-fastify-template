@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createMessage } from "../../factories/message.factory.js";
 
 describe("GET /api/messages", () => {
     let server: FastifyInstance;
@@ -14,15 +15,7 @@ describe("GET /api/messages", () => {
     });
 
     it("should fetch messages", async () => {
-        const mockData = {
-            text: "Hello, world!",
-            createdAt: new Date(),
-            id: 1,
-        };
-
-        await server.prisma.message.create({
-            data: mockData,
-        });
+        const message = await createMessage({ prisma: server.prisma });
 
         const response = await server.inject({
             method: "GET",
@@ -38,16 +31,16 @@ describe("GET /api/messages", () => {
             data: {
                 messages: [
                     {
-                        id: expect.any(Number),
-                        createdAt: expect.any(String),
-                        text: expect.any(String),
+                        id: message.id,
+                        createdAt: message.createdAt.toISOString(),
+                        text: message.text,
                     },
                 ],
             },
         });
     });
 
-    it("should fetch messages", async () => {
+    it("should fetch an empty list when nothing is seeded", async () => {
         const response = await server.inject({
             method: "GET",
             url: "/api/messages",
