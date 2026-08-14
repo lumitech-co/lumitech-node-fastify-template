@@ -26,11 +26,6 @@ export default mergeConfig(
                     maxForks: INT_TEST_WORKERS,
                 },
             },
-            // Share one module registry across the files a worker runs, so the
-            // app's import graph is transformed once per worker instead of once
-            // per file. Safe because the integration lane mocks nothing — it
-            // drives the real app over inject.
-            isolate: false,
             testTimeout: 30000,
             hookTimeout: 30000,
         },
