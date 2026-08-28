@@ -1,7 +1,10 @@
 import { MessageService } from "./message.service.js";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { CreateMessageInput } from "@/lib/validation/message/message.schema.js";
+import {
+    CreateMessageInput,
+    FetchMessagesQuery,
+} from "@/lib/validation/message/message.schema.js";
 
 export type MessageHandler = {
     createMessage: (
@@ -12,7 +15,9 @@ export type MessageHandler = {
     ) => Promise<void>;
 
     getMessages: (
-        request: FastifyRequest,
+        request: FastifyRequest<{
+            Querystring: FetchMessagesQuery;
+        }>,
         reply: FastifyReply
     ) => Promise<void>;
 };
@@ -31,8 +36,8 @@ export const createHandler = (
             return reply.send(data);
         },
 
-        getMessages: async (_request, reply) => {
-            const data = await messageService.getMessages();
+        getMessages: async (request, reply) => {
+            const data = await messageService.getMessages(request.query);
 
             return reply.send(data);
         },
