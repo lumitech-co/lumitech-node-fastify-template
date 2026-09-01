@@ -2,9 +2,12 @@ import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
 import { CreateMessagePayload } from "./message.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { CacheService } from "@/lib/cache/cache.service.js";
+import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
+    FetchMessagesQuery,
     CreateMessageResponse,
     FetchMessagesResponse,
 } from "@/lib/validation/message/message.schema.js";
@@ -13,11 +16,12 @@ export type MessageService = {
     createMessage: (
         payload: CreateMessagePayload
     ) => Promise<CreateMessageResponse>;
-    getMessages: () => Promise<FetchMessagesResponse>;
+    getMessages: (query: FetchMessagesQuery) => Promise<FetchMessagesResponse>;
 };
 
 export const createService = (
     messageRepository: MessageRepository,
+    cacheService: CacheService,
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
@@ -34,6 +38,8 @@ export const createService = (
             },
         });
 
+        await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
+
         return {
             message: RESPONSE_MESSAGES.message.created,
             data: {
@@ -42,13 +48,27 @@ export const createService = (
         };
     },
 
-    getMessages: async () => {
+    getMessages: async ({ cursor, limit }) => {
         log.info("Current environment: %s", config.NODE_ENV);
-        const messages = await messageRepository.findMany();
+
+        const messages = await messageRepository.findMany({
+            take: limit,
+            orderBy: { id: "desc" },
+            ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+            select: {
+                id: true,
+                createdAt: true,
+                text: true,
+                meta: true,
+            },
+        });
+
+        const nextCursor =
+            messages.length === limit ? messages[messages.length - 1].id : null;
 
         return {
             message: RESPONSE_MESSAGES.message.fetched,
-            data: { messages },
+            data: { messages, nextCursor },
         };
     },
 });

@@ -15,6 +15,15 @@ export const TEMPLATE_DATABASE = "int_test_template";
 
 export const workerDatabaseName = (poolId: number) => `int_test_w${poolId}`;
 
+/**
+ * Redis logical database index for a worker. Postgres gives each worker its own
+ * cloned database; Redis has no per-worker instance, so each worker instead
+ * selects one of Redis's numbered logical databases and only ever flushes that
+ * one (see reset-cache.ts). Redis exposes 16 (0-15) and INT_TEST_WORKERS is
+ * capped at 8, so one index per worker always fits.
+ */
+export const workerRedisDatabase = (poolId: number) => poolId;
+
 export const withDatabase = (connectionUri: string, database: string) => {
     const url = new URL(connectionUri);
 

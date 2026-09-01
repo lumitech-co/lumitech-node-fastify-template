@@ -1,5 +1,9 @@
 import { inject } from "vitest";
-import { withDatabase, workerDatabaseName } from "./workers.js";
+import {
+    withDatabase,
+    workerDatabaseName,
+    workerRedisDatabase,
+} from "./workers.js";
 
 // Each vitest worker owns one of the databases cloned in global.ts, so files
 // can run in parallel without seeing each other's rows.
@@ -13,3 +17,14 @@ process.env.DATABASE_URL = withDatabase(
     inject("databaseUri"),
     workerDatabaseName(poolId)
 );
+
+// Redis is a single shared instance, so give each worker its own numbered
+// logical database. Every worker then flushes only its own database before
+// each test (see reset-cache.ts), keeping the cache HIT/MISS assertions
+// isolated even while test files run in parallel.
+if (process.env.REDIS_URL) {
+    process.env.REDIS_URL = withDatabase(
+        process.env.REDIS_URL,
+        String(workerRedisDatabase(poolId))
+    );
+}

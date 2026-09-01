@@ -25,6 +25,7 @@ const configureAwilix = async (fastify: FastifyInstance) => {
         config: asValue(fastify.config),
         gcpStorageClient: asValue(fastify.gcpStorageClient),
         awsS3Client: asValue(fastify.awsS3Client),
+        redis: asValue(fastify.redis),
     });
 
     // Register dependencies from the application: repositories, services, route handlers
@@ -53,5 +54,6 @@ export default fp(configureAwilix, {
         FastifyPlugin.Env,
         FastifyPlugin.GcpStorage,
         FastifyPlugin.AwsS3,
+        FastifyPlugin.Redis,
     ],
 });

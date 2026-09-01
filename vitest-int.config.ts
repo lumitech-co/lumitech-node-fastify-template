@@ -8,11 +8,13 @@ export default mergeConfig(
         test: {
             include: ["test/int/**/*.test.ts"],
             globalSetup: ["test/int/setup/global.ts"],
-            // Order matters: env.ts must set DATABASE_URL before reset-db.ts
-            // opens its connection or a test imports the app.
+            // Order matters: env.ts must set DATABASE_URL and REDIS_URL before
+            // reset-db.ts / reset-cache.ts open their connections or a test
+            // imports the app.
             setupFiles: [
                 "./test/int/setup/env.ts",
                 "./test/int/setup/reset-db.ts",
+                "./test/int/setup/reset-cache.ts",
             ],
             // One database is provisioned per worker in global.ts, so the
             // worker count must not exceed what was created there.

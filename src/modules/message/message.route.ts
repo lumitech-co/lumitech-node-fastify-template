@@ -1,7 +1,12 @@
 import { FastifyInstance } from "fastify";
 import { MessageHandler } from "./message.handler.js";
 import {
+    MESSAGE_CACHE_NAMESPACE,
+    MESSAGE_CACHE_TTL_SECONDS,
+} from "./message.constant.js";
+import {
     createMessageBodySchema,
+    fetchMessagesQuerySchema,
     createMessageResponseSchema,
     fetchMessagesResponseSchema,
 } from "@/lib/validation/message/message.schema.js";
@@ -34,9 +39,16 @@ export const createMessageRoutes = (
     fastify.get(
         MessageRoute.Root,
         {
+            config: {
+                cache: {
+                    ttl: MESSAGE_CACHE_TTL_SECONDS,
+                    namespace: MESSAGE_CACHE_NAMESPACE,
+                },
+            },
             schema: {
                 tags: [MESSAGE_TAG],
                 summary: "Fetch messages",
+                querystring: fetchMessagesQuerySchema,
                 response: {
                     200: fetchMessagesResponseSchema,
                 },
