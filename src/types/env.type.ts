@@ -1,6 +1,7 @@
 export type EnvConfig = {
     NODE_ENV: "development" | "production" | "test";
     HOST: string;
+    TRUSTED_PROXY_HOPS: string;
     DATABASE_URL: string;
     REDIS_URL: string;
     PORT: number;

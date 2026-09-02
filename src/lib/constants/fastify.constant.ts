@@ -1,6 +1,3 @@
-/**
- * Fastify plugin names
- */
 export enum FastifyPlugin {
     Prisma = "prisma",
     Env = "env",

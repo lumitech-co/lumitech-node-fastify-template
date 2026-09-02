@@ -229,6 +229,38 @@ cache (`preHandler`/`onSend`) does **not** take this lock, so a hot uncached rou
 still see concurrent misses; reach for `cacheService.wrap` inside the service when that
 matters.
 
+### Rate Limiting
+`@fastify/rate-limit` is registered globally in `src/plugins/rateLimit.ts` using the same
+Redis client as caching (`fastify.redis`), so limits are shared across instances. Every
+route gets `RATE_LIMIT_DEFAULT_MAX` requests per `RATE_LIMIT_DEFAULT_TIME_WINDOW` unless it
+overrides or disables this via `config.rateLimit`:
+```typescript
+fastify.get(
+    MessageRoute.Root,
+    {
+        config: {
+            rateLimit: {
+                max: MESSAGE_RATE_LIMIT_MAX,
+                timeWindow: MESSAGE_RATE_LIMIT_TIME_WINDOW,
+            },
+        },
+        schema: { ... },
+    },
+    messageHandler.getMessages
+);
+```
+Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /ping` so
+health checks from the load balancer never trip the limit. Clients are identified by
+`request.ip`; Fastify's `trustProxy` is set in `src/server.ts` from the **required**
+`TRUSTED_PROXY_HOPS` env var so this resolves the real client IP behind a proxy/load balancer
+instead of the proxy's own IP. Set it to the actual number of trusted hops for your topology
+(e.g. `1` behind a single load balancer), or `false` when the app is exposed directly with no
+proxy — a mismatch lets clients spoof `X-Forwarded-For` and bypass the limiter, so it has no
+default and startup fails fast if it is unset or malformed.
+Exceeding the limit returns `429` with a body shaped like the rest of the app's errors
+(`statusCode` / `error` / `message`). Like the cache plugin, it is **fail-open**
+(`skipOnError: true`) — a Redis outage disables rate limiting rather than failing requests.
+
 ### Typed JSON in Prisma
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
 ```prisma

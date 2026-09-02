@@ -3,6 +3,7 @@ import autoload from "@fastify/autoload";
 import Fastify, { FastifyInstance } from "fastify";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import { resolveTrustProxy } from "@/lib/proxy/proxy.util.js";
 import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -10,6 +11,7 @@ const __dirname = dirname(__filename);
 
 export const configureServer = async (): Promise<FastifyInstance> => {
     const fastify = Fastify({
+        trustProxy: resolveTrustProxy(process.env.TRUSTED_PROXY_HOPS),
         logger:
             ENV_TO_LOGGER[
                 process.env.NODE_ENV as "development" | "production" | "test"
