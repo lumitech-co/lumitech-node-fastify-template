@@ -5,6 +5,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@prisma/client";
 import { Storage } from "@google-cloud/storage";
 import { CacheService } from "@/lib/cache/cache.service.js";
+import { IpBanService } from "@/lib/ipBan/ipBan.service.js";
 import { S3BucketService } from "@/lib/s3Bucket/s3Bucket.service.js";
 import { MessageService } from "@/modules/message/message.service.js";
 import { MessageHandler } from "@/modules/message/message.handler.js";
@@ -29,6 +30,7 @@ export type Cradle = {
     messageHandler: MessageHandler;
 
     cacheService: CacheService;
+    ipBanService: IpBanService;
     gcpBucketService: GcpBucketService;
     s3BucketService: S3BucketService;
 };

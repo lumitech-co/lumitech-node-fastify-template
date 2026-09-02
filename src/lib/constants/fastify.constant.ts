@@ -1,6 +1,3 @@
-/**
- * Fastify plugin names
- */
 export enum FastifyPlugin {
     Prisma = "prisma",
     Env = "env",
@@ -9,4 +6,5 @@ export enum FastifyPlugin {
     GcpStorage = "gcpStorage",
     AwsS3 = "awsS3",
     Redis = "redis",
+    IpBan = "ipBan",
 }
