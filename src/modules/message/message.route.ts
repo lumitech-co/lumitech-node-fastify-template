@@ -1,17 +1,17 @@
 import { FastifyInstance } from "fastify";
 import { MessageHandler } from "./message.handler.js";
 import {
-    createMessageBodySchema,
-    fetchMessagesQuerySchema,
-    createMessageResponseSchema,
-    fetchMessagesResponseSchema,
-} from "@/lib/validation/message/message.schema.js";
-import {
     MESSAGE_CACHE_NAMESPACE,
     MESSAGE_CACHE_TTL_SECONDS,
     MESSAGE_RATE_LIMIT_MAX,
     MESSAGE_RATE_LIMIT_TIME_WINDOW,
 } from "./message.constant.js";
+import {
+    createMessageBodySchema,
+    fetchMessagesQuerySchema,
+    createMessageResponseSchema,
+    fetchMessagesResponseSchema,
+} from "@/lib/validation/message/message.schema.js";
 
 const MESSAGE_TAG = "message";
 

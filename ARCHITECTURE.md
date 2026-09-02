@@ -251,8 +251,12 @@ fastify.get(
 ```
 Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /ping` so
 health checks from the load balancer never trip the limit. Clients are identified by
-`request.ip`; `trustProxy: true` is set on the Fastify instance in `src/server.ts` so this
-resolves the real client IP behind a proxy/load balancer instead of the proxy's own IP.
+`request.ip`; Fastify's `trustProxy` is set in `src/server.ts` from the **required**
+`TRUSTED_PROXY_HOPS` env var so this resolves the real client IP behind a proxy/load balancer
+instead of the proxy's own IP. Set it to the actual number of trusted hops for your topology
+(e.g. `1` behind a single load balancer), or `false` when the app is exposed directly with no
+proxy — a mismatch lets clients spoof `X-Forwarded-For` and bypass the limiter, so it has no
+default and startup fails fast if it is unset or malformed.
 Exceeding the limit returns `429` with a body shaped like the rest of the app's errors
 (`statusCode` / `error` / `message`). Like the cache plugin, it is **fail-open**
 (`skipOnError: true`) — a Redis outage disables rate limiting rather than failing requests.

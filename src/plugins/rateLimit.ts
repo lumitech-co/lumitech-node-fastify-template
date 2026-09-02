@@ -26,6 +26,5 @@ const configureRateLimit = async (fastify: FastifyInstance) => {
 };
 
 export default fp(configureRateLimit, {
-    name: FastifyPlugin.RateLimit,
     dependencies: [FastifyPlugin.Env, FastifyPlugin.Redis],
 });
