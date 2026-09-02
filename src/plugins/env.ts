@@ -18,6 +18,7 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .prop("PORT", S.number())
             .prop("DOCS_PASSWORD", S.string())
             .prop("HOST", S.string().default("0.0.0.0"))
+            .prop("TRUSTED_PROXY_HOPS", S.string())
             .prop("GCP_PROJECT_ID", S.string())
             .prop("GCP_CLIENT_EMAIL", S.string())
             .prop("GCP_PRIVATE_KEY", S.string())
@@ -35,6 +36,7 @@ const configureEnv = async (fastify: FastifyInstance) => {
                 "APPLICATION_SECRET",
                 "APPLICATION_URL",
                 "PORT",
+                "TRUSTED_PROXY_HOPS",
             ])
             .valueOf(),
         dotenv: false,

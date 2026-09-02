@@ -46,9 +46,16 @@ The template uses a Vitest testing framework for test coverage.
 2. `npm run test:unit:ui` - launch the interactive UI test runner.
 
 #### Integration Tests
-To run integration tests:
-1. `docker compose -f docker-compose.test.yml up` - run test container;
-2. `npm run test:int` - launch integration tests.
+`npm run test:int` - launch integration tests.
+
+A throwaway Postgres container is started automatically by Testcontainers and the
+migrations are applied to it once per run, so the only prerequisite is a running
+Docker daemon. Each test starts from an empty database (tables are truncated
+between tests), and each vitest worker gets its own database so files still run
+in parallel.
+
+Only if a test needs the storage emulators (fake GCS / LocalStack S3):
+`docker compose -f docker-compose.test.yml up`.
 
 ## ⚙ Key Features
 
