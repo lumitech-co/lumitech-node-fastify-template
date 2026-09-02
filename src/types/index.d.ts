@@ -18,6 +18,7 @@ declare module "fastify" {
         gcpStorageClient: Storage;
         awsS3Client: S3Client;
         redis: Redis;
+        bullmqConnection: Redis;
     }
 
     export interface FastifyContextConfig {

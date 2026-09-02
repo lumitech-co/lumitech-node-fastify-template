@@ -7,4 +7,5 @@ export enum FastifyPlugin {
     AwsS3 = "awsS3",
     Redis = "redis",
     IpBan = "ipBan",
+    BullMq = "bullmq",
 }

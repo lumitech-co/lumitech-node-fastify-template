@@ -102,6 +102,7 @@
         "@prisma/client": "^6.16.2",
         "argon2": "^0.44.0",
         "awilix": "^12.0.5",
+        "bullmq": "^6.3.4",
         "close-with-grace": "^2.2.0",
         "fastify": "^5.6.0",
         "fastify-type-provider-zod": "^6.0.0",
