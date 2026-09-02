@@ -29,6 +29,21 @@ const createMessageBodySchema = z.object({
 
 type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 
+const MESSAGES_PAGE_DEFAULT_LIMIT = 20;
+const MESSAGES_PAGE_MAX_LIMIT = 100;
+
+const fetchMessagesQuerySchema = z.object({
+    cursor: z.coerce.number().int().positive().optional(),
+    limit: z.coerce
+        .number()
+        .int()
+        .positive()
+        .max(MESSAGES_PAGE_MAX_LIMIT)
+        .default(MESSAGES_PAGE_DEFAULT_LIMIT),
+});
+
+type FetchMessagesQuery = z.infer<typeof fetchMessagesQuerySchema>;
+
 const createMessageResponseSchema = z.object({
     message: z.string(),
     data: z.object({
@@ -42,6 +57,7 @@ const fetchMessagesResponseSchema = z.object({
     message: z.string(),
     data: z.object({
         messages: z.array(defaultMessageSchema),
+        nextCursor: z.number().nullable(),
     }),
 });
 
@@ -50,12 +66,14 @@ type FetchMessagesResponse = z.infer<typeof fetchMessagesResponseSchema>;
 export {
     messageMetaSchema,
     createMessageBodySchema,
+    fetchMessagesQuerySchema,
     createMessageResponseSchema,
     fetchMessagesResponseSchema,
 };
 
 export type {
     CreateMessageInput,
+    FetchMessagesQuery,
     CreateMessageResponse,
     FetchMessagesResponse,
 };

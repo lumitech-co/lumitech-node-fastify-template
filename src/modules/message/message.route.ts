@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { MessageHandler } from "./message.handler.js";
 import {
     createMessageBodySchema,
+    fetchMessagesQuerySchema,
     createMessageResponseSchema,
     fetchMessagesResponseSchema,
 } from "@/lib/validation/message/message.schema.js";
@@ -53,6 +54,7 @@ export const createMessageRoutes = (
             schema: {
                 tags: [MESSAGE_TAG],
                 summary: "Fetch messages",
+                querystring: fetchMessagesQuerySchema,
                 response: {
                     200: fetchMessagesResponseSchema,
                 },

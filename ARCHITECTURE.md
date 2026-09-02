@@ -319,4 +319,65 @@ src/
 
 ### Run tests
 - Unit: `npm run test:unit`
-- Integration: `docker compose -f docker-compose.test.yml up` then `npm run test:int`
+- Integration: `npm run test:int` (Testcontainers starts Postgres itself; just needs Docker running). Add `docker compose -f docker-compose.test.yml up` only when a test needs the storage emulators.
+
+## Writing integration tests
+
+The lane truncates every table in a global `beforeEach` and gives each vitest worker its
+own database (`test/int/setup/`). That isolation is what makes the suite fast and parallel,
+and it dictates how tests must be written.
+
+### No test may depend on another test's data
+
+A test that only passes when another one ran first is broken, even if the suite is green.
+Truncation should make that fail loudly — keep it on. Every test must pass when run alone:
+
+```bash
+npm run test:int -- -t "fetch messages"
+npm run test:int -- --repeat 3      # stable, no ordering dependence
+```
+
+### Arrange with factories, not with other tests
+
+A factory in `test/int/factories/*.factory.ts` seeds a precondition directly through Prisma,
+so a test starts from a known state on its own. Keep them small, typed and override-friendly:
+
+```typescript
+export const createMessage = async ({ prisma, overrides = {} }: CreateMessageArgs) => {
+    return prisma.message.create({
+        data: { text: `message-${randomUUID()}`, ...overrides },
+    });
+};
+```
+
+Seed through Prisma for speed and directness; drive real endpoints only when the test is
+asserting the endpoint's behavior. A factory arranges state, a test exercises behavior —
+don't mix the two.
+
+When the same precondition appears in a second test file, move it into a factory rather
+than copying it.
+
+### Never hardcode ids
+
+`TRUNCATE … RESTART IDENTITY` resets sequences, so `id: 1` is only ever accidentally
+correct — and it breaks the moment a test seeds two rows or the seeding order changes.
+Read ids back off the row the factory returns:
+
+```typescript
+const message = await createMessage({ prisma: server.prisma });
+
+expect(json.data.messages).toMatchObject([{ id: message.id }]);
+```
+
+### A journey belongs in a single `it`
+
+To cover a multi-step flow (create → read back, sign up → act as that user), drive the whole
+sequence inside one test case — see `test/int/journey/*.journey.test.ts`. The truncate runs
+between cases, so a journey split across several `it` blocks starts each step from an empty
+database.
+
+### Watch for BigInt
+
+If a model uses `BigInt` ids, convert them to `number` at the factory boundary. `BigInt`
+throws in `JSON.stringify`, which surfaces far away from the cause when a value reaches a
+request body or a snapshot.

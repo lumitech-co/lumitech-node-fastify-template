@@ -51,15 +51,18 @@ services:
         image: redis:7.4-alpine
         container_name: app-redis
         restart: no
-        command: redis-server --appendonly yes
+        command: >
+            redis-server
+            --appendonly yes
+            --maxmemory 512mb
+            --maxmemory-policy noeviction
         ports:
             - "6379:6379"
-        expose:
-            - "6379"
         networks:
             - primary
         volumes:
             - "./.volumes/redis:/data"
+        mem_limit: 640m
 
     nodejs:
         build:
