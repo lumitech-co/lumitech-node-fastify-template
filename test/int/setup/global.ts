@@ -16,13 +16,6 @@ declare module "vitest" {
     }
 }
 
-/**
- * Applies the migration history.
- *
- * Kept over `prisma db push` because objects that live only in migration SQL
- * — triggers, functions, extensions, custom indexes — are not representable in
- * schema.prisma and would be silently missing from a schema-only push.
- */
 const runMigrationFiles = async (client: Client) => {
     const migrationsDir = path.join(
         process.cwd(),
@@ -56,14 +49,6 @@ const runMigrationFiles = async (client: Client) => {
     }
 };
 
-/**
- * Boots one throwaway Postgres for the whole run, migrates a template database
- * once, then clones one database per vitest worker.
- *
- * Migration work happens once per run rather than once per test. Per-test
- * isolation is a TRUNCATE (see reset-db.ts) and per-worker isolation is a
- * separate database, so test files still run in parallel.
- */
 const globalSetup = async ({ provide }: TestProject) => {
     const container = await new PostgreSqlContainer("postgres:16.4")
         .withTmpFs({ "/var/lib/postgresql/data": "rw" })
@@ -90,8 +75,6 @@ const globalSetup = async ({ provide }: TestProject) => {
             await template.end();
         }
 
-        // Sequential on purpose: Postgres refuses to copy a template that is
-        // being read by another CREATE DATABASE at the same moment.
         for (let poolId = 1; poolId <= INT_TEST_WORKERS; poolId++) {
             await admin.query(
                 `CREATE DATABASE "${workerDatabaseName(poolId)}" TEMPLATE "${TEMPLATE_DATABASE}"`

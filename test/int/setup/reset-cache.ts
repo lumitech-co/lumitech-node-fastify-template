@@ -17,13 +17,6 @@ const getRedis = () => {
     return redis;
 };
 
-/**
- * Redis is shared across the whole test process, unlike the per-worker Postgres
- * database. Each worker selects its own numbered logical database in env.ts, so
- * this flush clears only that worker's cache — a cached response from one test
- * can never leak into the next as a stale HIT, and parallel workers never flush
- * each other.
- */
 beforeEach(async () => {
     const connection = getRedis();
 
