@@ -1,3 +1,4 @@
+import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { EnvConfig } from "./env.type.js";
 import { FastifyBaseLogger } from "fastify";
@@ -9,7 +10,10 @@ import { IpBanService } from "@/lib/ipBan/ipBan.service.js";
 import { S3BucketService } from "@/lib/s3Bucket/s3Bucket.service.js";
 import { MessageService } from "@/modules/message/message.service.js";
 import { MessageHandler } from "@/modules/message/message.handler.js";
+import { MessageJobData } from "@/modules/message/mq/message.type.js";
 import { GcpBucketService } from "@/lib/gcpBucket/gcpBucket.service.js";
+import { MessageJobName } from "@/modules/message/mq/message.constant.js";
+import { MessageJobService } from "@/modules/message/mq/message.service.js";
 import { ApplicationService } from "@/modules/application/application.service.js";
 import { ApplicationHandler } from "@/modules/application/application.handler.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
@@ -22,12 +26,14 @@ export type Cradle = {
     awsS3Client: S3Client;
     redis: Redis;
     bullmqConnection: Redis;
+    messageQueue: Queue<MessageJobData, unknown, MessageJobName>;
 
     applicationService: ApplicationService;
     applicationHandler: ApplicationHandler;
 
     messageRepository: MessageRepository;
     messageService: MessageService;
+    messageJobService: MessageJobService;
     messageHandler: MessageHandler;
 
     cacheService: CacheService;

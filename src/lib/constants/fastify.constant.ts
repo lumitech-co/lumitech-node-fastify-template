@@ -8,4 +8,5 @@ export enum FastifyPlugin {
     Redis = "redis",
     IpBan = "ipBan",
     BullMq = "bullmq",
+    MessageQueue = "messageQueue",
 }

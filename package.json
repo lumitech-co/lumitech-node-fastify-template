@@ -6,7 +6,8 @@
     "scripts": {
         "prebuild": "npm run prisma:generate",
         "build": "rm -rf build && tsc -p ./tsconfig.build.json && tsc-alias",
-        "start:dev": "NODE_ENV=development tsx watch --include \"src/**/*\" ./src/index.ts",
+        "start:dev": "NODE_ENV=development tsx watch --include \"src/**/*\" --env-file=.env ./src/index.ts",
+        "start:dev:win": "tsx watch --include \"src/**/*\" --env-file=.env ./src/index.ts",
         "commit": "cz",
         "prepare": "husky",
         "tsc-check": "tsc --noEmit",

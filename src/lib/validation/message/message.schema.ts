@@ -29,6 +29,42 @@ const createMessageBodySchema = z.object({
 
 type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 
+const updateMessageBodySchema = z
+    .object({
+        text: z.string(),
+        meta: messageMetaSchema,
+    })
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: "At least one field must be provided.",
+    });
+
+type UpdateMessageInput = z.infer<typeof updateMessageBodySchema>;
+
+const messageIdParamSchema = z.object({
+    id: z.coerce.number().int().positive(),
+});
+
+type MessageIdParam = z.infer<typeof messageIdParamSchema>;
+
+const createMessageJobSchema = createMessageBodySchema;
+
+type CreateMessageJobData = z.infer<typeof createMessageJobSchema>;
+
+const updateMessageJobSchema = z.object({
+    id: z.number().int().positive(),
+    text: z.string().optional(),
+    meta: messageMetaSchema.optional(),
+});
+
+type UpdateMessageJobData = z.infer<typeof updateMessageJobSchema>;
+
+const deleteMessageJobSchema = z.object({
+    id: z.number().int().positive(),
+});
+
+type DeleteMessageJobData = z.infer<typeof deleteMessageJobSchema>;
+
 const MESSAGES_PAGE_DEFAULT_LIMIT = 20;
 const MESSAGES_PAGE_MAX_LIMIT = 100;
 
@@ -44,14 +80,14 @@ const fetchMessagesQuerySchema = z.object({
 
 type FetchMessagesQuery = z.infer<typeof fetchMessagesQuerySchema>;
 
-const createMessageResponseSchema = z.object({
+const enqueueMessageResponseSchema = z.object({
     message: z.string(),
     data: z.object({
-        message: defaultMessageSchema,
+        jobId: z.string(),
     }),
 });
 
-type CreateMessageResponse = z.infer<typeof createMessageResponseSchema>;
+type EnqueueMessageResponse = z.infer<typeof enqueueMessageResponseSchema>;
 
 const fetchMessagesResponseSchema = z.object({
     message: z.string(),
@@ -66,14 +102,24 @@ type FetchMessagesResponse = z.infer<typeof fetchMessagesResponseSchema>;
 export {
     messageMetaSchema,
     createMessageBodySchema,
+    updateMessageBodySchema,
+    messageIdParamSchema,
+    createMessageJobSchema,
+    updateMessageJobSchema,
+    deleteMessageJobSchema,
     fetchMessagesQuerySchema,
-    createMessageResponseSchema,
+    enqueueMessageResponseSchema,
     fetchMessagesResponseSchema,
 };
 
 export type {
     CreateMessageInput,
+    UpdateMessageInput,
+    MessageIdParam,
+    CreateMessageJobData,
+    UpdateMessageJobData,
+    DeleteMessageJobData,
     FetchMessagesQuery,
-    CreateMessageResponse,
+    EnqueueMessageResponse,
     FetchMessagesResponse,
 };
