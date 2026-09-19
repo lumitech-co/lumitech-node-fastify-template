@@ -141,6 +141,24 @@ This template provides a `Dockerfile` for building a production-ready Node.js im
 Is is possible can add more services (for example, Redis) by including them in `docker-compose.yml` and configuring their networking and environment variables. 
 This setup allows to quickly bootstrap a fully containerized development environment without installing any dependencies locally other than Docker itself.
 
+### ⚙️ Background Worker (BullMQ)
+
+The `message` module's create/update/delete run asynchronously through a BullMQ queue: the HTTP handler enqueues a job (the `Queue`) and returns immediately, and a `Worker` (both registered as Fastify plugins, wired the same way as everything else through Awilix) picks it up and applies it against the repository.
+
+The producer (`Queue`, needed to enqueue jobs) and the consumer (`Worker`, needed to process them) run as **two separate entrypoints** on purpose:
+
+- `src/index.ts` (`npm run start:dev` / `node build/src/index.js`) — the public HTTP API. It enqueues jobs but never consumes them (`runQueueWorker: false`).
+- `src/worker.ts` (`npm run start:dev:worker` / `node build/src/worker.js`) — background-only. No public API routes (except the `/api/ping` health check), just the BullMQ consumer.
+
+This split exists because a `Worker` needs a continuously running process to pick up jobs. On a platform that scales to zero (e.g. Cloud Run with `min-instances: 0`), the instance only gets CPU while handling an HTTP request, and only scales up in response to incoming requests — never in response to a queue depth in Redis. If the consumer ran on that same scale-to-zero instance, a job enqueued while it is idle could sit unprocessed indefinitely, until unrelated traffic happens to wake it back up.
+
+Deploy the same image twice as two Cloud Run services: the API with `min-instances: 0` as usual, and the worker (`node build/src/worker.js`) with `min-instances: 1` so it is always available to drain the queue.
+
+```bash
+npm run start:dev:worker       # local dev (unix)
+npm run start:dev:worker:win   # local dev (Windows)
+```
+
 ### 📖 REST API Documentation
 
 This template includes **Swagger** for automatic API documentation generation, making it easy to document REST API endpoints.
