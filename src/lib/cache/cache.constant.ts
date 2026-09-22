@@ -25,3 +25,16 @@ export const CACHEABLE_STATUS_CODE = 200;
 export const CACHEABLE_METHODS = ["GET", "HEAD"];
 
 export const CACHE_DEFAULT_CONTENT_TYPE = "application/json; charset=utf-8";
+
+export const CACHE_CONTENT_TYPE_HEADER = "content-type";
+
+export const CACHE_UNCACHEABLE_HEADERS = [
+    "set-cookie",
+    "content-length",
+    "content-encoding",
+    "transfer-encoding",
+    "connection",
+    "keep-alive",
+    "date",
+    CACHE_STATUS_HEADER,
+];

@@ -268,7 +268,7 @@ known prefix is an honest mistake and is ignored, a 404 anywhere else counts as 
 ```typescript
 export const IP_BAN_ALLOWED_PREFIXES = ["/api/", "/.well-known/"];
 
-export const IP_BAN_ALLOWED_PATHS = ["/", "/favicon.ico"];
+export const IP_BAN_ALLOWED_PATHS = ["/", "/api", "/favicon.ico"];
 ```
 The lists are deliberately minimal — this is a JSON API, so almost nothing legitimately
 lives outside `/api/`, and that prefix already covers Swagger UI and its assets (its HTML
