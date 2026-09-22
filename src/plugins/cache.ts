@@ -1,11 +1,15 @@
 import fp from "fastify-plugin";
 import { FastifyInstance } from "fastify";
-import { createRouteCacheKey } from "@/lib/cache/cache.util.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import { cachedResponseSchema } from "@/lib/validation/cache/cache.schema.js";
 import {
+    createRouteCacheKey,
+    pickCacheableHeaders,
+} from "@/lib/cache/cache.util.js";
+import {
     CACHEABLE_METHODS,
     CACHEABLE_STATUS_CODE,
+    CACHE_CONTENT_TYPE_HEADER,
     CACHE_DEFAULT_CONTENT_TYPE,
     CACHE_DEFAULT_TTL_SECONDS,
     CACHE_STATUS_HEADER,
@@ -47,8 +51,8 @@ const configureCache = async (fastify: FastifyInstance) => {
             return;
         }
 
+        reply.headers(cached.headers);
         reply.header(CACHE_STATUS_HEADER, CACHE_STATUS_HIT);
-        reply.type(cached.contentType);
         reply.send(cached.payload);
 
         return reply;
@@ -70,10 +74,10 @@ const configureCache = async (fastify: FastifyInstance) => {
             ttl: state.ttl,
             value: {
                 payload,
-                contentType: String(
-                    reply.getHeader("content-type") ??
-                        CACHE_DEFAULT_CONTENT_TYPE
-                ),
+                headers: {
+                    [CACHE_CONTENT_TYPE_HEADER]: CACHE_DEFAULT_CONTENT_TYPE,
+                    ...pickCacheableHeaders(reply.getHeaders()),
+                },
             },
         });
 

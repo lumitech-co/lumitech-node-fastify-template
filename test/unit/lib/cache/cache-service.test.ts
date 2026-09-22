@@ -306,6 +306,30 @@ describe("cache.service - wrap", () => {
         expect(redis.store.has(`${CACHE_LOCK_PREFIX}:key`)).toBe(false);
     });
 
+    it("should treat a cached null as a hit and skip the resolver", async () => {
+        const { redis, service } = build();
+        const resolver = vi.fn(async () => "fresh");
+
+        redis.store.set("key", JSON.stringify(null));
+
+        expect(
+            await service.wrap({ key: "key", ttl: 30, resolver })
+        ).toBeNull();
+        expect(resolver).not.toHaveBeenCalled();
+    });
+
+    it("should not release a lock it does not own when acquisition errors", async () => {
+        const { redis, service } = build();
+        const lockKey = `${CACHE_LOCK_PREFIX}:key`;
+
+        redis.store.set(lockKey, "held-by-someone-else");
+        redis.set.mockRejectedValueOnce(new Error("lock down"));
+
+        await service.wrap({ key: "key", ttl: 30, resolver: async () => 1 });
+
+        expect(redis.store.get(lockKey)).toBe("held-by-someone-else");
+    });
+
     it("should still resolve when lock acquisition errors (fail-open)", async () => {
         const { redis, logger, service } = build();
         const resolver = vi.fn(async () => ({ value: "fresh" }));

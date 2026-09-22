@@ -16,6 +16,12 @@ export type RemoveCachePayload = {
     key: string;
 };
 
+export type CacheReadResult<T> =
+    | { hit: true; value: T }
+    | { hit: false; value: null };
+
+export type CacheLockState = "acquired" | "taken" | "unavailable";
+
 export type AcquireLockPayload = {
     lockKey: string;
 };
