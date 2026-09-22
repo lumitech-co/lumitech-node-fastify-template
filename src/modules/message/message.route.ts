@@ -3,6 +3,8 @@ import { MessageHandler } from "./message.handler.js";
 import {
     MESSAGE_CACHE_NAMESPACE,
     MESSAGE_CACHE_TTL_SECONDS,
+    MESSAGE_RATE_LIMIT_MAX,
+    MESSAGE_RATE_LIMIT_TIME_WINDOW,
 } from "./message.constant.js";
 import {
     createMessageBodySchema,
@@ -43,6 +45,10 @@ export const createMessageRoutes = (
                 cache: {
                     ttl: MESSAGE_CACHE_TTL_SECONDS,
                     namespace: MESSAGE_CACHE_NAMESPACE,
+                },
+                rateLimit: {
+                    max: MESSAGE_RATE_LIMIT_MAX,
+                    timeWindow: MESSAGE_RATE_LIMIT_TIME_WINDOW,
                 },
             },
             schema: {
