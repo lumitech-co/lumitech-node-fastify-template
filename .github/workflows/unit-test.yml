@@ -22,8 +22,11 @@ jobs:
                   node-version: ${{ matrix.node-version }}
                   cache: "npm"
 
+            - name: Set up npm
+              run: npm install -g npm@11.19.1
+
             - name: Install dependencies
-              run: npm i
+              run: npm ci
 
             - name: Run unit tests
               run: npm run test:unit:ci
