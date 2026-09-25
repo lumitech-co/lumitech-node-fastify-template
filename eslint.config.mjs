@@ -132,6 +132,27 @@ export default [
         },
     },
     {
+        // configureServer()'s runQueueWorker flag (src/server.ts) excludes
+        // the BullMQ consumer from the API server by matching *.worker.ts —
+        // any other filename in this tree would silently keep running there.
+        files: ["src/plugins/mq/**/*.{ts,js}"],
+        ignores: [
+            "src/plugins/mq/**/*.worker.{ts,js}",
+            "src/plugins/mq/**/*.queue.{ts,js}",
+        ],
+
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "Program",
+                    message:
+                        "src/plugins/mq/** may only contain *.worker.ts (BullMQ consumer) or *.queue.ts (producer) files.",
+                },
+            ],
+        },
+    },
+    {
         files: ["**/.eslintrc.{js,cjs}"],
 
         languageOptions: {

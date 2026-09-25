@@ -9,7 +9,17 @@ import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export const configureServer = async (): Promise<FastifyInstance> => {
+const QUEUE_WORKER_PLUGIN_PATTERN = /\/mq\/.+\.worker\.(ts|js)$/;
+
+type ConfigureServerOptions = {
+    registerRoutes?: boolean;
+    runQueueWorker?: boolean;
+};
+
+export const configureServer = async ({
+    registerRoutes = true,
+    runQueueWorker = true,
+}: ConfigureServerOptions = {}): Promise<FastifyInstance> => {
     const fastify = Fastify({
         trustProxy: resolveTrustProxy(process.env.TRUSTED_PROXY_HOPS),
         logger:
@@ -22,10 +32,16 @@ export const configureServer = async (): Promise<FastifyInstance> => {
         await fastify.register(autoload, {
             dir: path.join(__dirname, "plugins"),
             forceESM: true,
+            ...(runQueueWorker
+                ? {}
+                : { ignoreFilter: QUEUE_WORKER_PLUGIN_PATTERN }),
         });
 
         await fastify.register(autoload, {
-            dir: path.join(__dirname, "modules"),
+            dir: path.join(
+                __dirname,
+                registerRoutes ? "modules" : "modules/application"
+            ),
             dirNameRoutePrefix: false,
             forceESM: true,
 

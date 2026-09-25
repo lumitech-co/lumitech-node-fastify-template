@@ -6,4 +6,7 @@ export enum FastifyPlugin {
     GcpStorage = "gcpStorage",
     AwsS3 = "awsS3",
     Redis = "redis",
+    IpBan = "ipBan",
+    BullMq = "bullmq",
+    MessageQueue = "messageQueue",
 }
