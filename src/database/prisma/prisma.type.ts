@@ -13,19 +13,9 @@ export type PrismaAwaited<
 > = Promise<Awaited<ReturnType<T>>>;
 
 /**
- * A generic function type that finds a unique record in the database or throws an error if not found.
- *
- * The function uses Prisma.SelectSubset to allow for type-safe partial selections from a model.
- * GetFindResult is used to transform the raw database result into the expected return type.
- *
- * @example
- * export type MessageRepository = BaseRepository<"message"> & {
- *   findUniqueOrFail: FindUniqueOrFail<
- *       Prisma.MessageFindUniqueArgs,
- *       Prisma.$MessagePayload
- *   >;
- *};
- * */
+ * findUnique that throws when the record is missing; the result type follows `select`.
+ * Usage: ARCHITECTURE.md, "Repository Pattern".
+ */
 export type FindUniqueOrFail<U, R extends OperationPayload> = <T extends U>(
     args: Prisma.SelectSubset<T, U>
 ) => Promise<GetFindResult<R, T, object>>;

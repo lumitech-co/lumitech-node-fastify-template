@@ -5,7 +5,7 @@ export const templates = {
         `
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 
-export type ${namePascal}Handler = {};
+export type ${namePascal}Handler = Record<string, never>;
 
 export const createHandler = (): ${namePascal}Handler => {
     return {};
@@ -19,20 +19,10 @@ addDIResolverName(createHandler, "${nameCamel}Handler");
 import { FastifyInstance } from "fastify";
 import { ${namePascal}Handler } from "./${nameKebab}.handler.js";
 
-// The module tag and its route paths live here, next to the routes:
-//
+// Declare the module tag and route paths here, unexported:
 // const ${nameUpper}_TAG = "${nameKebab}";
-//
-// enum ${namePascal}Route {
-//     Root = "/",
-// }
-//
-// Rename the parameters once the first route is registered:
-// fastify.get(
-//     ${namePascal}Route.Root,
-//     { schema: { tags: [${nameUpper}_TAG] } },
-//     ${nameCamel}Handler.something
-// );
+// enum ${namePascal}Route { Root = "/" }
+// Drop the _ prefixes once the first route is registered.
 export const create${namePascal}Routes = (
     _fastify: FastifyInstance,
     _${nameCamel}Handler: ${namePascal}Handler
@@ -57,7 +47,7 @@ export default async function (fastify: FastifyInstance) {
         `
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 
-export type ${namePascal}Service = {};
+export type ${namePascal}Service = Record<string, never>;
 
 export const createService = (): ${namePascal}Service => ({});
 

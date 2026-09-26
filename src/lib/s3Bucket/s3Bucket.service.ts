@@ -35,14 +35,6 @@ export const createS3BucketService = (
     awsS3Client: S3Client,
     config: EnvConfig
 ): S3BucketService => {
-    const requireBucket = (): string => {
-        if (!config.AWS_S3_BUCKET_NAME) {
-            throw new Error(AWS_S3_BUCKET_NOT_CONFIGURED);
-        }
-
-        return config.AWS_S3_BUCKET_NAME;
-    };
-
     return {
         deleteFile: async ({ key }) => {
             const bucket = requireBucket();
@@ -126,6 +118,14 @@ export const createS3BucketService = (
             });
         },
     };
+
+    function requireBucket(): string {
+        if (!config.AWS_S3_BUCKET_NAME) {
+            throw new Error(AWS_S3_BUCKET_NOT_CONFIGURED);
+        }
+
+        return config.AWS_S3_BUCKET_NAME;
+    }
 };
 
 addDIResolverName(createS3BucketService, "s3BucketService");

@@ -4,8 +4,11 @@
  */
 export const RESPONSE_MESSAGES = {
     message: {
-        created: "Message created successfully.",
+        createQueued: "Message creation has been queued.",
+        updateQueued: "Message update has been queued.",
+        deleteQueued: "Message deletion has been queued.",
         fetched: "Messages fetched successfully.",
         notFound: "Message not found.",
+        unknownJobName: "Unknown message job name",
     },
 } as const;

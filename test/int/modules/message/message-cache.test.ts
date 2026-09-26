@@ -1,6 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createMessage } from "../../factories/message.factory.js";
+import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";
 import {
     CACHE_STATUS_HEADER,
     CACHE_STATUS_HIT,
@@ -59,11 +61,13 @@ describe("Response cache for /api/messages", () => {
         expect(primed.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
         expect(primed.json()).toMatchObject({ data: { messages: [] } });
 
-        await server.inject({
+        const created = await server.inject({
             method: "POST",
             url: "/api/messages",
             body: { text: "Hello, world!" },
         });
+
+        await waitForMessageJob({ server, jobId: created.json().data.jobId });
 
         const refetched = await server.inject({
             method: "GET",
@@ -76,5 +80,65 @@ describe("Response cache for /api/messages", () => {
                 messages: [{ text: "Hello, world!" }],
             },
         });
+    });
+
+    it("should invalidate the cache when a message is updated", async () => {
+        const message = await createMessage({ prisma: server.prisma });
+
+        const primed = await server.inject({
+            method: "GET",
+            url: "/api/messages",
+        });
+
+        expect(primed.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
+        const updated = await server.inject({
+            method: "PATCH",
+            url: `/api/messages/${message.id}`,
+            body: { text: "Updated text" },
+        });
+
+        await waitForMessageJob({ server, jobId: updated.json().data.jobId });
+
+        const refetched = await server.inject({
+            method: "GET",
+            url: "/api/messages",
+        });
+
+        expect(refetched.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+        expect(refetched.json()).toMatchObject({
+            data: {
+                messages: [{ text: "Updated text" }],
+            },
+        });
+    });
+
+    it("should invalidate the cache when a message is deleted", async () => {
+        const message = await createMessage({ prisma: server.prisma });
+
+        const primed = await server.inject({
+            method: "GET",
+            url: "/api/messages",
+        });
+
+        expect(primed.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+        expect(primed.json()).toMatchObject({
+            data: { messages: [{ id: message.id }] },
+        });
+
+        const deleted = await server.inject({
+            method: "DELETE",
+            url: `/api/messages/${message.id}`,
+        });
+
+        await waitForMessageJob({ server, jobId: deleted.json().data.jobId });
+
+        const refetched = await server.inject({
+            method: "GET",
+            url: "/api/messages",
+        });
+
+        expect(refetched.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+        expect(refetched.json()).toMatchObject({ data: { messages: [] } });
     });
 });

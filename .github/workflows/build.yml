@@ -14,6 +14,8 @@ jobs:
 
         steps:
             - uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
 
             - name: Set up Node.js
               uses: actions/setup-node@v3
@@ -26,6 +28,11 @@ jobs:
 
             - name: Lint application
               run: npm run lint
+
+            - name: Check migrations (CLAUDE.md Rule 9)
+              run: npm run check:migrations
+              env:
+                  MIGRATIONS_BASE_REF: origin/${{ github.base_ref }}
 
             - name: Build application
               run: npm run build

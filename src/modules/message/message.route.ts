@@ -8,8 +8,10 @@ import {
 } from "./message.constant.js";
 import {
     createMessageBodySchema,
+    updateMessageBodySchema,
+    messageIdParamSchema,
     fetchMessagesQuerySchema,
-    createMessageResponseSchema,
+    enqueueMessageResponseSchema,
     fetchMessagesResponseSchema,
 } from "@/lib/validation/message/message.schema.js";
 
@@ -17,6 +19,7 @@ const MESSAGE_TAG = "message";
 
 enum MessageRoute {
     Root = "/",
+    ById = "/:id",
 }
 
 export const createMessageRoutes = (
@@ -28,14 +31,45 @@ export const createMessageRoutes = (
         {
             schema: {
                 tags: [MESSAGE_TAG],
-                summary: "Create message",
+                summary: "Enqueue message creation",
                 body: createMessageBodySchema,
                 response: {
-                    200: createMessageResponseSchema,
+                    200: enqueueMessageResponseSchema,
                 },
             },
         },
         messageHandler.createMessage
+    );
+
+    fastify.patch(
+        MessageRoute.ById,
+        {
+            schema: {
+                tags: [MESSAGE_TAG],
+                summary: "Enqueue message update",
+                params: messageIdParamSchema,
+                body: updateMessageBodySchema,
+                response: {
+                    200: enqueueMessageResponseSchema,
+                },
+            },
+        },
+        messageHandler.updateMessage
+    );
+
+    fastify.delete(
+        MessageRoute.ById,
+        {
+            schema: {
+                tags: [MESSAGE_TAG],
+                summary: "Enqueue message deletion",
+                params: messageIdParamSchema,
+                response: {
+                    200: enqueueMessageResponseSchema,
+                },
+            },
+        },
+        messageHandler.deleteMessage
     );
 
     fastify.get(

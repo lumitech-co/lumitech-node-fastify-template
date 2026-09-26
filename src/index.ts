@@ -4,7 +4,7 @@ import { configureServer } from "./server.js";
 import { SWAGGER_ROUTE_PREFIX } from "@/lib/constants/swagger.constant.js";
 
 const main = async () => {
-    const fastify = await configureServer();
+    const fastify = await configureServer({ runQueueWorker: false });
 
     const address = await fastify.listen({
         port: fastify.config.PORT,

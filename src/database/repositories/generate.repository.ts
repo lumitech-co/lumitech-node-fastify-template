@@ -2,21 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { BaseRepository, Model } from "./repository.type.js";
 
 /**
- * Generate a repository for a given database table.
- * Contains all the CRUD operations for the model from the Prisma client.
- *
- * @example
- * const userRepository = generateRepository(prismaClient ,"User");
- *
- * const user = await userRepository.create({
- *     data: {},
- *     select: {},
- * });
- *
- * await userRepository.delete({
- *     where: {},
- * });
- * */
+ * Builds the base CRUD repository for a Prisma model.
+ * Usage: ARCHITECTURE.md, "Repository Pattern".
+ */
 export const generateRepository = <T extends Model>(
     prisma: PrismaClient,
     model: T

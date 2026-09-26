@@ -27,14 +27,6 @@ export const createGcpBucketService = (
     gcpStorageClient: Storage,
     config: EnvConfig
 ): GcpBucketService => {
-    const getBucket = () => {
-        if (!config.GCP_BUCKET_NAME) {
-            throw new Error(GCP_BUCKET_NOT_CONFIGURED);
-        }
-
-        return gcpStorageClient.bucket(config.GCP_BUCKET_NAME);
-    };
-
     return {
         deleteFile: async ({ key }) => {
             await getBucket().file(key).delete({ ignoreNotFound: true });
@@ -73,6 +65,14 @@ export const createGcpBucketService = (
             return url;
         },
     };
+
+    function getBucket() {
+        if (!config.GCP_BUCKET_NAME) {
+            throw new Error(GCP_BUCKET_NOT_CONFIGURED);
+        }
+
+        return gcpStorageClient.bucket(config.GCP_BUCKET_NAME);
+    }
 };
 
 addDIResolverName(createGcpBucketService, "gcpBucketService");
