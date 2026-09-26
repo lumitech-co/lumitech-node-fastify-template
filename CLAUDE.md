@@ -170,5 +170,8 @@ a custom index); if a generated migration would be destructive, stop and ask.
 - Use the `@/` path alias for imports from `src`.
 - **No inline comments** after lines of code. JSDoc on functions is allowed when it adds
   meaningful context (security notes, non-obvious behavior).
+- **Keep comments short** — a comment longer than 10 lines (JSDoc with big `@example`s,
+  walkthroughs) belongs in the module `README.md` or `ARCHITECTURE.md`
+  (`arch/max-comment-lines` warns).
 - **No barrel files** — import directly from the source file (a module's `index.ts` is a
   Fastify plugin entry point, not a barrel).
