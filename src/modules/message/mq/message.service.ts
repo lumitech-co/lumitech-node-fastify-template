@@ -1,7 +1,7 @@
-import { Queue } from "bullmq";
-import { MessageService } from "../message.service.js";
+import type { Queue } from "bullmq";
 import { MessageJobName } from "./message.constant.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { MessageService } from "@/modules/message/message.service.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import {
     createMessageJobSchema,

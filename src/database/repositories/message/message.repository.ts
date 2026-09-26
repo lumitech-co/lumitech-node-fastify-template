@@ -1,10 +1,10 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { generateRepository } from "../generate.repository.js";
 import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { BaseRepository } from "@/database/repositories/repository.type.js";
+import { generateRepository } from "@/database/repositories/generate.repository.js";
 
 export const messageListSelect = {
     id: true,
