@@ -5,11 +5,10 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { resolveTrustProxy } from "@/lib/proxy/proxy.util.js";
 import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";
+import { QUEUE_WORKER_PLUGIN_PATTERN } from "@/lib/constants/bullmq.constant.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-const QUEUE_WORKER_PLUGIN_PATTERN = /\/mq\/.+\.worker\.(ts|js)$/;
 
 type ConfigureServerOptions = {
     registerRoutes?: boolean;

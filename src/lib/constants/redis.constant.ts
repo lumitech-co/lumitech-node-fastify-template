@@ -9,3 +9,5 @@ export const REDIS_MAX_RETRIES_PER_REQUEST = 1;
 export const REDIS_RETRY_BACKOFF_STEP_MS = 200;
 
 export const REDIS_RETRY_BACKOFF_MAX_MS = 2000;
+
+export const REDIS_KEY_EXISTS = 1;

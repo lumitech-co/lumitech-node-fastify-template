@@ -523,7 +523,7 @@ export default [
 
         rules: {
             "arch/types-placement": [
-                "warn",
+                "error",
                 {
                     selector: "TSInterfaceDeclaration",
                     message: TYPES_PLACEMENT_MESSAGE,
@@ -554,7 +554,7 @@ export default [
 
         rules: {
             "arch/constants-placement": [
-                "warn",
+                "error",
                 {
                     selector:
                         ":matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator[id.name=/^[A-Z][A-Z0-9_]+$/]",
@@ -583,7 +583,7 @@ export default [
 
         rules: {
             "arch/typed-prisma-json": [
-                "warn",
+                "error",
                 {
                     selector:
                         "TSQualifiedName[left.name='Prisma'][right.name=/^(Json|InputJson|NullableJson)/], ImportSpecifier[imported.name=/^(Json|InputJson)(Value|Object|Array)$/]",

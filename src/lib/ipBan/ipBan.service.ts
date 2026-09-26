@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 import { FastifyBaseLogger } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { REDIS_KEY_EXISTS } from "@/lib/constants/redis.constant.js";
 import { IsBannedPayload, RegisterAttemptPayload } from "./ipBan.type.js";
 import {
     IP_BAN_ATTEMPTS_KEY_PREFIX,
@@ -8,16 +9,13 @@ import {
     IP_BAN_DURATION_SECONDS,
     IP_BAN_KEY_PREFIX,
     IP_BAN_MAX_ATTEMPTS,
+    IP_BAN_FIRST_ATTEMPT,
 } from "./ipBan.constant.js";
 
 export type IpBanService = {
     isBanned: (payload: IsBannedPayload) => Promise<boolean>;
     registerAttempt: (payload: RegisterAttemptPayload) => Promise<boolean>;
 };
-
-const FIRST_ATTEMPT = 1;
-
-const REDIS_KEY_EXISTS = 1;
 
 export const createIpBanService = (
     redis: Redis,
@@ -41,7 +39,7 @@ export const createIpBanService = (
         try {
             const attempts = await redis.incr(attemptsKey);
 
-            if (attempts === FIRST_ATTEMPT) {
+            if (attempts === IP_BAN_FIRST_ATTEMPT) {
                 await redis.expire(attemptsKey, IP_BAN_ATTEMPTS_WINDOW_SECONDS);
             }
 

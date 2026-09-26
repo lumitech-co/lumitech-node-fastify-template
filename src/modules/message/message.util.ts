@@ -48,15 +48,14 @@ const isEqual = ({ a, b }: IsEqualPayload): boolean => {
     }
 
     if (typeof a === "object" && typeof b === "object") {
-        const aObj = a as Record<string, unknown>;
-        const bObj = b as Record<string, unknown>;
-
-        const aKeys = Object.keys(aObj);
-        const bKeys = Object.keys(bObj);
+        const aKeys = Object.keys(a);
+        const bKeys = Object.keys(b);
 
         return (
             aKeys.length === bKeys.length &&
-            aKeys.every((key) => isEqual({ a: aObj[key], b: bObj[key] }))
+            aKeys.every((key) =>
+                isEqual({ a: Reflect.get(a, key), b: Reflect.get(b, key) })
+            )
         );
     }
 

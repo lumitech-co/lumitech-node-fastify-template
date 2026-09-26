@@ -7,3 +7,5 @@ export const BULLMQ_MAX_RETRIES_PER_REQUEST = null;
 export const BULLMQ_RETRY_BACKOFF_STEP_MS = 200;
 
 export const BULLMQ_RETRY_BACKOFF_MAX_MS = 2000;
+
+export const QUEUE_WORKER_PLUGIN_PATTERN = /\/mq\/.+\.worker\.(ts|js)$/;

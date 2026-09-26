@@ -1,18 +1,20 @@
 import { createHash } from "node:crypto";
-import { CACHE_KEY_HASH_LENGTH, CACHE_KEY_PREFIX } from "./cache.constant.js";
 import {
     CreateCacheKeyPayload,
     CreateRouteCacheKeyPayload,
 } from "./cache.type.js";
-
-const KEY_SEGMENT_SEPARATOR = "|";
+import {
+    CACHE_KEY_HASH_LENGTH,
+    CACHE_KEY_PREFIX,
+    CACHE_KEY_SEGMENT_SEPARATOR,
+} from "./cache.constant.js";
 
 export const createCacheKey = ({
     namespace,
     segments,
 }: CreateCacheKeyPayload): string => {
     const hash = createHash("sha256")
-        .update(segments.join(KEY_SEGMENT_SEPARATOR))
+        .update(segments.join(CACHE_KEY_SEGMENT_SEPARATOR))
         .digest("hex")
         .slice(0, CACHE_KEY_HASH_LENGTH);
 
@@ -34,7 +36,7 @@ export const createRouteCacheKey = ({
 
     const headers = (options.varyByHeaders ?? [])
         .map((header) => `${header}=${String(request.headers[header] ?? "")}`)
-        .join(KEY_SEGMENT_SEPARATOR);
+        .join(CACHE_KEY_SEGMENT_SEPARATOR);
 
     const namespace =
         options.namespace ??

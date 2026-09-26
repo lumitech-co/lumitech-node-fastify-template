@@ -16,3 +16,7 @@ export const IP_BAN_MESSAGE =
     "Access denied. If you believe this is a mistake, contact support.";
 
 export const ROUTE_NOT_FOUND_MESSAGE = "Route not found";
+
+export const IP_BAN_FIRST_ATTEMPT = 1;
+
+export const URL_QUERY_SEPARATOR = "?";
