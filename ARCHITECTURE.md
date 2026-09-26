@@ -66,6 +66,10 @@ export const createService = (
 addDIResolverName(createService, "messageService");  // Register with DI
 ```
 
+`addDIResolverName` sets the Awilix `RESOLVER` symbol on the factory, which is how the
+container learns the registration name — see Awilix
+[inlining resolver options](https://github.com/jeffijoe/awilix?tab=readme-ov-file#inlining-resolver-options).
+
 ### DI Container Type
 All dependencies are declared in `src/types/di-container.type.ts`:
 ```typescript
@@ -132,6 +136,11 @@ export const createMessageRepository = (
 
 addDIResolverName(createMessageRepository, "messageRepository");
 ```
+
+`generateRepository(prisma, "Message")` returns every CRUD method of the model's Prisma
+delegate (`create`, `findMany`, `update`, `delete`, …), so a repository only adds its own
+methods on top. `FindUniqueOrFail` uses `Prisma.SelectSubset` + `GetFindResult`, so the
+return type follows the `select` passed in, exactly like `findUnique`.
 
 ### Route Registration
 Routes use Zod schemas for validation and OpenAPI docs; the tag and the path enum are

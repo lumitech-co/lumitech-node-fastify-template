@@ -1,10 +1,8 @@
 import { DiffObjectsPayload, IsEqualPayload } from "./message.type.js";
 
 /**
- * Example function.
- *
- * Compare two flat objects and return an object containing
- * only the keys whose values differ, with values from the new object.
+ * Example util: keys whose values differ between two flat objects,
+ * with values from the new object.
  */
 export const diffObjects = <
     T extends Record<string, unknown>,

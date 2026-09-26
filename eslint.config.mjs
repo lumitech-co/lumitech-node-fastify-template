@@ -164,7 +164,10 @@ export default [
         rules: {
             "pretty-imports/sorted": "warn",
 
-            "@typescript-eslint/no-unused-vars": "warn",
+            "@typescript-eslint/no-unused-vars": [
+                "warn",
+                { argsIgnorePattern: "^_" },
+            ],
             "@typescript-eslint/no-use-before-define": "off",
 
             indent: ["error", 4],

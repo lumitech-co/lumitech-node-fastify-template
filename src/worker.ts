@@ -3,11 +3,8 @@ import closeWithGrace from "close-with-grace";
 import { configureServer } from "./server.js";
 
 /**
- * Deploy this entrypoint as its own always-warm service (e.g. Cloud Run with
- * min-instances >= 1). BullMQ's Worker needs a continuously running process
- * to pick up jobs — a scale-to-zero HTTP service only gets CPU while handling
- * a request, so a job enqueued while it is idle would otherwise sit unpicked
- * until unrelated traffic happens to wake it back up.
+ * Deploy as its own always-warm service (min-instances >= 1), never scale-to-zero.
+ * Why: README.md, "Background Worker (BullMQ)".
  */
 const main = async () => {
     const fastify = await configureServer({
