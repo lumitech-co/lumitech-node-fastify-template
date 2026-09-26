@@ -119,6 +119,12 @@ configuration or lifecycle, it becomes a plugin. A plugin needs a name in `Fasti
 references it, or when it is foundational (`prisma`, `env`, `jwt`, `awilix`); plugins nothing
 depends on (`cors`, `error`, `zod`) stay anonymous.
 
+**BullMQ exception:** a module's queue logic lives in the module —
+`src/modules/<name>/mq/<name>.queue.ts` (producer) and `<name>.worker.ts` (consumer) may
+import `bullmq` and call `new Queue` / `new Worker` — but they are plugin bodies: only
+`src/plugins/mq/<name>/*.{queue,worker}.ts` imports and registers them. Nothing else in the
+module imports `bullmq` except with `import type`.
+
 ### 7. Validation only via Zod
 All application data — body, params, query, headers, external API responses — is validated
 with Zod schemas in `src/lib/validation/<module>/<module>.schema.ts`. No manual
