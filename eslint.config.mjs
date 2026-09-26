@@ -29,8 +29,27 @@ const architecture = {
         "repository-files": restrictedSyntax,
         "route-constants": restrictedSyntax,
         "max-one-param": restrictedSyntax,
+        "response-messages": restrictedSyntax,
+        "no-db-in-loops": restrictedSyntax,
+        "layer-imports": typescriptEslint.rules["no-restricted-imports"],
+        "no-manual-new": restrictedSyntax,
+        "always-return": restrictedSyntax,
+        "types-placement": restrictedSyntax,
+        "constants-placement": restrictedSyntax,
+        "typed-prisma-json": restrictedSyntax,
     },
 };
+
+const ALWAYS_RETURN_MESSAGE =
+    "Service methods and our own utils always return a value — no void / side-effect-only functions (CLAUDE.md, Rule 4).";
+
+const TYPES_PLACEMENT_MESSAGE =
+    "Only <Name>Service / <Name>Handler and payload types whose fields are all primitive stay here — move the rest to <name>.type.ts (CLAUDE.md, Rule 5).";
+
+const PRIMITIVE_TYPE =
+    "TSStringKeyword, TSNumberKeyword, TSBooleanKeyword, TSNullKeyword, TSUndefinedKeyword, TSLiteralType, TSTypeReference[typeName.name='Date']";
+
+const VOID_RETURN_TYPE = ":matches(:function, TSFunctionType) > TSTypeAnnotation.returnType TSVoidKeyword";
 
 const MAX_ONE_PARAM_MESSAGE =
     "Service methods and our own utils take at most one argument — a primitive or a single object (CLAUDE.md, Rule 4).";
@@ -376,6 +395,20 @@ export default [
                     message: MAX_ONE_PARAM_MESSAGE,
                 },
             ],
+            "arch/always-return": [
+                "warn",
+                {
+                    selector:
+                        ":matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator > :function[expression=false]:not(:has(ReturnStatement[argument]))",
+                    message: ALWAYS_RETURN_MESSAGE,
+                },
+                {
+                    selector:
+                        ":matches(Program, Program > ExportNamedDeclaration) > FunctionDeclaration:not(:has(ReturnStatement[argument]))",
+                    message: ALWAYS_RETURN_MESSAGE,
+                },
+                { selector: VOID_RETURN_TYPE, message: ALWAYS_RETURN_MESSAGE },
+            ],
         },
     },
     {
@@ -388,6 +421,174 @@ export default [
                     selector:
                         ":matches(:function > ObjectExpression, ReturnStatement > ObjectExpression) > Property > :function[params.length>1]",
                     message: MAX_ONE_PARAM_MESSAGE,
+                },
+            ],
+            "arch/always-return": [
+                "warn",
+                {
+                    selector:
+                        ":matches(:function > ObjectExpression, ReturnStatement > ObjectExpression) > Property > :function[expression=false]:not(:has(ReturnStatement[argument]))",
+                    message: ALWAYS_RETURN_MESSAGE,
+                },
+                {
+                    selector:
+                        ":matches(:function > ObjectExpression, ReturnStatement > ObjectExpression) > Property > :function > TSTypeAnnotation.returnType TSVoidKeyword, TSTypeAliasDeclaration[id.name=/Service$/] TSFunctionType > TSTypeAnnotation.returnType TSVoidKeyword",
+                    message: ALWAYS_RETURN_MESSAGE,
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts"],
+
+        rules: {
+            "arch/response-messages": [
+                "error",
+                {
+                    selector:
+                        "Property[key.name='message'] > :matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))",
+                    message:
+                        "Client-facing messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
+                },
+                {
+                    selector:
+                        ":matches(NewExpression, CallExpression)[callee.name=/Error$/] > :matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))",
+                    message:
+                        "Error messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/no-db-in-loops": [
+                "warn",
+                {
+                    selector:
+                        ":matches(ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement) CallExpression[callee.object.name=/Repository$/]",
+                    message:
+                        "No repository calls inside loops — use a bulk operation or a single transaction (CLAUDE.md, Rule 3).",
+                },
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(map|forEach|flatMap|reduce|filter|find|some|every)$/] > :function CallExpression[callee.object.name=/Repository$/]",
+                    message:
+                        "No repository calls inside map/forEach/etc. — use a bulk operation or a single transaction (CLAUDE.md, Rule 3).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+
+        rules: {
+            "arch/layer-imports": [
+                "warn",
+                {
+                    patterns: [
+                        {
+                            regex: "\\.(service|repository|handler)(\\.js)?$",
+                            importNamePattern: "^create",
+                            allowTypeImports: true,
+                            message:
+                                "Never import-and-call another layer's factory — inject it through the Awilix container (CLAUDE.md, Rule 1).",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        // mq/*.queue.ts and mq/*.worker.ts are plugin bodies, loaded only
+        // by src/plugins/mq/**.
+        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+        ignores: ["src/modules/**/mq/*.{queue,worker}.ts"],
+
+        rules: {
+            "arch/no-manual-new": [
+                "warn",
+                {
+                    selector:
+                        "NewExpression:not([callee.name=/(Error|^Date|^Map|^Set|^URL)$/])",
+                    message:
+                        "No manual `new` in handlers/services/repositories — dependencies come from the Awilix container (CLAUDE.md, Rule 1).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.{service,handler}.ts"],
+
+        rules: {
+            "arch/types-placement": [
+                "warn",
+                {
+                    selector: "TSInterfaceDeclaration",
+                    message: TYPES_PLACEMENT_MESSAGE,
+                },
+                {
+                    selector:
+                        "TSTypeAliasDeclaration:not([id.name=/(Service|Handler)$/]):not([typeAnnotation.type='TSTypeLiteral'])",
+                    message: TYPES_PLACEMENT_MESSAGE,
+                },
+                {
+                    selector: `TSTypeAliasDeclaration:not([id.name=/(Service|Handler)$/]) > TSTypeLiteral > TSPropertySignature > TSTypeAnnotation > :not(${PRIMITIVE_TYPE}, TSUnionType)`,
+                    message: TYPES_PLACEMENT_MESSAGE,
+                },
+                {
+                    selector: `TSTypeAliasDeclaration:not([id.name=/(Service|Handler)$/]) > TSTypeLiteral > TSPropertySignature > TSTypeAnnotation > TSUnionType > :not(${PRIMITIVE_TYPE})`,
+                    message: TYPES_PLACEMENT_MESSAGE,
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+        ignores: [
+            "src/**/*.constant.ts",
+            "src/**/*.schema.ts",
+            "src/**/*.route.ts",
+        ],
+
+        rules: {
+            "arch/constants-placement": [
+                "warn",
+                {
+                    selector:
+                        ":matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator[id.name=/^[A-Z][A-Z0-9_]+$/]",
+                    message:
+                        "Constants live in *.constant.ts (module) or src/lib/constants/ (global) (CLAUDE.md, Rule 5).",
+                },
+            ],
+        },
+    },
+    {
+        // generate.repository.ts narrows a generic Prisma delegate — casts
+        // are the only way to type it.
+        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+        ignores: ["src/database/repositories/generate.repository.ts"],
+
+        rules: {
+            "@typescript-eslint/consistent-type-assertions": [
+                "warn",
+                { assertionStyle: "never" },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+        ignores: ["src/types/prisma-json.d.ts"],
+
+        rules: {
+            "arch/typed-prisma-json": [
+                "warn",
+                {
+                    selector:
+                        "TSQualifiedName[left.name='Prisma'][right.name=/^(Json|InputJson|NullableJson)/], ImportSpecifier[imported.name=/^(Json|InputJson)(Value|Object|Array)$/]",
+                    message:
+                        "Type Json columns via prisma-json-types-generator (PrismaJson namespace), never Prisma.Json* (CLAUDE.md, Rule 8).",
                 },
             ],
         },

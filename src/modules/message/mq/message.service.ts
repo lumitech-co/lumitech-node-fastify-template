@@ -52,7 +52,9 @@ export const createService = (
                 deleteMessageJobSchema.parse(data)
             );
         default:
-            throw new Error(`Unknown message job name: ${name}`);
+            throw new Error(
+                `${RESPONSE_MESSAGES.message.unknownJobName}: ${name}`
+            );
         }
     },
 

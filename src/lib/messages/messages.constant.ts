@@ -9,5 +9,6 @@ export const RESPONSE_MESSAGES = {
         deleteQueued: "Message deletion has been queued.",
         fetched: "Messages fetched successfully.",
         notFound: "Message not found.",
+        unknownJobName: "Unknown message job name",
     },
 } as const;
