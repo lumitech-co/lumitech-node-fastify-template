@@ -104,6 +104,8 @@ const architecture = {
         "constants-placement": restrictedSyntax,
         "typed-prisma-json": restrictedSyntax,
         "max-comment-lines": maxCommentLines,
+        "service-helpers": restrictedSyntax,
+        "service-return": restrictedSyntax,
     },
 };
 
@@ -505,6 +507,39 @@ export default [
                     selector:
                         ":matches(:function > ObjectExpression, ReturnStatement > ObjectExpression) > Property > :function > TSTypeAnnotation.returnType TSVoidKeyword, TSTypeAliasDeclaration[id.name=/Service$/] TSFunctionType > TSTypeAnnotation.returnType TSVoidKeyword",
                     message: ALWAYS_RETURN_MESSAGE,
+                },
+            ],
+            "arch/service-helpers": [
+                "error",
+                {
+                    selector: [
+                        "Program > VariableDeclaration > VariableDeclarator > :function",
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name!=/^create/] > :function",
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > :function > BlockStatement > VariableDeclaration > VariableDeclarator > :function",
+                    ].join(", "),
+                    message:
+                        "Outside the returned service object, helpers are declared as `function name() {}`, not as arrow/function-expression constants.",
+                },
+                {
+                    selector:
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > :function > BlockStatement > FunctionDeclaration ~ ReturnStatement",
+                    message:
+                        "Helper functions in the factory body go after this return, not before it.",
+                },
+                {
+                    selector:
+                        "Program > FunctionDeclaration ~ ExportNamedDeclaration[declaration.declarations.0.id.name=/^create/]",
+                    message:
+                        "File-level helper functions go after the service factory, not before it.",
+                },
+            ],
+            "arch/service-return": [
+                "error",
+                {
+                    selector:
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > :function > BlockStatement > ReturnStatement[argument.type='Identifier']",
+                    message:
+                        "Return the service object literal directly — don't build it in a variable first (`return { ... }`).",
                 },
             ],
         },

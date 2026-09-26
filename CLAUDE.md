@@ -164,6 +164,12 @@ a custom index); if a generated migration would be destructive, stop and ask.
 - Scaffold modules/repositories only with the generators (Rule 0); create migrations only
   with `prisma:migrate:create` (Rule 9).
 - Use factory functions, not classes; register all DI with `addDIResolverName()`.
+- In a `*.service.ts`, anything outside the returned service object (file-level helpers,
+  helpers inside the factory body) is a `function name() {}` declaration, never an
+  arrow/function-expression constant, placed **after** the factory's `return` (file-level
+  helpers after the factory itself) (`arch/service-helpers`). The factory returns the
+  service object literal directly — never `const service = { … }; return service;`
+  (`arch/service-return`).
 - Keep handlers thin — delegate to services. Validate inputs with Zod.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).
