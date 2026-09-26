@@ -15,6 +15,7 @@
         "tsc-check": "tsc --noEmit",
         "lint": "eslint --ignore-pattern \"test/*\" --color",
         "lint:fix": "eslint --ignore-pattern \"test/*\" --color --fix",
+        "check:migrations": "node scripts/check-migrations.mjs",
         "format": "prettier --write",
         "commitlint": "commitlint --edit",
         "prisma:push": "prisma db push",
