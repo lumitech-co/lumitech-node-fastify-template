@@ -20,10 +20,19 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: ${{ matrix.node-version }}
-                  cache: "npm"
+
+            - name: Set up npm
+              run: npm install -g npm@11.19.1
+
+            - name: Cache npm
+              uses: actions/cache@v4
+              with:
+                  path: ~/.npm
+                  key: npm-${{ runner.os }}-${{ matrix.node-version }}-${{ hashFiles('package-lock.json') }}
+                  restore-keys: npm-${{ runner.os }}-${{ matrix.node-version }}-
 
             - name: Install dependencies
-              run: npm i
+              run: npm ci
 
             - name: Run unit tests
               run: npm run test:unit:ci
