@@ -27,7 +27,7 @@ describe("journey: create a message then read it back", () => {
             body: { text: "Hello, world!" },
         });
 
-        expect(createResponse.statusCode).toBe(200);
+        expect(createResponse.statusCode).toBe(202);
 
         const { jobId } = createResponse.json().data;
 

@@ -16,6 +16,10 @@ export const configureMessageQueue = async (fastify: FastifyInstance) => {
         }
     );
 
+    messageQueue.on("error", (error) => {
+        fastify.log.error({ error }, "Message queue error");
+    });
+
     fastify.decorate("messageQueue", messageQueue);
 
     fastify.addHook("onClose", async (fastify) => {

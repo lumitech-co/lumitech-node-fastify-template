@@ -12,12 +12,12 @@ export type EnqueueCreateMessagePayload = {
 };
 
 export type EnqueueUpdateMessagePayload = {
-    id: number;
+    id: string;
     payload: UpdateMessageInput;
 };
 
 export type EnqueueDeleteMessagePayload = {
-    id: number;
+    id: string;
 };
 
 export type MessageJobData =
@@ -26,23 +26,11 @@ export type MessageJobData =
     | DeleteMessageJobData;
 
 export type MessageJobResult = {
-    id: number;
+    id: string;
 };
 
 export type ProcessMessageJobPayload = {
     name: MessageJobName;
     data: MessageJobData;
-};
-
-export type DiffObjectsPayload<
-    T extends Record<string, unknown>,
-    K extends Record<string, unknown>,
-> = {
-    oldObj: T;
-    newObj: K;
-};
-
-export type IsEqualPayload = {
-    a: unknown;
-    b: unknown;
+    enqueuedAt: Date;
 };

@@ -50,7 +50,7 @@ export const createHandler = (
                 payload: request.body,
             });
 
-            return reply.status(200).send(data);
+            return reply.status(202).send(data);
         },
 
         updateMessage: async (request, reply) => {
@@ -73,7 +73,7 @@ export const createHandler = (
         getMessages: async (request, reply) => {
             const data = await messageService.getMessages(request.query);
 
-            return reply.send(data);
+            return reply.status(200).send(data);
         },
     };
 };

@@ -16,13 +16,14 @@ const messageMetaSchema = z.object({
 });
 
 const defaultMessageSchema = z.object({
-    id: z.number(),
+    id: z.uuidv7(),
     text: z.string(),
     createdAt: z.date(),
     meta: messageMetaSchema.nullable(),
 });
 
 const createMessageBodySchema = z.object({
+    id: z.uuidv7().optional(),
     text: z.string(),
     meta: messageMetaSchema.optional(),
 });
@@ -42,17 +43,19 @@ const updateMessageBodySchema = z
 type UpdateMessageInput = z.infer<typeof updateMessageBodySchema>;
 
 const messageIdParamSchema = z.object({
-    id: z.coerce.number().int().positive(),
+    id: z.uuidv7(),
 });
 
 type MessageIdParam = z.infer<typeof messageIdParamSchema>;
 
-const createMessageJobSchema = createMessageBodySchema;
+const createMessageJobSchema = createMessageBodySchema.extend({
+    id: z.uuidv7(),
+});
 
 type CreateMessageJobData = z.infer<typeof createMessageJobSchema>;
 
 const updateMessageJobSchema = z.object({
-    id: z.number().int().positive(),
+    id: z.uuidv7(),
     text: z.string().optional(),
     meta: messageMetaSchema.optional(),
 });
@@ -60,7 +63,7 @@ const updateMessageJobSchema = z.object({
 type UpdateMessageJobData = z.infer<typeof updateMessageJobSchema>;
 
 const deleteMessageJobSchema = z.object({
-    id: z.number().int().positive(),
+    id: z.uuidv7(),
 });
 
 type DeleteMessageJobData = z.infer<typeof deleteMessageJobSchema>;
@@ -69,7 +72,7 @@ const MESSAGES_PAGE_DEFAULT_LIMIT = 20;
 const MESSAGES_PAGE_MAX_LIMIT = 100;
 
 const fetchMessagesQuerySchema = z.object({
-    cursor: z.coerce.number().int().positive().optional(),
+    cursor: z.uuidv7().optional(),
     limit: z.coerce
         .number()
         .int()
@@ -83,6 +86,7 @@ type FetchMessagesQuery = z.infer<typeof fetchMessagesQuerySchema>;
 const enqueueMessageResponseSchema = z.object({
     message: z.string(),
     data: z.object({
+        id: z.uuidv7(),
         jobId: z.string(),
     }),
 });
@@ -93,7 +97,7 @@ const fetchMessagesResponseSchema = z.object({
     message: z.string(),
     data: z.object({
         messages: z.array(defaultMessageSchema),
-        nextCursor: z.number().nullable(),
+        nextCursor: z.uuidv7().nullable(),
     }),
 });
 

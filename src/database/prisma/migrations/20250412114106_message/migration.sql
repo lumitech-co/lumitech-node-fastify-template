@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "messages" (
-    "id" SERIAL NOT NULL,
+    "id" UUID NOT NULL DEFAULT uuidv7(),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "text" TEXT NOT NULL,
 

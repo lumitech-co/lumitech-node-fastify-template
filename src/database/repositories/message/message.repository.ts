@@ -22,6 +22,7 @@ export type MessageRepository = BaseRepository<"message"> & {
         Prisma.MessageFindUniqueArgs,
         Prisma.$MessagePayload
     >;
+    generateId: () => Promise<string>;
 };
 
 export const createMessageRepository = (
@@ -39,6 +40,18 @@ export const createMessageRepository = (
             }
 
             return message;
+        },
+
+        /**
+         * Asks Postgres for the same `uuidv7()` the column defaults to, so a
+         * create job can carry its id before the row exists.
+         */
+        generateId: async () => {
+            const [{ id }] = await prisma.$queryRaw<
+                [{ id: string }]
+            >`SELECT uuidv7()::text AS id`;
+
+            return id;
         },
     };
 };

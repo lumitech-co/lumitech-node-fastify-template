@@ -12,9 +12,14 @@ export const configureMessageWorker = async (fastify: FastifyInstance) => {
             messageJobService.processMessageJob({
                 name: job.name,
                 data: job.data,
+                enqueuedAt: new Date(job.timestamp),
             }),
         { connection: fastify.bullmqConnection }
     );
+
+    worker.on("error", (error) => {
+        fastify.log.error({ error }, "Message worker error");
+    });
 
     worker.on("failed", (job, error) => {
         fastify.log.error(

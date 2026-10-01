@@ -146,9 +146,9 @@ enum MessageRoute {
 fastify.post(MessageRoute.Root, {
     schema: {
         tags: [MESSAGE_TAG],
-        summary: "Create message",
+        summary: "Enqueue message creation",
         body: createMessageBodySchema,
-        response: { 200: createMessageResponseSchema },
+        response: { 202: enqueueMessageResponseSchema },
     },
 }, messageHandler.createMessage);
 ```

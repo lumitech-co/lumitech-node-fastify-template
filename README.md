@@ -15,7 +15,7 @@ Welcome to the Lumitech Node.js Fastify Template. This template provides a well-
 - [Zod](https://zod.dev) - validation;
 - [Swagger](https://swagger.io/) - API documentation;
 - [Awilix](https://github.com/jeffijoe/awilix) - Dependency Injection container;
-- [PostgreSQL](https://www.postgresql.org/) - relational database;
+- [PostgreSQL](https://www.postgresql.org/) 18+ - relational database (ids use the built-in `uuidv7()`);
 - [Prisma](https://www.prisma.io/docs/getting-started) - database ORM;
 - [Vitest](https://vitest.dev/) - testing framework.
 

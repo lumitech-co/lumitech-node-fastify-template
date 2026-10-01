@@ -1,8 +1,14 @@
-import { Queue } from "bullmq";
+import { ZodError } from "zod";
+import { Queue, UnrecoverableError } from "bullmq";
+import { NotFoundError } from "@/lib/errors/errors.js";
 import { MessageService } from "../message.service.js";
 import { MessageJobName } from "./message.constant.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import {
+    messageIdSelect,
+    MessageRepository,
+} from "@/database/repositories/message/message.repository.js";
 import {
     createMessageJobSchema,
     updateMessageJobSchema,
@@ -35,56 +41,97 @@ export type MessageJobService = {
 
 export const createService = (
     messageService: MessageService,
+    messageRepository: MessageRepository,
     messageQueue: Queue<MessageJobData, unknown, MessageJobName>
-): MessageJobService => ({
-    processMessageJob: async ({ name, data }) => {
+): MessageJobService => {
+    const runMessageJob = ({
+        name,
+        data,
+        enqueuedAt,
+    }: ProcessMessageJobPayload): Promise<MessageJobResult> => {
         switch (name) {
         case MessageJobName.Create:
-            return messageService.createMessage(
-                createMessageJobSchema.parse(data)
-            );
+            return messageService.createMessage({
+                ...createMessageJobSchema.parse(data),
+                enqueuedAt,
+            });
         case MessageJobName.Update:
-            return messageService.updateMessage(
-                updateMessageJobSchema.parse(data)
-            );
+            return messageService.updateMessage({
+                ...updateMessageJobSchema.parse(data),
+                enqueuedAt,
+            });
         case MessageJobName.Delete:
             return messageService.deleteMessage(
                 deleteMessageJobSchema.parse(data)
             );
         default:
-            throw new Error(`Unknown message job name: ${name}`);
+            throw new UnrecoverableError(
+                `Unknown message job name: ${name}`
+            );
         }
-    },
+    };
 
-    enqueueCreateMessage: async ({ payload }) => {
-        const job = await messageQueue.add(MessageJobName.Create, payload);
+    return {
+        processMessageJob: async (payload) => {
+            try {
+                return await runMessageJob(payload);
+            } catch (error) {
+                if (
+                    error instanceof ZodError ||
+                    error instanceof NotFoundError
+                ) {
+                    throw new UnrecoverableError(error.message);
+                }
 
-        return {
-            message: RESPONSE_MESSAGES.message.createQueued,
-            data: { jobId: job.id ?? "" },
-        };
-    },
+                throw error;
+            }
+        },
 
-    enqueueUpdateMessage: async ({ id, payload }) => {
-        const job = await messageQueue.add(MessageJobName.Update, {
-            id,
-            ...payload,
-        });
+        enqueueCreateMessage: async ({ payload }) => {
+            const id = payload.id ?? (await messageRepository.generateId());
 
-        return {
-            message: RESPONSE_MESSAGES.message.updateQueued,
-            data: { jobId: job.id ?? "" },
-        };
-    },
+            const job = await messageQueue.add(MessageJobName.Create, {
+                ...payload,
+                id,
+            });
 
-    enqueueDeleteMessage: async ({ id }) => {
-        const job = await messageQueue.add(MessageJobName.Delete, { id });
+            return {
+                message: RESPONSE_MESSAGES.message.createQueued,
+                data: { id, jobId: job.id ?? "" },
+            };
+        },
 
-        return {
-            message: RESPONSE_MESSAGES.message.deleteQueued,
-            data: { jobId: job.id ?? "" },
-        };
-    },
-});
+        enqueueUpdateMessage: async ({ id, payload }) => {
+            await messageRepository.findUniqueOrFail({
+                where: { id },
+                select: messageIdSelect,
+            });
+
+            const job = await messageQueue.add(MessageJobName.Update, {
+                id,
+                ...payload,
+            });
+
+            return {
+                message: RESPONSE_MESSAGES.message.updateQueued,
+                data: { id, jobId: job.id ?? "" },
+            };
+        },
+
+        enqueueDeleteMessage: async ({ id }) => {
+            await messageRepository.findUniqueOrFail({
+                where: { id },
+                select: messageIdSelect,
+            });
+
+            const job = await messageQueue.add(MessageJobName.Delete, { id });
+
+            return {
+                message: RESPONSE_MESSAGES.message.deleteQueued,
+                data: { id, jobId: job.id ?? "" },
+            };
+        },
+    };
+};
 
 addDIResolverName(createService, "messageJobService");

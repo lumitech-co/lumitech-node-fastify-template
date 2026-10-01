@@ -50,8 +50,8 @@ const runMigrationFiles = async (client: Client) => {
 };
 
 const globalSetup = async ({ provide }: TestProject) => {
-    const container = await new PostgreSqlContainer("postgres:16.4")
-        .withTmpFs({ "/var/lib/postgresql/data": "rw" })
+    const container = await new PostgreSqlContainer("postgres:18")
+        .withTmpFs({ "/var/lib/postgresql": "rw" })
         .start();
 
     const databaseUri = container.getConnectionUri();
