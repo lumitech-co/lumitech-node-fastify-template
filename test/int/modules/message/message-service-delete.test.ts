@@ -27,7 +27,7 @@ describe("DELETE /api/messages/:id", () => {
 
         const json = response.json();
 
-        expect(response.statusCode).toBe(202);
+        expect(response.statusCode).toBe(200);
         expect(json.data.jobId).toEqual(expect.any(String));
 
         await waitForMessageJob({ server, jobId: json.data.jobId });

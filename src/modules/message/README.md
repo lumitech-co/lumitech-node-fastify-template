@@ -4,7 +4,7 @@ API module for managing messages in the system.
 
 Write operations (create, update, delete) are **asynchronous**: the HTTP endpoint
 validates the request, enqueues a job on the BullMQ `message` queue and returns
-`202 Accepted` with the message `id` and the `jobId`. A background worker consumes the job, performs the
+the message `id` and the `jobId` (`202 Accepted` for create, `200 OK` for update and delete). A background worker consumes the job, performs the
 database write and invalidates the list cache. Reads (`GET`) stay synchronous.
 
 ## Base Path
@@ -18,7 +18,7 @@ database write and invalidates the list cache. Reads (`GET`) stay synchronous.
 | Method | Path                | Description                  | Auth |
 |--------|---------------------|------------------------------|------|
 | POST   | /api/messages/      | Enqueue message creation     | No   |
-| PATCH  | /api/messages/:id   | Enqueue message update       | No   |
+| PUT    | /api/messages/:id   | Enqueue message update       | No   |
 | DELETE | /api/messages/:id   | Enqueue message deletion     | No   |
 | GET    | /api/messages/      | Fetch messages (paginated)   | No   |
 
@@ -76,7 +76,7 @@ type CreateMessageInput = {
 
 ---
 
-## PATCH /api/messages/:id
+## PUT /api/messages/:id
 
 Enqueues an update of an existing message. At least one of `text` / `meta` must be
 provided. The message must exist when the request arrives — otherwise `404` and no job
@@ -97,7 +97,7 @@ type UpdateMessageInput = {
 
 ### Response
 
-**Status:** 202 Accepted
+**Status:** 200 OK
 
 ```json
 {
@@ -118,7 +118,7 @@ Enqueues deletion of a message. An unknown `id` returns `404` and no job is enqu
 
 ### Response
 
-**Status:** 202 Accepted
+**Status:** 200 OK
 
 ```json
 {

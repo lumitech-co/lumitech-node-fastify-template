@@ -6,7 +6,7 @@ import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";
 
 const MISSING_ID = "019a0000-0000-7000-8000-000000000000";
 
-describe("PATCH /api/messages/:id", () => {
+describe("PUT /api/messages/:id", () => {
     let server: FastifyInstance;
 
     beforeEach(async () => {
@@ -21,14 +21,14 @@ describe("PATCH /api/messages/:id", () => {
         const message = await createMessage({ prisma: server.prisma });
 
         const response = await server.inject({
-            method: "PATCH",
+            method: "PUT",
             url: `/api/messages/${message.id}`,
             body: { text: "Updated text" },
         });
 
         const json = response.json();
 
-        expect(response.statusCode).toBe(202);
+        expect(response.statusCode).toBe(200);
         expect(json.data.jobId).toEqual(expect.any(String));
 
         await waitForMessageJob({ server, jobId: json.data.jobId });
@@ -47,7 +47,7 @@ describe("PATCH /api/messages/:id", () => {
         });
 
         const response = await server.inject({
-            method: "PATCH",
+            method: "PUT",
             url: `/api/messages/${message.id}`,
             body: { text: "New text only" },
         });
@@ -66,7 +66,7 @@ describe("PATCH /api/messages/:id", () => {
         const add = vi.spyOn(server.messageQueue, "add");
 
         const response = await server.inject({
-            method: "PATCH",
+            method: "PUT",
             url: `/api/messages/${MISSING_ID}`,
             body: { text: "Does not matter" },
         });
@@ -79,7 +79,7 @@ describe("PATCH /api/messages/:id", () => {
         const message = await createMessage({ prisma: server.prisma });
 
         const response = await server.inject({
-            method: "PATCH",
+            method: "PUT",
             url: `/api/messages/${message.id}`,
             body: {},
         });
@@ -89,7 +89,7 @@ describe("PATCH /api/messages/:id", () => {
 
     it("should reject an id that is not a UUID v7", async () => {
         const response = await server.inject({
-            method: "PATCH",
+            method: "PUT",
             url: "/api/messages/not-a-uuid",
             body: { text: "Updated text" },
         });
