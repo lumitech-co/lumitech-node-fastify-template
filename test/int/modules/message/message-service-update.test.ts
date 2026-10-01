@@ -62,6 +62,29 @@ describe("PUT /api/messages/:id", () => {
         expect(stored.meta).toEqual({ source: "web" });
     });
 
+    it("should clear meta when it is sent as null", async () => {
+        const message = await createMessage({
+            prisma: server.prisma,
+            overrides: { meta: { source: "web" } },
+        });
+
+        const response = await server.inject({
+            method: "PUT",
+            url: `/api/messages/${message.id}`,
+            body: { meta: null },
+        });
+
+        expect(response.statusCode).toBe(200);
+
+        await waitForMessageJob({ server, jobId: response.json().data.jobId });
+
+        const stored = await server.prisma.message.findUniqueOrThrow({
+            where: { id: message.id },
+        });
+
+        expect(stored.meta).toBeNull();
+    });
+
     it("should return 404 without enqueueing a job when the id does not exist", async () => {
         const add = vi.spyOn(server.messageQueue, "add");
 

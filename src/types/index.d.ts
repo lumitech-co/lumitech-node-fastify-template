@@ -22,6 +22,7 @@ declare module "fastify" {
         awsS3Client: S3Client;
         redis: Redis;
         bullmqConnection: Redis;
+        bullmqProducerConnection: Redis;
         messageQueue: Queue<MessageJobData, unknown, MessageJobName>;
     }
 

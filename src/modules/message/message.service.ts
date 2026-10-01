@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
 import { MessageJobResult } from "./mq/message.type.js";
@@ -48,7 +49,11 @@ export const createService = (
     updateMessage: async ({ id, text, meta, enqueuedAt }) => {
         const { count } = await messageRepository.updateMany({
             where: { id, updatedAt: { lte: enqueuedAt } },
-            data: { text, meta, updatedAt: enqueuedAt },
+            data: {
+                text,
+                meta: meta === null ? Prisma.DbNull : meta,
+                updatedAt: enqueuedAt,
+            },
         });
 
         if (count === 0) {

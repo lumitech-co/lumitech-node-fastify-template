@@ -41,9 +41,11 @@ type EnqueueMessageResponse = {
 Enqueues creation of a new message. The `id` is a UUID v7: the client may send its own
 (must be v7 — anything else is `400`), otherwise the API takes one from Postgres
 (`SELECT uuidv7()`) before enqueueing. Either way it is returned right away, so the
-client can address the message before the worker runs. Re-sending the same `id` does
-not create a second message — the worker upserts by it. A client-chosen `id` also sets
-the message's position in the newest-first list, since v7 ids are time-ordered.
+client can address the message before the worker runs. A client-chosen `id` that already
+belongs to a stored message is rejected with `409`. Re-sending an `id` whose create is
+still queued is accepted but does not create a second message — the worker upserts by
+it. A client-chosen `id` also sets the message's position in the newest-first
+list, since v7 ids are time-ordered.
 
 ### Request
 
@@ -73,14 +75,16 @@ type CreateMessageInput = {
 | Status | Error       | Description                     |
 |--------|-------------|---------------------------------|
 | 400    | Bad Request | Invalid or missing `text` field |
+| 409    | Conflict    | A message with this `id` already exists |
 
 ---
 
 ## PUT /api/messages/:id
 
 Enqueues an update of an existing message. At least one of `text` / `meta` must be
-provided. The message must exist when the request arrives — otherwise `404` and no job
-is enqueued.
+provided; `meta: null` clears the stored meta. The message must exist when the request
+arrives — otherwise `404` and no job is enqueued, so an update sent right after a create
+gets `404` until the worker has stored the message.
 
 ### Request
 
@@ -91,7 +95,7 @@ is enqueued.
 ```typescript
 type UpdateMessageInput = {
     text?: string;
-    meta?: MessageMeta;
+    meta?: MessageMeta | null;
 };
 ```
 
@@ -110,7 +114,8 @@ type UpdateMessageInput = {
 
 ## DELETE /api/messages/:id
 
-Enqueues deletion of a message. An unknown `id` returns `404` and no job is enqueued.
+Enqueues deletion of a message. An unknown `id` (including one whose create is still
+queued) returns `404` and no job is enqueued.
 
 ### Request
 
@@ -230,6 +235,9 @@ Failures that repeat on every attempt — invalid job data, a message deleted in
 meantime, an unknown job name — are thrown as `UnrecoverableError` and fail without
 retries. Anything else (DB/Redis down) is retried 3 times with exponential backoff.
 
+Enqueueing uses its own Redis connection with the offline queue off: if Redis is down,
+a write request fails right away with `500` instead of hanging until Redis is back.
+
 ### Files
 
 | File                    | Purpose                                            |
@@ -255,7 +263,7 @@ retries. Anything else (DB/Redis down) is retried 3 times with exponential backo
 | `src/database/repositories/message/`           | Data access layer                |
 | `src/plugins/mq/message/message.queue.ts`     | Thin `fp` wrapper registering `configureMessageQueue` |
 | `src/plugins/mq/message/message.worker.ts`    | Thin `fp` wrapper registering `configureMessageWorker` |
-| `src/plugins/bullmq.ts`                        | Shared ioredis connection for BullMQ |
+| `src/plugins/bullmq.ts`                        | ioredis connections for BullMQ: blocking (workers) and fail-fast (producers) |
 
 ---
 
@@ -280,7 +288,8 @@ From `RESPONSE_MESSAGES.message` in `src/lib/messages/messages.constant.ts`:
 | `findUniqueOrFail`                             | Find or throw `NotFoundError` with `notFound` |
 
 The worker uses `upsert`, `updateMany` and `deleteMany`; the enqueue existence check
-and the stale-update check use `findUniqueOrFail`; reads use `findMany`.
+for create uses `findUnique` (`409`), for update/delete and the stale-update check
+`findUniqueOrFail`; reads use `findMany`.
 
 ---
 

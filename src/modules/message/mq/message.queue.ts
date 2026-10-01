@@ -11,7 +11,7 @@ export const configureMessageQueue = async (fastify: FastifyInstance) => {
     const messageQueue = new Queue<MessageJobData, unknown, MessageJobName>(
         MESSAGE_QUEUE_NAME,
         {
-            connection: fastify.bullmqConnection,
+            connection: fastify.bullmqProducerConnection,
             defaultJobOptions: MESSAGE_QUEUE_DEFAULT_JOB_OPTIONS,
         }
     );

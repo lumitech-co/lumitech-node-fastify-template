@@ -70,8 +70,9 @@ services:
             dockerfile: Dockerfile
             target: base
         container_name: app-node-api
-        environment:
+        env_file:
             - .env
+        environment:
             - PORT=3001
         ports:
             - "3001:3001"
@@ -87,8 +88,9 @@ services:
             dockerfile: Dockerfile
             target: base
         container_name: app-node-worker
-        environment:
+        env_file:
             - .env
+        environment:
             - PORT=3002
         command: bash -c "npm run prisma:generate && npm run start:dev:worker"
         networks:

@@ -33,7 +33,7 @@ type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 const updateMessageBodySchema = z
     .object({
         text: z.string(),
-        meta: messageMetaSchema,
+        meta: messageMetaSchema.nullable(),
     })
     .partial()
     .refine((value) => Object.keys(value).length > 0, {
@@ -57,7 +57,7 @@ type CreateMessageJobData = z.infer<typeof createMessageJobSchema>;
 const updateMessageJobSchema = z.object({
     id: z.uuidv7(),
     text: z.string().optional(),
-    meta: messageMetaSchema.optional(),
+    meta: messageMetaSchema.nullable().optional(),
 });
 
 type UpdateMessageJobData = z.infer<typeof updateMessageJobSchema>;
