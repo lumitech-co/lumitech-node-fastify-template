@@ -9,6 +9,5 @@ export const RESPONSE_MESSAGES = {
         deleteQueued: "Message deletion has been queued.",
         fetched: "Messages fetched successfully.",
         notFound: "Message not found.",
-        alreadyExists: "A message with this id already exists.",
     },
 } as const;

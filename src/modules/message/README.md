@@ -41,11 +41,9 @@ type EnqueueMessageResponse = {
 Enqueues creation of a new message. The `id` is a UUID v7: the client may send its own
 (must be v7 — anything else is `400`), otherwise the API takes one from Postgres
 (`SELECT uuidv7()`) before enqueueing. Either way it is returned right away, so the
-client can address the message before the worker runs. A client-chosen `id` that already
-belongs to a stored message is rejected with `409`. Re-sending an `id` whose create is
-still queued is accepted but does not create a second message — the worker upserts by
-it. A client-chosen `id` also sets the message's position in the newest-first
-list, since v7 ids are time-ordered.
+client can address the message before the worker runs. Re-sending the same `id` does
+not create a second message — the worker upserts by it. A client-chosen `id` also sets
+the message's position in the newest-first list, since v7 ids are time-ordered.
 
 ### Request
 
@@ -75,8 +73,6 @@ type CreateMessageInput = {
 | Status | Error       | Description                     |
 |--------|-------------|---------------------------------|
 | 400    | Bad Request | Invalid or missing `text` field |
-| 409    | Conflict    | A message with this `id` already exists |
-
 ---
 
 ## PUT /api/messages/:id
@@ -288,8 +284,7 @@ From `RESPONSE_MESSAGES.message` in `src/lib/messages/messages.constant.ts`:
 | `findUniqueOrFail`                             | Find or throw `NotFoundError` with `notFound` |
 
 The worker uses `upsert`, `updateMany` and `deleteMany`; the enqueue existence check
-for create uses `findUnique` (`409`), for update/delete and the stale-update check
-`findUniqueOrFail`; reads use `findMany`.
+and the stale-update check use `findUniqueOrFail`; reads use `findMany`.
 
 ---
 

@@ -1,6 +1,6 @@
 import { Queue, UnrecoverableError } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import { ConflictError, NotFoundError } from "@/lib/errors/errors.js";
+import { NotFoundError } from "@/lib/errors/errors.js";
 import { MessageService } from "@/modules/message/message.service.js";
 import { createService } from "@/modules/message/mq/message.service.js";
 import { MessageJobName } from "@/modules/message/mq/message.constant.js";
@@ -26,7 +26,6 @@ const createFakeMessageService = (): MessageService => ({
 
 const createFakeRepository = (): MessageRepository =>
     ({
-        findUnique: vi.fn(async () => null),
         findUniqueOrFail: vi.fn(async () => ({ id: messageId })),
         generateId: vi.fn(async () => messageId),
     }) as unknown as MessageRepository;
@@ -171,7 +170,6 @@ describe("mq/message.service - enqueue*", () => {
         });
 
         expect(repository.generateId).toHaveBeenCalledOnce();
-        expect(repository.findUnique).not.toHaveBeenCalled();
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Create, {
             text: "Hello",
             id: messageId,
@@ -197,22 +195,6 @@ describe("mq/message.service - enqueue*", () => {
             text: "Hello",
         });
         expect(result.data.id).toBe(missingId);
-    });
-
-    it("should reject a client-provided id that is already stored", async () => {
-        const queue = createFakeQueue();
-        const repository = createFakeRepository();
-        (repository.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
-            id: messageId,
-        });
-        const service = buildService({ queue, repository });
-
-        await expect(
-            service.enqueueCreateMessage({
-                payload: { id: messageId, text: "Hello" },
-            })
-        ).rejects.toThrow(ConflictError);
-        expect(queue.add).not.toHaveBeenCalled();
     });
 
     it("should enqueue an update job after checking the message exists", async () => {

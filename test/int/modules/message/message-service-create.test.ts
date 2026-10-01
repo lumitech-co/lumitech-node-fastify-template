@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";
 
 describe("POST /api/messages", () => {
@@ -103,22 +103,6 @@ describe("POST /api/messages", () => {
         });
 
         expect(stored.text).toBe("Client id");
-    });
-
-    it("should return 409 without enqueueing a job when the id already exists", async () => {
-        const existing = await server.prisma.message.create({
-            data: { text: "Taken" },
-        });
-        const add = vi.spyOn(server.messageQueue, "add");
-
-        const response = await server.inject({
-            method: "POST",
-            url: "/api/messages",
-            body: { id: existing.id, text: "Duplicate" },
-        });
-
-        expect(response.statusCode).toBe(409);
-        expect(add).not.toHaveBeenCalled();
     });
 
     it("should reject a client-provided id that is not a UUID v7", async () => {
