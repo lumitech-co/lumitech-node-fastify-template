@@ -15,9 +15,9 @@ export type IpBanService = {
     registerAttempt: (payload: RegisterAttemptPayload) => Promise<boolean>;
 };
 
-const FIRST_ATTEMPT = 1;
-
 const REDIS_KEY_EXISTS = 1;
+
+const INCR_RESULT_INDEX = 0;
 
 export const createIpBanService = (
     redis: Redis,
@@ -39,11 +39,19 @@ export const createIpBanService = (
         const attemptsKey = `${IP_BAN_ATTEMPTS_KEY_PREFIX}${ip}`;
 
         try {
-            const attempts = await redis.incr(attemptsKey);
+            const results = await redis
+                .multi()
+                .incr(attemptsKey)
+                .expire(attemptsKey, IP_BAN_ATTEMPTS_WINDOW_SECONDS, "NX")
+                .exec();
 
-            if (attempts === FIRST_ATTEMPT) {
-                await redis.expire(attemptsKey, IP_BAN_ATTEMPTS_WINDOW_SECONDS);
+            const incr = results?.[INCR_RESULT_INDEX];
+
+            if (!incr || incr[0]) {
+                throw incr?.[0] ?? new Error("Ip ban transaction aborted");
             }
+
+            const attempts = Number(incr[1]);
 
             if (attempts < IP_BAN_MAX_ATTEMPTS) {
                 return false;

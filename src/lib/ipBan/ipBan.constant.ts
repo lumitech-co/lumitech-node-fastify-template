@@ -10,7 +10,7 @@ export const IP_BAN_DURATION_SECONDS = 3600;
 
 export const IP_BAN_ALLOWED_PREFIXES = ["/api/", "/.well-known/"];
 
-export const IP_BAN_ALLOWED_PATHS = ["/", "/favicon.ico"];
+export const IP_BAN_ALLOWED_PATHS = ["/", "/api", "/favicon.ico"];
 
 export const IP_BAN_MESSAGE =
     "Access denied. If you believe this is a mistake, contact support.";

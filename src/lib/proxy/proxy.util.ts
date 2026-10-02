@@ -1,26 +1,21 @@
-export const resolveTrustProxy = (
-    rawValue: string | undefined
-): number | boolean => {
-    const normalized = rawValue?.trim().toLowerCase();
+const MAX_TRUSTED_PROXY_HOPS = 10;
 
-    if (!normalized) {
+export const resolveTrustProxy = (rawValue: string | undefined): number => {
+    const normalized = rawValue?.trim();
+
+    if (!normalized || !/^\d+$/.test(normalized)) {
         throw new Error(
-            "TRUSTED_PROXY_HOPS is required: set it to the number of trusted " +
-                "reverse-proxy hops (e.g. 1) or false when the app is exposed " +
-                "directly with no proxy."
+            "TRUSTED_PROXY_HOPS must be a non-negative integer (number of " +
+                "proxy hops); use 0 if the app is not behind a proxy."
         );
-    }
-
-    if (normalized === "true" || normalized === "false") {
-        return normalized === "true";
     }
 
     const hops = Number(normalized);
 
-    if (!Number.isInteger(hops) || hops < 0) {
+    if (hops > MAX_TRUSTED_PROXY_HOPS) {
         throw new Error(
-            "TRUSTED_PROXY_HOPS must be a non-negative integer (hop count) " +
-                "or a boolean (true/false)."
+            `TRUSTED_PROXY_HOPS must not exceed ${MAX_TRUSTED_PROXY_HOPS} ` +
+                "proxy hops."
         );
     }
 

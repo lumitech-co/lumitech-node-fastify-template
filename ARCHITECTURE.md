@@ -254,7 +254,7 @@ health checks from the load balancer never trip the limit. Clients are identifie
 `request.ip`; Fastify's `trustProxy` is set in `src/server.ts` from the **required**
 `TRUSTED_PROXY_HOPS` env var so this resolves the real client IP behind a proxy/load balancer
 instead of the proxy's own IP. Set it to the actual number of trusted hops for your topology
-(e.g. `1` behind a single load balancer), or `false` when the app is exposed directly with no
+(e.g. `1` behind a single load balancer), or `0` when the app is exposed directly with no
 proxy — a mismatch lets clients spoof `X-Forwarded-For` and bypass the limiter, so it has no
 default and startup fails fast if it is unset or malformed.
 Exceeding the limit returns `429` with a body shaped like the rest of the app's errors
@@ -268,7 +268,7 @@ known prefix is an honest mistake and is ignored, a 404 anywhere else counts as 
 ```typescript
 export const IP_BAN_ALLOWED_PREFIXES = ["/api/", "/.well-known/"];
 
-export const IP_BAN_ALLOWED_PATHS = ["/", "/favicon.ico"];
+export const IP_BAN_ALLOWED_PATHS = ["/", "/api", "/favicon.ico"];
 ```
 The lists are deliberately minimal — this is a JSON API, so almost nothing legitimately
 lives outside `/api/`, and that prefix already covers Swagger UI and its assets (its HTML
