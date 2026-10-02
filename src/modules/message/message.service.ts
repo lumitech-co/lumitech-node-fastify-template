@@ -1,21 +1,27 @@
+import { Prisma } from "@prisma/client";
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
-import { CreateMessagePayload } from "./message.type.js";
+import { MessageJobResult } from "./mq/message.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { CacheService } from "@/lib/cache/cache.service.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import { CreateMessagePayload, UpdateMessagePayload } from "./message.type.js";
 import {
     FetchMessagesQuery,
-    CreateMessageResponse,
     FetchMessagesResponse,
+    DeleteMessageJobData,
 } from "@/lib/validation/message/message.schema.js";
+import {
+    messageIdSelect,
+    messageListSelect,
+    MessageRepository,
+} from "@/database/repositories/message/message.repository.js";
 
 export type MessageService = {
-    createMessage: (
-        payload: CreateMessagePayload
-    ) => Promise<CreateMessageResponse>;
+    createMessage: (payload: CreateMessagePayload) => Promise<MessageJobResult>;
+    updateMessage: (payload: UpdateMessagePayload) => Promise<MessageJobResult>;
+    deleteMessage: (payload: DeleteMessageJobData) => Promise<MessageJobResult>;
     getMessages: (query: FetchMessagesQuery) => Promise<FetchMessagesResponse>;
 };
 
@@ -25,27 +31,55 @@ export const createService = (
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
-    createMessage: async ({ payload }) => {
-        const { text, meta } = payload;
+    createMessage: async ({ id, text, meta, enqueuedAt }) => {
+        await messageRepository.upsert({
+            where: { id },
+            create: { id, text, meta, updatedAt: enqueuedAt },
+            update: {},
+            select: messageIdSelect,
+        });
 
-        const message = await messageRepository.create({
-            data: { text, meta },
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
+    },
+
+    updateMessage: async ({ id, text, meta, enqueuedAt }) => {
+        const { count } = await messageRepository.updateMany({
+            where: { id, updatedAt: { lte: enqueuedAt } },
+            data: {
+                text,
+                meta: meta === null ? Prisma.DbNull : meta,
+                updatedAt: enqueuedAt,
             },
         });
 
-        await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
+        if (count === 0) {
+            await messageRepository.findUniqueOrFail({
+                where: { id },
+                select: messageIdSelect,
+            });
 
-        return {
-            message: RESPONSE_MESSAGES.message.created,
-            data: {
-                message,
-            },
-        };
+            return { id };
+        }
+
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
+    },
+
+    deleteMessage: async ({ id }) => {
+        await messageRepository.deleteMany({ where: { id } });
+
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
     },
 
     getMessages: async ({ cursor, limit }) => {
@@ -55,12 +89,7 @@ export const createService = (
             take: limit,
             orderBy: { id: "desc" },
             ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
-            },
+            select: messageListSelect,
         });
 
         const nextCursor =

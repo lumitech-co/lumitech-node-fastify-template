@@ -1,7 +1,14 @@
-import { CreateMessageInput } from "@/lib/validation/message/message.schema.js";
+import {
+    CreateMessageJobData,
+    UpdateMessageJobData,
+} from "@/lib/validation/message/message.schema.js";
 
-export type CreateMessagePayload = {
-    payload: CreateMessageInput;
+export type CreateMessagePayload = CreateMessageJobData & {
+    enqueuedAt: Date;
+};
+
+export type UpdateMessagePayload = UpdateMessageJobData & {
+    enqueuedAt: Date;
 };
 
 export type DiffObjectsPayload<
