@@ -18,11 +18,11 @@ const configureGcpStorage = async (fastify: FastifyInstance) => {
         }),
         ...(GCP_CLIENT_EMAIL &&
             GCP_PRIVATE_KEY && {
-            credentials: {
-                client_email: GCP_CLIENT_EMAIL,
-                private_key: GCP_PRIVATE_KEY.replace(/\\n/g, "\n"),
-            },
-        }),
+                credentials: {
+                    client_email: GCP_CLIENT_EMAIL,
+                    private_key: GCP_PRIVATE_KEY.replace(/\\n/g, "\n"),
+                },
+            }),
     });
 
     fastify.decorate("gcpStorageClient", storage);

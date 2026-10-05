@@ -8,9 +8,9 @@ export const diffObjects = <
     T extends Record<string, unknown>,
     K extends Record<string, unknown>,
 >({
-        oldObj,
-        newObj,
-    }: DiffObjectsPayload<T, K>): Partial<K> => {
+    oldObj,
+    newObj,
+}: DiffObjectsPayload<T, K>): Partial<K> => {
     const diff: Partial<K> = {};
 
     for (const key in newObj) {

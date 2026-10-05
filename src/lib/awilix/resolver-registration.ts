@@ -12,14 +12,14 @@ export const resolverOptionsRegister: (
     di: AwilixContainer<Cradle>
 ) => ResolveRegistration =
     (di) =>
-        (...args) => {
-            const name = args[0][RESOLVER].name;
+    (...args) => {
+        const name = args[0][RESOLVER].name;
 
-            if (di.hasRegistration(name)) {
-                throw new Error(
-                    `Module "${name}" is already registered in the container.`
-                );
-            }
+        if (di.hasRegistration(name)) {
+            throw new Error(
+                `Module "${name}" is already registered in the container.`
+            );
+        }
 
-            return asFunction(args[0], args[1]);
-        };
+        return asFunction(args[0], args[1]);
+    };

@@ -44,24 +44,24 @@ export const createService = (
     return {
         processMessageJob: async ({ name, data, enqueuedAt }) => {
             switch (name) {
-            case MessageJobName.Create:
-                return messageService.createMessage({
-                    ...createMessageJobSchema.parse(data),
-                    enqueuedAt,
-                });
-            case MessageJobName.Update:
-                return messageService.updateMessage({
-                    ...updateMessageJobSchema.parse(data),
-                    enqueuedAt,
-                });
-            case MessageJobName.Delete:
-                return messageService.deleteMessage(
-                    deleteMessageJobSchema.parse(data)
-                );
-            default:
-                throw new BadRequestError(
-                    `${RESPONSE_MESSAGES.message.unknownJobName}: ${name}`
-                );
+                case MessageJobName.Create:
+                    return messageService.createMessage({
+                        ...createMessageJobSchema.parse(data),
+                        enqueuedAt,
+                    });
+                case MessageJobName.Update:
+                    return messageService.updateMessage({
+                        ...updateMessageJobSchema.parse(data),
+                        enqueuedAt,
+                    });
+                case MessageJobName.Delete:
+                    return messageService.deleteMessage(
+                        deleteMessageJobSchema.parse(data)
+                    );
+                default:
+                    throw new BadRequestError(
+                        `${RESPONSE_MESSAGES.message.unknownJobName}: ${name}`
+                    );
             }
         },
 

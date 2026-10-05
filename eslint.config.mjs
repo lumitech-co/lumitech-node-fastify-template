@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import path from "node:path";
 import globals from "globals";
 import tsParser from "@typescript-eslint/parser";
-import stylisticJs from "@stylistic/eslint-plugin-js";
+import stylistic from "@stylistic/eslint-plugin";
 import prettyImports from "eslint-plugin-pretty-imports";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import importX, { createNodeResolver } from "eslint-plugin-import-x";
@@ -22,8 +22,6 @@ const restrictedSyntax = builtinRules.get("no-restricted-syntax");
 // Comments are not AST nodes, so no-restricted-syntax cannot see them.
 // Consecutive // lines count as one comment.
 const MAX_COMMENT_LINES = 5;
-
-const INDENT_SPACES = 4;
 
 const maxCommentLines = {
     meta: {
@@ -88,7 +86,8 @@ const maxCommentLines = {
 };
 
 // A blanket directive (no rule list) switches off every arch/* rule too.
-const DISABLE_DIRECTIVE = /^\s*eslint-disable(?:-next-line|-line)?(?:\s+([^]*?))?(?:\s+--[^]*)?\s*$/;
+const DISABLE_DIRECTIVE =
+    /^\s*eslint-disable(?:-next-line|-line)?(?:\s+([^]*?))?(?:\s+--[^]*)?\s*$/;
 
 const noArchDisable = {
     meta: {
@@ -114,9 +113,15 @@ const noArchDisable = {
                     const rules = match[1]?.trim();
 
                     if (!rules) {
-                        context.report({ loc: comment.loc, messageId: "blanket" });
+                        context.report({
+                            loc: comment.loc,
+                            messageId: "blanket",
+                        });
                     } else if (/(^|[\s,])arch\//.test(rules)) {
-                        context.report({ loc: comment.loc, messageId: "archRule" });
+                        context.report({
+                            loc: comment.loc,
+                            messageId: "archRule",
+                        });
                     }
                 }
             },
@@ -165,7 +170,9 @@ const layerDirection = {
             const typeOnly =
                 node.importKind === "type" ||
                 (node.specifiers?.length > 0 &&
-                    node.specifiers.every((spec) => spec.importKind === "type"));
+                    node.specifiers.every(
+                        (spec) => spec.importKind === "type"
+                    ));
 
             if (target !== ownModule && !typeOnly) {
                 context.report({ node, messageId: "crossModule" });
@@ -237,7 +244,9 @@ const fileNaming = {
         },
     },
     create(context) {
-        const match = context.filename.replaceAll("\\", "/").match(NAMED_FOLDERS);
+        const match = context.filename
+            .replaceAll("\\", "/")
+            .match(NAMED_FOLDERS);
 
         if (!match) {
             return {};
@@ -248,7 +257,11 @@ const fileNaming = {
         return {
             Program(node) {
                 if (file !== "index.ts" && !file.startsWith(`${folder}.`)) {
-                    context.report({ node, messageId: "mismatch", data: { folder } });
+                    context.report({
+                        node,
+                        messageId: "mismatch",
+                        data: { folder },
+                    });
                 }
             },
         };
@@ -314,7 +327,8 @@ const TYPES_PLACEMENT_MESSAGE =
 const PRIMITIVE_TYPE =
     "TSStringKeyword, TSNumberKeyword, TSBooleanKeyword, TSNullKeyword, TSUndefinedKeyword, TSLiteralType, TSTypeReference[typeName.name='Date']";
 
-const VOID_RETURN_TYPE = ":matches(:function, TSFunctionType) > TSTypeAnnotation.returnType TSVoidKeyword";
+const VOID_RETURN_TYPE =
+    ":matches(:function, TSFunctionType) > TSTypeAnnotation.returnType TSVoidKeyword";
 
 const MAX_ONE_PARAM_MESSAGE =
     "Service methods and our own utils take at most one argument — a primitive or a single object (CLAUDE.md, Rule 4).";
@@ -346,7 +360,7 @@ export default [
         plugins: {
             "@typescript-eslint": typescriptEslint,
             "pretty-imports": prettyImports,
-            "@stylistic/js": stylisticJs,
+            "@stylistic": stylistic,
         },
 
         languageOptions: {
@@ -367,11 +381,6 @@ export default [
                 { argsIgnorePattern: "^_" },
             ],
             "@typescript-eslint/no-use-before-define": "off",
-
-            indent: ["error", INDENT_SPACES],
-            "linebreak-style": ["error", "unix"],
-            quotes: ["error", "double", "avoid-escape"],
-            semi: ["error", "always"],
 
             "no-console": "error",
             "no-inline-comments": "error",
@@ -410,14 +419,15 @@ export default [
                 {
                     ignoreArrayIndexes: true,
                     ignore: [
-                        0, 1, -1, 200, 201, 202, 204, 400, 401, 403, 404, 409, 429, 500,
+                        0, 1, -1, 200, 201, 202, 204, 400, 401, 403, 404, 409,
+                        429, 500,
                     ],
                 },
             ],
 
             "id-denylist": ["error", "cb", "item", "i", "el"],
 
-            "padding-line-between-statements": [
+            "@stylistic/padding-line-between-statements": [
                 "warn",
                 {
                     blankLine: "always",
@@ -530,7 +540,8 @@ export default [
             "arch/no-barrel-files": [
                 "error",
                 {
-                    selector: "ExportAllDeclaration, ExportNamedDeclaration[source]",
+                    selector:
+                        "ExportAllDeclaration, ExportNamedDeclaration[source]",
                     message:
                         "No barrel files — import directly from the source file (CLAUDE.md, Conventions).",
                 },
@@ -747,7 +758,7 @@ export default [
                     selector:
                         "Program:not(:has(Program > ExpressionStatement > CallExpression[callee.name='addDIResolverName']))",
                     message:
-                        "Register the factory with a top-level addDIResolverName(factory, \"name\") (CLAUDE.md, Rule 1).",
+                        'Register the factory with a top-level addDIResolverName(factory, "name") (CLAUDE.md, Rule 1).',
                 },
                 {
                     selector:
@@ -774,7 +785,7 @@ export default [
                     selector:
                         "Program:not(:has(Program > ExpressionStatement > CallExpression[callee.name='addDIResolverName']))",
                     message:
-                        "Register the factory with a top-level addDIResolverName(factory, \"name\") (CLAUDE.md, Rule 1).",
+                        'Register the factory with a top-level addDIResolverName(factory, "name") (CLAUDE.md, Rule 1).',
                 },
                 {
                     selector:
@@ -802,7 +813,7 @@ export default [
                     selector:
                         "Program:not(:has(Program > ExpressionStatement > CallExpression[callee.name='addDIResolverName']))",
                     message:
-                        "Register the factory with a top-level addDIResolverName(factory, \"name\") (CLAUDE.md, Rule 1).",
+                        'Register the factory with a top-level addDIResolverName(factory, "name") (CLAUDE.md, Rule 1).',
                 },
                 {
                     selector:
@@ -857,7 +868,8 @@ export default [
             "arch/route-shape": [
                 "error",
                 {
-                    selector: "CallExpression[callee.object.name='fastify'][callee.property.name='route']",
+                    selector:
+                        "CallExpression[callee.object.name='fastify'][callee.property.name='route']",
                     message:
                         "Declare routes with fastify.<method>(path, { schema }, <name>Handler.<method>), not fastify.route().",
                 },
@@ -906,7 +918,7 @@ export default [
                     selector:
                         "CallExpression[callee.property.name=/^(trace|debug|info|warn|error|fatal)$/]:matches([callee.object.name=/^(log|logger)$/], [callee.object.property.name='log']) > :matches(TemplateLiteral[expressions.length>0], BinaryExpression[operator='+'])",
                     message:
-                        "Log structured data: log.info({ id }, \"message\") or printf-style log.info(\"... %s\", value) — never interpolate into the message.",
+                        'Log structured data: log.info({ id }, "message") or printf-style log.info("... %s", value) — never interpolate into the message.',
                 },
             ],
         },
@@ -951,8 +963,10 @@ export default [
             "arch/return-reply": [
                 "error",
                 {
-                    selector: "ExpressionStatement > CallExpression[callee.property.name='send']",
-                    message: "Return the reply: `return reply.status(...).send(data)`.",
+                    selector:
+                        "ExpressionStatement > CallExpression[callee.property.name='send']",
+                    message:
+                        "Return the reply: `return reply.status(...).send(data)`.",
                 },
             ],
         },
@@ -975,7 +989,8 @@ export default [
                         "Types in a schema file are derived with z.infer / z.input / z.output, never written by hand (CLAUDE.md, Rule 7).",
                 },
                 {
-                    selector: "CallExpression[callee.object.name='z'][callee.property.name='any']",
+                    selector:
+                        "CallExpression[callee.object.name='z'][callee.property.name='any']",
                     message:
                         "z.any() switches validation off — describe the shape, or use z.unknown() and narrow it (CLAUDE.md, Rule 7).",
                 },
@@ -1024,7 +1039,8 @@ export default [
             "arch/no-process-env": [
                 "error",
                 {
-                    selector: "MemberExpression[object.name='process'][property.name='env']",
+                    selector:
+                        "MemberExpression[object.name='process'][property.name='env']",
                     message:
                         "Read configuration from the validated `config` (EnvConfig) via the container or fastify.config, never process.env.",
                 },
@@ -1038,13 +1054,16 @@ export default [
             "arch/typed-errors": [
                 "error",
                 {
-                    selector: "ThrowStatement > :matches(NewExpression, CallExpression)[callee.name='Error']",
+                    selector:
+                        "ThrowStatement > :matches(NewExpression, CallExpression)[callee.name='Error']",
                     message:
                         "Throw a typed error from @/lib/errors/errors.ts (NotFoundError, …) so the error plugin maps it to a status code.",
                 },
                 {
-                    selector: "ThrowStatement > :not(NewExpression, CallExpression, Identifier, MemberExpression, AwaitExpression)",
-                    message: "Throw an error object from @/lib/errors/errors.ts, never a literal.",
+                    selector:
+                        "ThrowStatement > :not(NewExpression, CallExpression, Identifier, MemberExpression, AwaitExpression)",
+                    message:
+                        "Throw an error object from @/lib/errors/errors.ts, never a literal.",
                 },
             ],
         },
@@ -1057,10 +1076,12 @@ export default [
                 "error",
                 {
                     selector: "Program:not(:has(ExportDefaultDeclaration))",
-                    message: "A plugin file default-exports its plugin: export default fp(configureX, { ... }).",
+                    message:
+                        "A plugin file default-exports its plugin: export default fp(configureX, { ... }).",
                 },
                 {
-                    selector: "ExportDefaultDeclaration:not([declaration.type='CallExpression'][declaration.callee.name='fp'])",
+                    selector:
+                        "ExportDefaultDeclaration:not([declaration.type='CallExpression'][declaration.callee.name='fp'])",
                     message:
                         "Wrap the plugin with fastify-plugin: export default fp(configureX, { ... }) (CLAUDE.md, Rule 6).",
                 },
@@ -1077,7 +1098,7 @@ export default [
                     selector:
                         "Program:not(:has(ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name='autoPrefix'] > Literal))",
                     message:
-                        "A module's index.ts exports the endpoint prefix as a literal: export const autoPrefix = \"/api/...\" (CLAUDE.md, Rule 5).",
+                        'A module\'s index.ts exports the endpoint prefix as a literal: export const autoPrefix = "/api/..." (CLAUDE.md, Rule 5).',
                 },
                 {
                     selector: "Program:not(:has(ExportDefaultDeclaration))",
