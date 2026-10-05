@@ -120,8 +120,70 @@ const noArchDisable = {
     },
 };
 
+// lib/ and database/ never reach up into modules/; a module reaches another
+// module only for types — the rest comes through the container.
+const layerDirection = {
+    meta: {
+        type: "problem",
+        schema: [],
+        messages: {
+            upward: "src/lib and src/database never import from src/modules (CLAUDE.md, Rule 1).",
+            crossModule:
+                "A module imports another module only with `import type` — inject its service through the Awilix container (CLAUDE.md, Rule 1).",
+        },
+    },
+    create(context) {
+        const file = context.filename.replaceAll("\\", "/");
+        const ownModule = file.match(/\/src\/modules\/([^/]+)\//)?.[1];
+        const lowerLayer = /\/src\/(lib|database)\//.test(file);
+
+        if (!ownModule && !lowerLayer) {
+            return {};
+        }
+
+        function check(node) {
+            const source = node.source?.value;
+            const target =
+                typeof source === "string" &&
+                source.match(/^@\/modules\/([^/]+)\//)?.[1];
+
+            if (!target) {
+                return;
+            }
+
+            if (lowerLayer) {
+                context.report({ node, messageId: "upward" });
+
+                return;
+            }
+
+            const typeOnly =
+                node.importKind === "type" ||
+                (node.specifiers?.length > 0 &&
+                    node.specifiers.every((spec) => spec.importKind === "type"));
+
+            if (target !== ownModule && !typeOnly) {
+                context.report({ node, messageId: "crossModule" });
+            }
+        }
+
+        return { ImportDeclaration: check, ImportExpression: check };
+    },
+};
+
+const HTTP_METHOD_CALL =
+    "CallExpression[callee.object.name='fastify'][callee.property.name=/^(get|post|put|patch|delete|head|options)$/]";
+
 const architecture = {
     rules: {
+        "layer-direction": layerDirection,
+        "route-shape": restrictedSyntax,
+        "paginate-lists": restrictedSyntax,
+        "handler-imports": typescriptEslint.rules["no-restricted-imports"],
+        "thin-handlers": restrictedSyntax,
+        "no-process-env": restrictedSyntax,
+        "typed-errors": restrictedSyntax,
+        "entry-points": restrictedSyntax,
         "no-arch-disable": noArchDisable,
         "file-layout": restrictedSyntax,
         "factory-params": restrictedSyntax,
@@ -632,6 +694,177 @@ export default [
                                 "Zod schemas live only in src/lib/validation/<module>/<module>.schema.ts — import them from there; elsewhere only `import type` / ZodError (CLAUDE.md, Rule 7).",
                         },
                     ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/layer-direction": "error",
+            "arch/paginate-lists": [
+                "warn",
+                {
+                    selector:
+                        "CallExpression[callee.property.name='findMany']:not(:has(Property[key.name='take']))",
+                    message:
+                        "Every list is paginated — pass `take` (cursor- or skip-based) to findMany (CLAUDE.md, Conventions).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.route.ts"],
+
+        rules: {
+            "arch/route-shape": [
+                "error",
+                {
+                    selector: "CallExpression[callee.object.name='fastify'][callee.property.name='route']",
+                    message:
+                        "Declare routes with fastify.<method>(path, { schema }, <name>Handler.<method>), not fastify.route().",
+                },
+                {
+                    selector: `${HTTP_METHOD_CALL}[arguments.2.object.name!=/Handler$/]`,
+                    message:
+                        "A route is fastify.<method>(path, { schema }, <name>Handler.<method>) — no inline handlers, logic lives in the handler (CLAUDE.md, Conventions).",
+                },
+                {
+                    selector: `${HTTP_METHOD_CALL}:not(:has(Property[key.name='response']))`,
+                    message:
+                        "Every route declares schema.response with a Zod schema (CLAUDE.md, Rule 7).",
+                },
+                {
+                    selector: `${HTTP_METHOD_CALL}:not(:has(Property[key.name='tags']))`,
+                    message:
+                        "Every route declares schema.tags with the module tag so it shows up in Swagger.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.handler.ts"],
+
+        rules: {
+            "arch/handler-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: ["@/database/**"],
+                            message:
+                                "Handlers never touch repositories — call the module service (CLAUDE.md, Conventions: keep handlers thin).",
+                        },
+                        {
+                            group: ["@/lib/validation/**"],
+                            importNamePattern: "Schema$",
+                            message:
+                                "Handlers don't use Zod schemas — validation is declared in the route schema; import only the inferred types.",
+                        },
+                    ],
+                },
+            ],
+            "arch/thin-handlers": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(safe)?[pP]arse(Async)?$/]",
+                    message:
+                        "Handlers don't validate — the route schema does; business logic belongs in the service (CLAUDE.md, Conventions).",
+                },
+            ],
+        },
+    },
+    {
+        // server.ts reads NODE_ENV before the env plugin loads (CLAUDE.md, Rule 7).
+        files: ["src/**/*.ts"],
+        ignores: ["src/plugins/env.ts", "src/server.ts"],
+
+        rules: {
+            "arch/no-process-env": [
+                "error",
+                {
+                    selector: "MemberExpression[object.name='process'][property.name='env']",
+                    message:
+                        "Read configuration from the validated `config` (EnvConfig) via the container or fastify.config, never process.env.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts", "src/database/**/*.ts"],
+
+        rules: {
+            "arch/typed-errors": [
+                "error",
+                {
+                    selector: "ThrowStatement > :matches(NewExpression, CallExpression)[callee.name='Error']",
+                    message:
+                        "Throw a typed error from @/lib/errors/errors.ts (NotFoundError, …) so the error plugin maps it to a status code.",
+                },
+                {
+                    selector: "ThrowStatement > :not(NewExpression, CallExpression, Identifier, MemberExpression, AwaitExpression)",
+                    message: "Throw an error object from @/lib/errors/errors.ts, never a literal.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/plugins/**/*.ts"],
+
+        rules: {
+            "arch/entry-points": [
+                "error",
+                {
+                    selector: "Program:not(:has(ExportDefaultDeclaration))",
+                    message: "A plugin file default-exports its plugin: export default fp(configureX, { ... }).",
+                },
+                {
+                    selector: "ExportDefaultDeclaration:not([declaration.type='CallExpression'][declaration.callee.name='fp'])",
+                    message:
+                        "Wrap the plugin with fastify-plugin: export default fp(configureX, { ... }) (CLAUDE.md, Rule 6).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/*/index.ts"],
+
+        rules: {
+            "arch/entry-points": [
+                "error",
+                {
+                    selector:
+                        "Program:not(:has(ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name='autoPrefix'] > Literal))",
+                    message:
+                        "A module's index.ts exports the endpoint prefix as a literal: export const autoPrefix = \"/api/...\" (CLAUDE.md, Rule 5).",
+                },
+                {
+                    selector: "Program:not(:has(ExportDefaultDeclaration))",
+                    message:
+                        "A module's index.ts default-exports the plugin that resolves the handler and calls create<Name>Routes.",
+                },
+                {
+                    selector:
+                        "Program > :not(ImportDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration[declaration.declarations.0.id.name='autoPrefix'])",
+                    message:
+                        "A module's index.ts holds only imports, autoPrefix and the default-exported plugin — everything else goes to the module files.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+        ignores: ["src/plugins/**", "src/modules/*/index.ts"],
+
+        rules: {
+            "arch/entry-points": [
+                "error",
+                {
+                    selector: "ExportDefaultDeclaration",
+                    message:
+                        "Named exports only — default exports are for plugins (src/plugins/) and module entry points (src/modules/*/index.ts).",
                 },
             ],
         },
