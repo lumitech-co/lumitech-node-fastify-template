@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const cachedResponseSchema = z.object({
     payload: z.string(),
-    contentType: z.string(),
+    headers: z.record(z.string(), z.string()),
 });
 
 type CachedResponse = z.infer<typeof cachedResponseSchema>;

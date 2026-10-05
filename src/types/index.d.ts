@@ -6,8 +6,8 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@prisma/client";
 import { Storage } from "@google-cloud/storage";
 import { Cradle } from "./di-container.type.js";
-import { MessageJobData } from "@/modules/message/message.type.js";
-import { MessageJobName } from "@/modules/message/message.constant.js";
+import { MessageJobData } from "@/modules/message/mq/message.type.js";
+import { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import {
     RequestCacheState,
     RouteCacheOptions,
@@ -22,6 +22,7 @@ declare module "fastify" {
         awsS3Client: S3Client;
         redis: Redis;
         bullmqConnection: Redis;
+        bullmqProducerConnection: Redis;
         messageQueue: Queue<MessageJobData, unknown, MessageJobName>;
     }
 

@@ -93,7 +93,7 @@ describe("Response cache for /api/messages", () => {
         expect(primed.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
 
         const updated = await server.inject({
-            method: "PATCH",
+            method: "PUT",
             url: `/api/messages/${message.id}`,
             body: { text: "Updated text" },
         });

@@ -34,14 +34,14 @@ export const createMessageRoutes = (
                 summary: "Enqueue message creation",
                 body: createMessageBodySchema,
                 response: {
-                    200: enqueueMessageResponseSchema,
+                    202: enqueueMessageResponseSchema,
                 },
             },
         },
         messageHandler.createMessage
     );
 
-    fastify.patch(
+    fastify.put(
         MessageRoute.ById,
         {
             schema: {

@@ -5,22 +5,21 @@ import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { CacheService } from "@/lib/cache/cache.service.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import { CreateMessagePayload, UpdateMessagePayload } from "./message.type.js";
+import {
+    FetchMessagesQuery,
+    FetchMessagesResponse,
+    DeleteMessageJobData,
+} from "@/lib/validation/message/message.schema.js";
 import {
     messageIdSelect,
     messageListSelect,
     MessageRepository,
 } from "@/database/repositories/message/message.repository.js";
-import {
-    FetchMessagesQuery,
-    FetchMessagesResponse,
-    CreateMessageJobData,
-    DeleteMessageJobData,
-    UpdateMessageJobData,
-} from "@/lib/validation/message/message.schema.js";
 
 export type MessageService = {
-    createMessage: (payload: CreateMessageJobData) => Promise<MessageJobResult>;
-    updateMessage: (payload: UpdateMessageJobData) => Promise<MessageJobResult>;
+    createMessage: (payload: CreateMessagePayload) => Promise<MessageJobResult>;
+    updateMessage: (payload: UpdateMessagePayload) => Promise<MessageJobResult>;
     deleteMessage: (payload: DeleteMessageJobData) => Promise<MessageJobResult>;
     getMessages: (query: FetchMessagesQuery) => Promise<FetchMessagesResponse>;
 };
@@ -31,9 +30,11 @@ export const createService = (
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
-    createMessage: async ({ text, meta }) => {
-        const message = await messageRepository.create({
-            data: { text, meta },
+    createMessage: async ({ id, text, meta, enqueuedAt }) => {
+        await messageRepository.upsert({
+            where: { id },
+            create: { id, text, meta, updatedAt: enqueuedAt },
+            update: {},
             select: messageIdSelect,
         });
 
@@ -41,25 +42,35 @@ export const createService = (
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
 
-        return { id: message.id };
+        return { id };
     },
 
-    updateMessage: async ({ id, text, meta }) => {
-        const message = await messageRepository.update({
-            where: { id },
-            data: { text, meta },
-            select: messageIdSelect,
+    updateMessage: async ({ id, text, meta, enqueuedAt }) => {
+        const { count } = await messageRepository.updateUnlessNewer({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
         });
+
+        if (count === 0) {
+            await messageRepository.findUniqueOrFail({
+                where: { id },
+                select: messageIdSelect,
+            });
+
+            return { id };
+        }
 
         await cacheService.invalidate({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
 
-        return { id: message.id };
+        return { id };
     },
 
     deleteMessage: async ({ id }) => {
-        await messageRepository.delete({ where: { id } });
+        await messageRepository.deleteMany({ where: { id } });
 
         await cacheService.invalidate({
             namespace: MESSAGE_CACHE_NAMESPACE,

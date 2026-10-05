@@ -11,10 +11,14 @@ export const configureMessageQueue = async (fastify: FastifyInstance) => {
     const messageQueue = new Queue<MessageJobData, unknown, MessageJobName>(
         MESSAGE_QUEUE_NAME,
         {
-            connection: fastify.bullmqConnection,
+            connection: fastify.bullmqProducerConnection,
             defaultJobOptions: MESSAGE_QUEUE_DEFAULT_JOB_OPTIONS,
         }
     );
+
+    messageQueue.on("error", (error) => {
+        fastify.log.error({ error }, "Message queue error");
+    });
 
     fastify.decorate("messageQueue", messageQueue);
 

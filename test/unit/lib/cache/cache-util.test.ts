@@ -13,6 +13,7 @@ type BuildRequestPayload = {
     host?: string;
     routeUrl?: string;
     headers?: Record<string, string>;
+    query?: Record<string, unknown>;
 };
 
 const buildRequest = ({
@@ -21,10 +22,12 @@ const buildRequest = ({
     host = "localhost",
     routeUrl = "/api/messages",
     headers = {},
+    query = {},
 }: BuildRequestPayload = {}): FastifyRequest =>
     ({
         method,
         url,
+        query,
         headers: { host, ...headers },
         routeOptions: { url: routeUrl },
     }) as unknown as FastifyRequest;
@@ -72,20 +75,44 @@ describe("cache.util - createCacheKey", () => {
 describe("cache.util - createRouteCacheKey", () => {
     it("should be independent of query-parameter order", () => {
         const ordered = routeKey(
-            buildRequest({ url: "/api/messages?a=1&b=2" })
+            buildRequest({
+                url: "/api/messages?a=1&b=2",
+                query: { a: "1", b: "2" },
+            })
         );
         const shuffled = routeKey(
-            buildRequest({ url: "/api/messages?b=2&a=1" })
+            buildRequest({
+                url: "/api/messages?b=2&a=1",
+                query: { b: "2", a: "1" },
+            })
         );
 
         expect(ordered).toBe(shuffled);
     });
 
     it("should distinguish different query values", () => {
-        const one = routeKey(buildRequest({ url: "/api/messages?page=1" }));
-        const two = routeKey(buildRequest({ url: "/api/messages?page=2" }));
+        const one = routeKey(
+            buildRequest({ url: "/api/messages?page=1", query: { page: 1 } })
+        );
+        const two = routeKey(
+            buildRequest({ url: "/api/messages?page=2", query: { page: 2 } })
+        );
 
         expect(one).not.toBe(two);
+    });
+
+    it("should ignore raw query parameters stripped by validation", () => {
+        const clean = routeKey(
+            buildRequest({ url: "/api/messages?page=1", query: { page: 1 } })
+        );
+        const polluted = routeKey(
+            buildRequest({
+                url: "/api/messages?page=1&junk=abc",
+                query: { page: 1 },
+            })
+        );
+
+        expect(clean).toBe(polluted);
     });
 
     it("should include the HTTP method in the key", () => {

@@ -10,13 +10,13 @@ export const IP_BAN_DURATION_SECONDS = 3600;
 
 export const IP_BAN_ALLOWED_PREFIXES = ["/api/", "/.well-known/"];
 
-export const IP_BAN_ALLOWED_PATHS = ["/", "/favicon.ico"];
+export const IP_BAN_ALLOWED_PATHS = ["/", "/api", "/favicon.ico"];
 
 export const IP_BAN_MESSAGE =
     "Access denied. If you believe this is a mistake, contact support.";
 
 export const ROUTE_NOT_FOUND_MESSAGE = "Route not found";
 
-export const IP_BAN_FIRST_ATTEMPT = 1;
+export const IP_BAN_INCR_RESULT_INDEX = 0;
 
 export const URL_QUERY_SEPARATOR = "?";

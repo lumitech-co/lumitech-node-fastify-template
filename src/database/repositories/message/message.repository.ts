@@ -4,6 +4,7 @@ import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { BaseRepository } from "@/database/repositories/repository.type.js";
+import { UpdateMessageJobData } from "@/lib/validation/message/message.schema.js";
 import { generateRepository } from "@/database/repositories/generate.repository.js";
 
 export const messageListSelect = {
@@ -22,6 +23,14 @@ export type MessageRepository = BaseRepository<"message"> & {
         Prisma.MessageFindUniqueArgs,
         Prisma.$MessagePayload
     >;
+    generateId: () => Promise<string>;
+    updateUnlessNewer: (
+        payload: UpdateMessageUnlessNewerPayload
+    ) => Promise<Prisma.BatchPayload>;
+};
+
+export type UpdateMessageUnlessNewerPayload = UpdateMessageJobData & {
+    updatedAt: Date;
 };
 
 export const createMessageRepository = (
@@ -40,6 +49,29 @@ export const createMessageRepository = (
 
             return message;
         },
+
+        /**
+         * Asks Postgres for the same `uuidv7()` the column defaults to, so a
+         * create job can carry its id before the row exists.
+         */
+        generateId: async () => {
+            const [{ id }] = await prisma.$queryRaw<
+                [{ id: string }]
+            >`SELECT uuidv7()::text AS id`;
+
+            return id;
+        },
+
+        /** `null` meta clears the column (`DbNull`); `undefined` leaves it. */
+        updateUnlessNewer: ({ id, text, meta, updatedAt }) =>
+            prisma.message.updateMany({
+                where: { id, updatedAt: { lte: updatedAt } },
+                data: {
+                    text,
+                    meta: meta === null ? Prisma.DbNull : meta,
+                    updatedAt,
+                },
+            }),
     };
 };
 

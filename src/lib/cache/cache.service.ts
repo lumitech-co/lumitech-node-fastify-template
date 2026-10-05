@@ -2,15 +2,6 @@ import { Redis } from "ioredis";
 import { FastifyBaseLogger } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import {
-    GetCachePayload,
-    SetCachePayload,
-    SleepPayload,
-    WrapCachePayload,
-    AcquireLockPayload,
-    RemoveCachePayload,
-    InvalidateCachePayload,
-} from "./cache.type.js";
-import {
     CACHE_INVALIDATION_SCAN_COUNT,
     CACHE_KEY_PREFIX,
     CACHE_LOCK_MAX_WAIT_MS,
@@ -18,6 +9,17 @@ import {
     CACHE_LOCK_PREFIX,
     CACHE_LOCK_TTL_MS,
 } from "./cache.constant.js";
+import {
+    GetCachePayload,
+    SetCachePayload,
+    SleepPayload,
+    WrapCachePayload,
+    AcquireLockPayload,
+    CacheLockState,
+    CacheReadResult,
+    RemoveCachePayload,
+    InvalidateCachePayload,
+} from "./cache.type.js";
 
 export type CacheService = {
     get: <T>(payload: GetCachePayload<T>) => Promise<T | null>;
@@ -32,7 +34,7 @@ export const createCacheService = (
     log: FastifyBaseLogger
 ): CacheService => {
     return {
-        get,
+        get: async (payload) => (await read(payload)).value,
         set,
         remove,
 
@@ -70,20 +72,20 @@ export const createCacheService = (
         },
 
         wrap: async ({ key, ttl, resolver, schema }) => {
-            const cached = await get({ key, schema });
+            const cached = await read({ key, schema });
 
-            if (cached !== null) {
-                return cached;
+            if (cached.hit) {
+                return cached.value;
             }
 
             const lockKey = `${CACHE_LOCK_PREFIX}:${key}`;
-            const acquired = await acquireLock({ lockKey });
+            const lock = await acquireLock({ lockKey });
 
-            if (!acquired) {
+            if (lock === "taken") {
                 const awaited = await waitForCache({ key, schema });
 
-                if (awaited !== null) {
-                    return awaited;
+                if (awaited.hit) {
+                    return awaited.value;
                 }
             }
 
@@ -94,31 +96,31 @@ export const createCacheService = (
 
                 return value;
             } finally {
-                if (acquired) {
+                if (lock === "acquired") {
                     await remove({ key: lockKey });
                 }
             }
         },
     };
 
-    async function get<T>({
+    async function read<T>({
         key,
         schema,
-    }: GetCachePayload<T>): Promise<T | null> {
+    }: GetCachePayload<T>): Promise<CacheReadResult<T>> {
         try {
             const raw = await redis.get(key);
 
-            if (!raw) {
-                return null;
+            if (raw === null) {
+                return { hit: false, value: null };
             }
 
             const value = JSON.parse(raw);
 
-            return schema ? schema.parse(value) : value;
+            return { hit: true, value: schema ? schema.parse(value) : value };
         } catch (error) {
             log.warn({ error, key }, "Cache read failed");
 
-            return null;
+            return { hit: false, value: null };
         }
     }
 
@@ -152,7 +154,7 @@ export const createCacheService = (
 
     async function acquireLock({
         lockKey,
-    }: AcquireLockPayload): Promise<boolean> {
+    }: AcquireLockPayload): Promise<CacheLockState> {
         try {
             const result = await redis.set(
                 lockKey,
@@ -162,31 +164,31 @@ export const createCacheService = (
                 "NX"
             );
 
-            return result === "OK";
+            return result === "OK" ? "acquired" : "taken";
         } catch (error) {
             log.warn({ error, lockKey }, "Cache lock acquisition failed");
 
-            return true;
+            return "unavailable";
         }
     }
 
     async function waitForCache<T>({
         key,
         schema,
-    }: GetCachePayload<T>): Promise<T | null> {
+    }: GetCachePayload<T>): Promise<CacheReadResult<T>> {
         const deadline = Date.now() + CACHE_LOCK_MAX_WAIT_MS;
 
         while (Date.now() < deadline) {
             await sleep({ ms: CACHE_LOCK_POLL_INTERVAL_MS });
 
-            const cached = await get({ key, schema });
+            const cached = await read({ key, schema });
 
-            if (cached !== null) {
+            if (cached.hit) {
                 return cached;
             }
         }
 
-        return null;
+        return { hit: false, value: null };
     }
 };
 
