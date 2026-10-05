@@ -5,6 +5,8 @@ import tsParser from "@typescript-eslint/parser";
 import stylisticJs from "@stylistic/eslint-plugin-js";
 import prettyImports from "eslint-plugin-pretty-imports";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
+import importX, { createNodeResolver } from "eslint-plugin-import-x";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
 import { builtinRules } from "eslint/use-at-your-own-risk";
@@ -171,12 +173,51 @@ const layerDirection = {
     },
 };
 
+// A copied module keeps its old file names; globs can't compare a file name
+// with its folder, so this does.
+const NAMED_FOLDERS =
+    /\/src\/(?:modules|database\/repositories|lib\/validation|plugins\/mq)\/([^/]+)\/(?:mq\/)?([^/]+)$/;
+
+const fileNaming = {
+    meta: {
+        type: "problem",
+        schema: [],
+        messages: {
+            mismatch:
+                "Files in {{folder}}/ are named {{folder}}.<kind>.ts — rename this file or move it to its own folder (generators: CLAUDE.md, Rule 0).",
+        },
+    },
+    create(context) {
+        const match = context.filename.replaceAll("\\", "/").match(NAMED_FOLDERS);
+
+        if (!match) {
+            return {};
+        }
+
+        const [, folder, file] = match;
+
+        return {
+            Program(node) {
+                if (file !== "index.ts" && !file.startsWith(`${folder}.`)) {
+                    context.report({ node, messageId: "mismatch", data: { folder } });
+                }
+            },
+        };
+    },
+};
+
 const HTTP_METHOD_CALL =
     "CallExpression[callee.object.name='fastify'][callee.property.name=/^(get|post|put|patch|delete|head|options)$/]";
 
 const architecture = {
     rules: {
         "layer-direction": layerDirection,
+        "file-naming": fileNaming,
+        "type-files": restrictedSyntax,
+        "constant-files": restrictedSyntax,
+        "return-reply": restrictedSyntax,
+        "structured-logs": restrictedSyntax,
+        "schema-types": restrictedSyntax,
         "route-shape": restrictedSyntax,
         "paginate-lists": restrictedSyntax,
         "handler-imports": typescriptEslint.rules["no-restricted-imports"],
@@ -394,11 +435,22 @@ export default [
     {
         files: ["src/**/*.ts"],
 
+        plugins: { "import-x": importX },
+
         languageOptions: {
             parserOptions: {
                 projectService: true,
                 tsconfigRootDir: __dirname,
             },
+        },
+
+        settings: {
+            "import-x/extensions": [".ts", ".js"],
+            "import-x/parsers": { "@typescript-eslint/parser": [".ts"] },
+            "import-x/resolver-next": [
+                createTypeScriptImportResolver({ project: __dirname }),
+                createNodeResolver(),
+            ],
         },
 
         rules: {
@@ -408,6 +460,12 @@ export default [
             ],
             "@typescript-eslint/no-floating-promises": "error",
             "@typescript-eslint/no-misused-promises": "error",
+            "@typescript-eslint/switch-exhaustiveness-check": "error",
+            "@typescript-eslint/no-non-null-assertion": "error",
+            "@typescript-eslint/await-thenable": "error",
+            "@typescript-eslint/return-await": ["error", "in-try-catch"],
+            eqeqeq: ["error", "always", { null: "ignore" }],
+            "import-x/no-cycle": ["error", { ignoreExternal: true }],
         },
     },
     {
@@ -767,6 +825,107 @@ export default [
                     message:
                         "Every route declares schema.tags with the module tag so it shows up in Swagger.",
                 },
+                {
+                    selector: `${HTTP_METHOD_CALL}:not(:has(Property[key.name='summary']))`,
+                    message: "Every route declares schema.summary for Swagger.",
+                },
+                {
+                    selector: `${HTTP_METHOD_CALL} > :matches(Literal, TemplateLiteral):first-child`,
+                    message:
+                        "Route paths come from the <Name>Route enum declared at the top of this file (CLAUDE.md, Rule 5).",
+                },
+                {
+                    selector:
+                        "Property[key.name='tags'] > ArrayExpression > :matches(Literal, TemplateLiteral)",
+                    message:
+                        "Use the module's <NAME>_TAG constant declared at the top of this file (CLAUDE.md, Rule 5).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/file-naming": "error",
+            "arch/structured-logs": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(trace|debug|info|warn|error|fatal)$/]:matches([callee.object.name=/^(log|logger)$/], [callee.object.property.name='log']) > :matches(TemplateLiteral[expressions.length>0], BinaryExpression[operator='+'])",
+                    message:
+                        "Log structured data: log.info({ id }, \"message\") or printf-style log.info(\"... %s\", value) — never interpolate into the message.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.type.ts"],
+
+        rules: {
+            "arch/type-files": [
+                "error",
+                {
+                    selector:
+                        "Program > :not(ImportDeclaration[importKind='type'], ExportNamedDeclaration[exportKind='type'], TSTypeAliasDeclaration, TSInterfaceDeclaration, TSModuleDeclaration)",
+                    message:
+                        "A *.type.ts holds only types (and `import type`) — values go to *.constant.ts, functions to *.util.ts (CLAUDE.md, Rule 5).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.constant.ts"],
+
+        rules: {
+            "arch/constant-files": [
+                "error",
+                {
+                    selector:
+                        ":matches(Program, Program > ExportNamedDeclaration) > FunctionDeclaration, :matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator > :function",
+                    message:
+                        "A *.constant.ts holds values only — helpers go to *.util.ts (CLAUDE.md, Rule 5).",
+                },
+            ],
+        },
+    },
+    {
+        // Without return, an async handler resolves undefined and Fastify may
+        // try to send a second reply.
+        files: ["src/**/*.handler.ts"],
+
+        rules: {
+            "arch/return-reply": [
+                "error",
+                {
+                    selector: "ExpressionStatement > CallExpression[callee.property.name='send']",
+                    message: "Return the reply: `return reply.status(...).send(data)`.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/lib/validation/**/*.schema.ts"],
+
+        rules: {
+            "arch/schema-types": [
+                "error",
+                {
+                    selector:
+                        "TSTypeAliasDeclaration:not([typeAnnotation.type='TSTypeReference'][typeAnnotation.typeName.left.name='z'][typeAnnotation.typeName.right.name=/^(infer|input|output)$/])",
+                    message:
+                        "Types in a schema file are derived with z.infer / z.input / z.output, never written by hand (CLAUDE.md, Rule 7).",
+                },
+                {
+                    selector: "TSInterfaceDeclaration",
+                    message:
+                        "Types in a schema file are derived with z.infer / z.input / z.output, never written by hand (CLAUDE.md, Rule 7).",
+                },
+                {
+                    selector: "CallExpression[callee.object.name='z'][callee.property.name='any']",
+                    message:
+                        "z.any() switches validation off — describe the shape, or use z.unknown() and narrow it (CLAUDE.md, Rule 7).",
+                },
             ],
         },
     },
@@ -1029,14 +1188,21 @@ export default [
         },
     },
     {
-        files: ["src/modules/**/*.ts"],
+        // Zod issue messages reach the client in the 400 response.
+        files: ["src/modules/**/*.ts", "src/lib/validation/**/*.ts"],
 
         rules: {
             "arch/response-messages": [
                 "error",
                 {
                     selector:
-                        "Property[key.name='message'] > :matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))",
+                        "Property[key.name=/^(message|error)$/] > :matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))",
+                    message:
+                        "Client-facing messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
+                },
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(refine|superRefine|check|min|max|length|nonempty|regex|startsWith|endsWith|gt|gte|lt|lte|multipleOf)$/] > :matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/])):nth-child(2)",
                     message:
                         "Client-facing messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
                 },

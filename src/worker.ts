@@ -17,7 +17,7 @@ const main = async () => {
         host: fastify.config.HOST,
     });
 
-    fastify.log.info(`Worker listening at ${address}`);
+    fastify.log.info("Worker listening at %s", address);
 
     closeWithGrace(
         {

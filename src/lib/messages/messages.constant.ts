@@ -10,5 +10,6 @@ export const RESPONSE_MESSAGES = {
         fetched: "Messages fetched successfully.",
         notFound: "Message not found.",
         unknownJobName: "Unknown message job name",
+        updateEmpty: "At least one field must be provided.",
     },
 } as const;

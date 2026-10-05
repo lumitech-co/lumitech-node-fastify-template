@@ -12,7 +12,9 @@ const main = async () => {
     });
 
     fastify.log.info(
-        `Documentation available at ${address}${SWAGGER_ROUTE_PREFIX}/`
+        "Documentation available at %s%s/",
+        address,
+        SWAGGER_ROUTE_PREFIX
     );
 
     closeWithGrace(
