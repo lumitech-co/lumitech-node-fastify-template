@@ -29,6 +29,12 @@ These are hard constraints. If a task cannot be done without breaking one, **sto
 instead of working around it. Code examples for each live in
 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs` (custom ones in
+`scripts/eslint-rules/`), Rule 0, Rule 8a and BullMQ plugin wiring by `test/unit/architecture/`,
+Rule 9 by `npm run check:migrations` and `npm run check:drift` in CI. Every `arch/*` rule has a
+firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
+When one fails, fix the code — never disable the check.
+
 ### 0. Modules and repositories are created only by the generators
 Never create `src/modules/<name>/**` or `src/database/repositories/<name>/**` by hand — the
 generators also wire `src/types/di-container.type.ts`, `src/lib/validation/<name>/` and
@@ -115,6 +121,12 @@ configuration or lifecycle, it becomes a plugin. A plugin needs a name in `Fasti
 references it, or when it is foundational (`prisma`, `env`, `jwt`, `awilix`); plugins nothing
 depends on (`cors`, `error`, `zod`) stay anonymous.
 
+**BullMQ exception:** a module's queue logic lives in the module —
+`src/modules/<name>/mq/<name>.queue.ts` (producer) and `<name>.worker.ts` (consumer) may
+import `bullmq` and call `new Queue` / `new Worker` — but they are plugin bodies: only
+`src/plugins/mq/<name>/*.{queue,worker}.ts` imports and registers them. Nothing else in the
+module imports `bullmq` except with `import type`.
+
 ### 7. Validation only via Zod
 All application data — body, params, query, headers, external API responses — is validated
 with Zod schemas in `src/lib/validation/<module>/<module>.schema.ts`. No manual
@@ -154,6 +166,15 @@ a custom index); if a generated migration would be destructive, stop and ask.
 - Scaffold modules/repositories only with the generators (Rule 0); create migrations only
   with `prisma:migrate:create` (Rule 9).
 - Use factory functions, not classes; register all DI with `addDIResolverName()`.
+- In a `*.service.ts`, anything outside the returned service object (file-level helpers,
+  helpers inside the factory body) is a `function name() {}` declaration, never an
+  arrow/function-expression constant, placed **after** the factory's `return` (file-level
+  helpers after the factory itself) (`arch/service-helpers`). The factory returns the
+  service object literal directly — never `const service = { … }; return service;`
+  (`arch/service-return`). A helper stays inside the factory only if it uses a DI dependency;
+  a pure one goes to `<name>.util.ts` or a file-level function (`arch/no-dependency-free-factory-helper`).
+  No helper that only forwards its arguments to one dependency (`arch/no-pass-through-helper`);
+  a method used only by `return { name }` is written inline (`arch/inline-unshared-service-method`).
 - Keep handlers thin — delegate to services. Validate inputs with Zod.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).
@@ -166,5 +187,8 @@ a custom index); if a generated migration would be destructive, stop and ask.
 - Use the `@/` path alias for imports from `src`.
 - **No inline comments** after lines of code. JSDoc on functions is allowed when it adds
   meaningful context (security notes, non-obvious behavior).
+- **Keep comments short** — a comment longer than 5 lines (JSDoc with big `@example`s,
+  walkthroughs) belongs in the module `README.md` or `ARCHITECTURE.md`
+  (`arch/max-comment-lines` warns).
 - **No barrel files** — import directly from the source file (a module's `index.ts` is a
   Fastify plugin entry point, not a barrel).

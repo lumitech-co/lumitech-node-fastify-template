@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import rateLimit from "@fastify/rate-limit";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { RateLimitError } from "@/lib/errors/errors.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {

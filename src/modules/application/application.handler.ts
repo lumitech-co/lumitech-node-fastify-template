@@ -1,6 +1,6 @@
-import { FastifyReply, FastifyRequest } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { ApplicationService } from "./application.service.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { ApplicationService } from "./application.service.js";
 
 export type ApplicationHandler = {
     healthChecker: (

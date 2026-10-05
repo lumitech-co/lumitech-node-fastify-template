@@ -1,6 +1,6 @@
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { HEALTH_CHECK_RESPONSE } from "./application.constant.js";
-import { HealthCheckResponse } from "@/lib/validation/application/application.schema.js";
+import type { HealthCheckResponse } from "@/lib/validation/application/application.schema.js";
 
 export type ApplicationService = {
     healthChecker: () => Promise<HealthCheckResponse>;

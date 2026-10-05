@@ -2,7 +2,7 @@ import path from "path";
 import fp from "fastify-plugin";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { asValue, createContainer, InjectionMode } from "awilix";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import { resolverOptionsRegister } from "@/lib/awilix/resolver-registration.js";
@@ -26,6 +26,8 @@ const configureAwilix = async (fastify: FastifyInstance) => {
         gcpStorageClient: asValue(fastify.gcpStorageClient),
         awsS3Client: asValue(fastify.awsS3Client),
         redis: asValue(fastify.redis),
+        bullmqConnection: asValue(fastify.bullmqConnection),
+        messageQueue: asValue(fastify.messageQueue),
     });
 
     // Register dependencies from the application: repositories, services, route handlers
@@ -55,5 +57,7 @@ export default fp(configureAwilix, {
         FastifyPlugin.GcpStorage,
         FastifyPlugin.AwsS3,
         FastifyPlugin.Redis,
+        FastifyPlugin.BullMq,
+        FastifyPlugin.MessageQueue,
     ],
 });

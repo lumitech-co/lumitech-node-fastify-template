@@ -1,5 +1,5 @@
-import { ZodType } from "zod";
-import { FastifyRequest } from "fastify";
+import type { ZodType } from "zod";
+import type { FastifyRequest } from "fastify";
 
 export type GetCachePayload<T> = {
     key: string;

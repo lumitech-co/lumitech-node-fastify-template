@@ -1,8 +1,8 @@
 import fp from "fastify-plugin";
-import { Redis } from "ioredis";
-import Fastify, { FastifyInstance } from "fastify";
-import { beforeEach, describe, expect, it } from "vitest";
 import cachePlugin from "@/plugins/cache.js";
+import Fastify, { FastifyInstance } from "fastify";
+import { Redis } from "ioredis";
+import { beforeEach, describe, expect, it } from "vitest";
 import { createCacheService } from "@/lib/cache/cache.service.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {
@@ -11,13 +11,6 @@ import {
     CACHE_STATUS_MISS,
 } from "@/lib/cache/cache.constant.js";
 
-/**
- * Exercises the response-cache plugin's gating logic against a real Redis
- * (the per-worker logical database from the int setup). The application's own
- * routes only configure a plain cached GET, so behaviours like `enabled`,
- * method/status gating and `varyBy` isolation are covered here with purpose-
- * built routes rather than by adding cache configs to production code.
- */
 const buildApp = async () => {
     const redis = new Redis(process.env.REDIS_URL as string);
     const app = Fastify();
@@ -167,6 +160,7 @@ describe("response-cache plugin", () => {
             url: "/maybe",
             headers,
         });
+
         const second = await app.inject({
             method: "GET",
             url: "/maybe",
@@ -187,11 +181,13 @@ describe("response-cache plugin", () => {
             url: "/vary",
             headers: alice,
         });
+
         const aliceHit = await app.inject({
             method: "GET",
             url: "/vary",
             headers: alice,
         });
+
         const bobMiss = await app.inject({
             method: "GET",
             url: "/vary",

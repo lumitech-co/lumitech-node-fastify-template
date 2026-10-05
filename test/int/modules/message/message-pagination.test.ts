@@ -3,11 +3,11 @@ import { configureServer } from "@/server.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMessages } from "../../factories/message.factory.js";
 
-type MessageRow = { id: number };
+type MessageRow = { id: string };
 
 type InjectResponse = Awaited<ReturnType<FastifyInstance["inject"]>>;
 
-const idsOf = (response: InjectResponse): number[] =>
+const idsOf = (response: InjectResponse): string[] =>
     (response.json().data.messages as MessageRow[]).map(
         (message) => message.id
     );
@@ -23,13 +23,16 @@ describe("GET /api/messages - cursor pagination", () => {
         };
     });
 
-    const seedDescendingIds = async (count: number): Promise<number[]> => {
+    const seedDescendingIds = async (count: number): Promise<string[]> => {
         const seeded = await createMessages({
             prisma: server.prisma,
             count,
         });
 
-        return seeded.map((message) => message.id).sort((a, b) => b - a);
+        return seeded
+            .map((message) => message.id)
+            .sort()
+            .reverse();
     };
 
     it("should return newest-first up to the limit and expose the next cursor", async () => {
@@ -72,8 +75,8 @@ describe("GET /api/messages - cursor pagination", () => {
     it("should walk the whole list exactly once across pages", async () => {
         const descIds = await seedDescendingIds(7);
 
-        const collected: number[] = [];
-        let cursor: number | null = null;
+        const collected: string[] = [];
+        let cursor: string | null = null;
 
         do {
             const query: string = cursor
@@ -83,7 +86,7 @@ describe("GET /api/messages - cursor pagination", () => {
             const page = await server.inject({ method: "GET", url: query });
 
             collected.push(...idsOf(page));
-            cursor = page.json().data.nextCursor as number | null;
+            cursor = page.json().data.nextCursor as string | null;
         } while (cursor !== null && collected.length < descIds.length);
 
         expect(collected).toEqual(descIds);

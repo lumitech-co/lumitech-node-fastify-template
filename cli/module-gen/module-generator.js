@@ -27,17 +27,17 @@ export const generateModule = (nameCamel, namePascal, nameKebab) => {
     );
 
     const routeFilePath = path.join(modulePath, `${nameKebab}.route.ts`);
-    fs.writeFileSync(routeFilePath, routeContent);
+    fs.writeFileSync(routeFilePath, `${routeContent}\n`);
 
     const handlerContent = templates["handler"](namePascal, nameCamel);
     const handlerFilePath = path.join(modulePath, `${nameKebab}.handler.ts`);
-    fs.writeFileSync(handlerFilePath, handlerContent);
+    fs.writeFileSync(handlerFilePath, `${handlerContent}\n`);
 
     const serviceContent = templates["service"](namePascal, nameCamel);
     const serviceFilePath = path.join(modulePath, `${nameKebab}.service.ts`);
-    fs.writeFileSync(serviceFilePath, serviceContent);
+    fs.writeFileSync(serviceFilePath, `${serviceContent}\n`);
 
     const indexContent = templates["index"](namePascal, nameCamel, nameKebab);
     const indexFilePath = path.join(modulePath, "index.ts");
-    fs.writeFileSync(indexFilePath, indexContent);
+    fs.writeFileSync(indexFilePath, `${indexContent}\n`);
 };

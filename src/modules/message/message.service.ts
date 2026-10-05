@@ -1,21 +1,29 @@
-import { FastifyBaseLogger } from "fastify";
-import { EnvConfig } from "@/types/env.type.js";
-import { CreateMessagePayload } from "./message.type.js";
+import type { FastifyBaseLogger } from "fastify";
+import type { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { CacheService } from "@/lib/cache/cache.service.js";
+import type { MessageJobResult } from "./mq/message.type.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
+import type { CacheService } from "@/lib/cache/cache.service.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type {
+    CreateMessagePayload,
+    UpdateMessagePayload,
+} from "./message.type.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
+    messageIdSelect,
+    messageListSelect,
+} from "@/database/repositories/message/message.repository.js";
+import type {
     FetchMessagesQuery,
-    CreateMessageResponse,
     FetchMessagesResponse,
+    DeleteMessageJobData,
 } from "@/lib/validation/message/message.schema.js";
 
 export type MessageService = {
-    createMessage: (
-        payload: CreateMessagePayload
-    ) => Promise<CreateMessageResponse>;
+    createMessage: (payload: CreateMessagePayload) => Promise<MessageJobResult>;
+    updateMessage: (payload: UpdateMessagePayload) => Promise<MessageJobResult>;
+    deleteMessage: (payload: DeleteMessageJobData) => Promise<MessageJobResult>;
     getMessages: (query: FetchMessagesQuery) => Promise<FetchMessagesResponse>;
 };
 
@@ -25,27 +33,53 @@ export const createService = (
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
-    createMessage: async ({ payload }) => {
-        const { text, meta } = payload;
-
-        const message = await messageRepository.create({
-            data: { text, meta },
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
-            },
+    createMessage: async ({ id, text, meta, enqueuedAt }) => {
+        await messageRepository.upsert({
+            where: { id },
+            create: { id, text, meta, updatedAt: enqueuedAt },
+            update: {},
+            select: messageIdSelect,
         });
 
-        await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
 
-        return {
-            message: RESPONSE_MESSAGES.message.created,
-            data: {
-                message,
-            },
-        };
+        return { id };
+    },
+
+    updateMessage: async ({ id, text, meta, enqueuedAt }) => {
+        const { count } = await messageRepository.updateUnlessNewer({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
+        });
+
+        if (count === 0) {
+            await messageRepository.findUniqueOrFail({
+                where: { id },
+                select: messageIdSelect,
+            });
+
+            return { id };
+        }
+
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
+    },
+
+    deleteMessage: async ({ id }) => {
+        await messageRepository.deleteMany({ where: { id } });
+
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
     },
 
     getMessages: async ({ cursor, limit }) => {
@@ -55,12 +89,7 @@ export const createService = (
             take: limit,
             orderBy: { id: "desc" },
             ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
-            },
+            select: messageListSelect,
         });
 
         const nextCursor =

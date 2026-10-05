@@ -1,23 +1,21 @@
-import { Redis } from "ioredis";
-import { FastifyBaseLogger } from "fastify";
+import type { Redis } from "ioredis";
+import type { FastifyBaseLogger } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { IsBannedPayload, RegisterAttemptPayload } from "./ipBan.type.js";
+import { REDIS_KEY_EXISTS } from "@/lib/constants/redis.constant.js";
+import type { IsBannedPayload, RegisterAttemptPayload } from "./ipBan.type.js";
 import {
     IP_BAN_ATTEMPTS_KEY_PREFIX,
     IP_BAN_ATTEMPTS_WINDOW_SECONDS,
     IP_BAN_DURATION_SECONDS,
     IP_BAN_KEY_PREFIX,
     IP_BAN_MAX_ATTEMPTS,
+    IP_BAN_INCR_RESULT_INDEX,
 } from "./ipBan.constant.js";
 
 export type IpBanService = {
     isBanned: (payload: IsBannedPayload) => Promise<boolean>;
     registerAttempt: (payload: RegisterAttemptPayload) => Promise<boolean>;
 };
-
-const REDIS_KEY_EXISTS = 1;
-
-const INCR_RESULT_INDEX = 0;
 
 export const createIpBanService = (
     redis: Redis,
@@ -45,7 +43,7 @@ export const createIpBanService = (
                 .expire(attemptsKey, IP_BAN_ATTEMPTS_WINDOW_SECONDS, "NX")
                 .exec();
 
-            const incr = results?.[INCR_RESULT_INDEX];
+            const incr = results?.[IP_BAN_INCR_RESULT_INDEX];
 
             if (!incr || incr[0]) {
                 throw incr?.[0] ?? new Error("Ip ban transaction aborted");
