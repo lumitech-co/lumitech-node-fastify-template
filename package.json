@@ -16,6 +16,7 @@
         "lint": "eslint --max-warnings 0 --color",
         "lint:fix": "eslint --color --fix",
         "check:migrations": "node scripts/check-migrations.mjs",
+        "check:drift": "node scripts/check-drift.mjs",
         "format": "prettier --write",
         "commitlint": "commitlint --edit",
         "prisma:push": "prisma db push",

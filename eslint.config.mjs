@@ -5,7 +5,18 @@ import tsParser from "@typescript-eslint/parser";
 import stylistic from "@stylistic/eslint-plugin";
 import prettyImports from "eslint-plugin-pretty-imports";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
+import fileNaming from "./scripts/eslint-rules/file-naming.mjs";
 import importX, { createNodeResolver } from "eslint-plugin-import-x";
+import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
+import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
+import preferFindUniqueOrFail from "./scripts/eslint-rules/prefer-find-unique-or-fail.mjs";
+import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
+import transactionViaRepositories from "./scripts/eslint-rules/transaction-via-repositories.mjs";
+import maxCommentLines, {
+    MAX_COMMENT_LINES,
+} from "./scripts/eslint-rules/max-comment-lines.mjs";
+import noSingleRepositoryTransaction from "./scripts/eslint-rules/no-single-repository-transaction.mjs";
+import noPrismaShapeOutsideRepository from "./scripts/eslint-rules/no-prisma-shape-outside-repository.mjs";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
 import { builtinRules } from "eslint/use-at-your-own-risk";
@@ -19,255 +30,6 @@ const __dirname = path.dirname(__filename);
 // per file, so a later block would silently replace an earlier one.
 const restrictedSyntax = builtinRules.get("no-restricted-syntax");
 
-// Comments are not AST nodes, so no-restricted-syntax cannot see them.
-// Consecutive // lines count as one comment.
-const MAX_COMMENT_LINES = 5;
-
-const maxCommentLines = {
-    meta: {
-        type: "suggestion",
-        schema: [
-            {
-                type: "object",
-                properties: { max: { type: "integer", minimum: 1 } },
-                additionalProperties: false,
-            },
-        ],
-        messages: {
-            tooLong:
-                "Comment spans {{lines}} lines (max {{max}}) — long explanations belong in a .md file (module README.md or ARCHITECTURE.md).",
-        },
-    },
-    create(context) {
-        const max = context.options[0]?.max ?? MAX_COMMENT_LINES;
-
-        return {
-            Program() {
-                const { sourceCode } = context;
-                const blocks = [];
-
-                for (const comment of sourceCode.getAllComments()) {
-                    const previous = blocks.at(-1);
-
-                    const ownLine =
-                        comment.type === "Line" &&
-                        sourceCode.lines[comment.loc.start.line - 1]
-                            .trim()
-                            .startsWith("//");
-
-                    if (
-                        ownLine &&
-                        previous?.ownLine &&
-                        comment.loc.start.line === previous.loc.end.line + 1
-                    ) {
-                        previous.loc = {
-                            start: previous.loc.start,
-                            end: comment.loc.end,
-                        };
-                    } else {
-                        blocks.push({ ownLine, loc: comment.loc });
-                    }
-                }
-
-                for (const { loc } of blocks) {
-                    const lines = loc.end.line - loc.start.line + 1;
-
-                    if (lines > max) {
-                        context.report({
-                            loc,
-                            messageId: "tooLong",
-                            data: { lines, max },
-                        });
-                    }
-                }
-            },
-        };
-    },
-};
-
-// A blanket directive (no rule list) switches off every arch/* rule too.
-const DISABLE_DIRECTIVE =
-    /^\s*eslint-disable(?:-next-line|-line)?(?:\s+([^]*?))?(?:\s+--[^]*)?\s*$/;
-
-const noArchDisable = {
-    meta: {
-        type: "problem",
-        schema: [],
-        messages: {
-            archRule:
-                "Never disable an arch/* rule — fix the code (CLAUDE.md, Architecture Rules).",
-            blanket:
-                "List the rules you disable — a blanket eslint-disable also switches off the arch/* rules.",
-        },
-    },
-    create(context) {
-        return {
-            Program() {
-                for (const comment of context.sourceCode.getAllComments()) {
-                    const match = comment.value.match(DISABLE_DIRECTIVE);
-
-                    if (!match) {
-                        continue;
-                    }
-
-                    const rules = match[1]?.trim();
-
-                    if (!rules) {
-                        context.report({
-                            loc: comment.loc,
-                            messageId: "blanket",
-                        });
-                    } else if (/(^|[\s,])arch\//.test(rules)) {
-                        context.report({
-                            loc: comment.loc,
-                            messageId: "archRule",
-                        });
-                    }
-                }
-            },
-        };
-    },
-};
-
-// lib/ and database/ never reach up into modules/; a module reaches another
-// module only for types — the rest comes through the container.
-const layerDirection = {
-    meta: {
-        type: "problem",
-        schema: [],
-        messages: {
-            upward: "src/lib and src/database never import from src/modules (CLAUDE.md, Rule 1).",
-            crossModule:
-                "A module imports another module only with `import type` — inject its service through the Awilix container (CLAUDE.md, Rule 1).",
-        },
-    },
-    create(context) {
-        const file = context.filename.replaceAll("\\", "/");
-        const ownModule = file.match(/\/src\/modules\/([^/]+)\//)?.[1];
-        const lowerLayer = /\/src\/(lib|database)\//.test(file);
-
-        if (!ownModule && !lowerLayer) {
-            return {};
-        }
-
-        function check(node) {
-            const source = node.source?.value;
-
-            const target =
-                typeof source === "string" &&
-                source.match(/^@\/modules\/([^/]+)\//)?.[1];
-
-            if (!target) {
-                return;
-            }
-
-            if (lowerLayer) {
-                context.report({ node, messageId: "upward" });
-
-                return;
-            }
-
-            const typeOnly =
-                node.importKind === "type" ||
-                (node.specifiers?.length > 0 &&
-                    node.specifiers.every(
-                        (spec) => spec.importKind === "type"
-                    ));
-
-            if (target !== ownModule && !typeOnly) {
-                context.report({ node, messageId: "crossModule" });
-            }
-        }
-
-        return { ImportDeclaration: check, ImportExpression: check };
-    },
-};
-
-// Rule 2: a service may open prisma.$transaction, but the transaction client
-// is only handed to repository methods — never queried in place.
-const transactionViaRepositories = {
-    meta: {
-        type: "problem",
-        schema: [],
-        messages: {
-            direct: "Inside $transaction, pass `{{name}}` to a repository method — queries still go through repositories (CLAUDE.md, Rule 2).",
-        },
-    },
-    create(context) {
-        const clients = [];
-
-        function clientOf(node) {
-            const [callback] = node.arguments;
-
-            const param = /Function/.test(callback?.type ?? "")
-                ? callback.params[0]
-                : null;
-
-            return param?.type === "Identifier" ? param.name : null;
-        }
-
-        return {
-            "CallExpression[callee.property.name='$transaction']"(node) {
-                clients.push(clientOf(node));
-            },
-            "CallExpression[callee.property.name='$transaction']:exit"() {
-                clients.pop();
-            },
-            MemberExpression(node) {
-                if (
-                    node.object.type === "Identifier" &&
-                    clients.includes(node.object.name)
-                ) {
-                    context.report({
-                        node,
-                        messageId: "direct",
-                        data: { name: node.object.name },
-                    });
-                }
-            },
-        };
-    },
-};
-
-// A copied module keeps its old file names; globs can't compare a file name
-// with its folder, so this does.
-const NAMED_FOLDERS =
-    /\/src\/(?:modules|database\/repositories|lib\/validation|plugins\/mq)\/([^/]+)\/(?:mq\/)?([^/]+)$/;
-
-const fileNaming = {
-    meta: {
-        type: "problem",
-        schema: [],
-        messages: {
-            mismatch:
-                "Files in {{folder}}/ are named {{folder}}.<kind>.ts — rename this file or move it to its own folder (generators: CLAUDE.md, Rule 0).",
-        },
-    },
-    create(context) {
-        const match = context.filename
-            .replaceAll("\\", "/")
-            .match(NAMED_FOLDERS);
-
-        if (!match) {
-            return {};
-        }
-
-        const [, folder, file] = match;
-
-        return {
-            Program(node) {
-                if (file !== "index.ts" && !file.startsWith(`${folder}.`)) {
-                    context.report({
-                        node,
-                        messageId: "mismatch",
-                        data: { folder },
-                    });
-                }
-            },
-        };
-    },
-};
-
 const HTTP_METHOD_CALL =
     "CallExpression[callee.object.name='fastify'][callee.property.name=/^(get|post|put|patch|delete|head|options)$/]";
 
@@ -276,6 +38,13 @@ const architecture = {
         "layer-direction": layerDirection,
         "file-naming": fileNaming,
         "transaction-via-repositories": transactionViaRepositories,
+        "no-prisma-shape-outside-repository": noPrismaShapeOutsideRepository,
+        "prefer-find-unique-or-fail": preferFindUniqueOrFail,
+        "no-single-repository-transaction": noSingleRepositoryTransaction,
+        "no-relation-join-with-cursor": noRelationJoinWithCursor,
+        "no-unsafe-raw-sql": restrictedSyntax,
+        "worker-imports": typescriptEslint.rules["no-restricted-imports"],
+        "thin-workers": restrictedSyntax,
         "no-focused-tests": restrictedSyntax,
         "type-files": restrictedSyntax,
         "constant-files": restrictedSyntax,
@@ -301,7 +70,6 @@ const architecture = {
         "prisma-calls": restrictedSyntax,
         "sdk-imports": typescriptEslint.rules["no-restricted-imports"],
         "di-registration": restrictedSyntax,
-        "repository-files": restrictedSyntax,
         "route-constants": restrictedSyntax,
         "max-one-param": restrictedSyntax,
         "response-messages": restrictedSyntax,
@@ -912,6 +680,16 @@ export default [
         rules: {
             "arch/file-naming": "error",
             "arch/transaction-via-repositories": "error",
+            "arch/no-relation-join-with-cursor": "error",
+            "arch/no-unsafe-raw-sql": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^\\$(queryRaw|executeRaw)Unsafe$/] > :matches(TemplateLiteral[expressions.length>0], BinaryExpression[operator='+']):first-child",
+                    message:
+                        "SQL injection: never build the SQL of $queryRawUnsafe / $executeRawUnsafe from values — use the tagged $queryRaw`... ${value}` / $executeRaw`...` form.",
+                },
+            ],
             "arch/structured-logs": [
                 "error",
                 {
@@ -919,6 +697,57 @@ export default [
                         "CallExpression[callee.property.name=/^(trace|debug|info|warn|error|fatal)$/]:matches([callee.object.name=/^(log|logger)$/], [callee.object.property.name='log']) > :matches(TemplateLiteral[expressions.length>0], BinaryExpression[operator='+'])",
                     message:
                         'Log structured data: log.info({ id }, "message") or printf-style log.info("... %s", value) — never interpolate into the message.',
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+        ignores: ["src/database/**", "src/**/*.d.ts"],
+
+        rules: {
+            "arch/no-prisma-shape-outside-repository": "error",
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts"],
+
+        rules: {
+            "arch/prefer-find-unique-or-fail": "error",
+            "arch/no-single-repository-transaction": "error",
+        },
+    },
+    {
+        // A worker only wires BullMQ jobs to a service; repositories, storage
+        // and the db client stay behind that service — even as types.
+        files: ["src/modules/**/mq/*.worker.ts"],
+
+        rules: {
+            "arch/worker-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: [
+                                "@prisma/client",
+                                "@/database/**",
+                                "@google-cloud/*",
+                                "@aws-sdk/*",
+                                "ioredis",
+                            ],
+                            message:
+                                "mq/ workers only define BullMQ jobs and call a service — move repository / storage / db work into a *.service.ts (CLAUDE.md, Rule 6).",
+                        },
+                    ],
+                },
+            ],
+            "arch/thin-workers": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.property.name='resolve'] > Literal[value=/(Repository$|^prisma$|^redis$)/]",
+                    message:
+                        "A worker resolves a service from the container, never a repository or a client — the job's logic lives in the service.",
                 },
             ],
         },

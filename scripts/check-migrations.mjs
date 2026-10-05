@@ -1,15 +1,18 @@
 /**
  * CLAUDE.md Rule 9 guard, run in CI against the PR base:
  * - an existing migration is never edited or deleted;
- * - a data-model change in schema.prisma ships with a new migration.
- *
+ * - a data-model change in schema.prisma ships with a new migration;
+ * - every migration folder is <timestamp>_snake_case with a non-empty SQL.
  * Compares committed HEAD with its merge-base against MIGRATIONS_BASE_REF
  * (default origin/main). Comments, `/// [Type]` annotations, formatting
  * and generator/datasource blocks do not count as data-model changes.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const SCHEMA = "src/database/prisma/schema.prisma";
+const MIGRATION_NAME = /^(\d{14})_[a-z0-9_]+$/;
 const MIGRATIONS_DIR = "src/database/prisma/migrations/";
 const MIGRATION_LOCK = `${MIGRATIONS_DIR}migration_lock.toml`;
 const DATA_MODEL_BLOCKS = new Set(["model", "enum", "view", "type"]);
@@ -104,6 +107,37 @@ if (dataModelChanged && !addsMigration) {
         `${SCHEMA} changes the data model but no new migration was added.`,
         "  Run `npm run prisma:migrate:create` and commit the generated migration."
     );
+}
+
+const migrationDirs = fs
+    .readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+
+const seenTimestamps = new Map();
+
+for (const dir of migrationDirs) {
+    const timestamp = dir.match(MIGRATION_NAME)?.[1];
+    const sql = path.join(MIGRATIONS_DIR, dir, "migration.sql");
+
+    if (!timestamp) {
+        errors.push(
+            `Malformed migration name: ${dir} (expected <14-digit timestamp>_snake_case).`
+        );
+    } else if (seenTimestamps.has(timestamp)) {
+        errors.push(
+            `Duplicate migration timestamp ${timestamp}: ${seenTimestamps.get(timestamp)} and ${dir}.`
+        );
+    } else {
+        seenTimestamps.set(timestamp, dir);
+    }
+
+    if (!fs.existsSync(sql)) {
+        errors.push(`Missing migration.sql in ${dir}.`);
+    } else if (fs.readFileSync(sql, "utf8").trim() === "") {
+        errors.push(`Empty migration.sql in ${dir}.`);
+    }
 }
 
 if (errors.length > 0) {

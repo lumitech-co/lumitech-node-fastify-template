@@ -29,9 +29,11 @@ These are hard constraints. If a task cannot be done without breaking one, **sto
 instead of working around it. Code examples for each live in
 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs`, Rule 0 and
-Rule 8a wiring by `test/unit/architecture/`, Rule 9 by `npm run check:migrations` in CI. When
-one fails, fix the code — never disable the check.
+Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs` (custom ones in
+`scripts/eslint-rules/`), Rule 0, Rule 8a and BullMQ plugin wiring by `test/unit/architecture/`,
+Rule 9 by `npm run check:migrations` and `npm run check:drift` in CI. Every `arch/*` rule has a
+firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
+When one fails, fix the code — never disable the check.
 
 ### 0. Modules and repositories are created only by the generators
 Never create `src/modules/<name>/**` or `src/database/repositories/<name>/**` by hand — the
