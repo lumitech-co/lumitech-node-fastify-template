@@ -62,6 +62,7 @@ export const waitForMessageJob = async ({
                 }
 
                 cleanup();
+
                 reject(
                     new Error(`Message job ${jobId} failed: ${failedReason}`)
                 );

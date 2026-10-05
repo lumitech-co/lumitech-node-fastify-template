@@ -60,12 +60,15 @@ const createFakeRedis = () => {
             ): Promise<[string, string[]]> => {
                 const regex = patternToRegex(pattern);
                 const sorted = [...store.keys()].sort();
+
                 const from =
                     cursor === "0"
                         ? 0
                         : sorted.findIndex((key) => key > cursor);
+
                 const start = from === -1 ? sorted.length : from;
                 const slice = sorted.slice(start, start + count);
+
                 const next =
                     start + count >= sorted.length
                         ? "0"
@@ -152,6 +155,7 @@ describe("cache.service - set", () => {
         const ok = await service.set({ key: "key", value: { a: 1 }, ttl: 30 });
 
         expect(ok).toBe(true);
+
         expect(redis.set).toHaveBeenCalledWith(
             "key",
             JSON.stringify({ a: 1 }),
@@ -265,6 +269,7 @@ describe("cache.service - wrap", () => {
                     releaseFirst = resolve;
                 })
         );
+
         const secondResolver = vi.fn(async () => ({ value: "second" }));
 
         const first = service.wrap({
@@ -295,6 +300,7 @@ describe("cache.service - wrap", () => {
 
     it("should release the lock even when the resolver throws", async () => {
         const { redis, service } = build();
+
         const resolver = vi.fn(async () => {
             throw new Error("boom");
         });
@@ -315,6 +321,7 @@ describe("cache.service - wrap", () => {
         expect(
             await service.wrap({ key: "key", ttl: 30, resolver })
         ).toBeNull();
+
         expect(resolver).not.toHaveBeenCalled();
     });
 

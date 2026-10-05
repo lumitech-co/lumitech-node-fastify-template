@@ -13,8 +13,8 @@
         "commit": "cz",
         "prepare": "husky",
         "tsc-check": "tsc --noEmit",
-        "lint": "eslint --ignore-pattern \"test/*\" --color",
-        "lint:fix": "eslint --ignore-pattern \"test/*\" --color --fix",
+        "lint": "eslint --max-warnings 0 --color",
+        "lint:fix": "eslint --color --fix",
         "check:migrations": "node scripts/check-migrations.mjs",
         "format": "prettier --write",
         "commitlint": "commitlint --edit",
@@ -43,7 +43,7 @@
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [
             "npm run format",
-            "eslint --ignore-pattern \"test/*\" --color --fix",
+            "eslint --color --fix",
             "bash -c 'npm run tsc-check'"
         ],
         "**/*.prisma": [

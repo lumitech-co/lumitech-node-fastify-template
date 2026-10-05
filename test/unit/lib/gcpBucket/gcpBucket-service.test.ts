@@ -1,6 +1,6 @@
 import { Storage } from "@google-cloud/storage";
-import { describe, expect, it, vi } from "vitest";
 import { EnvConfig } from "@/types/env.type.js";
+import { describe, expect, it, vi } from "vitest";
 import { createGcpBucketService } from "@/lib/gcpBucket/gcpBucket.service.js";
 import { GCP_BUCKET_NOT_CONFIGURED } from "@/lib/gcpBucket/gcpBucket.constant.js";
 
@@ -103,6 +103,7 @@ describe("gcpBucket.service - createGcpBucketService", () => {
             action: "write",
             contentType: "application/pdf",
         });
+
         expect(options.expires).toBeGreaterThan(beforeCall);
     });
 
@@ -134,6 +135,7 @@ describe("gcpBucket.service - createGcpBucketService", () => {
             version: "v4",
             action: "read",
         });
+
         expect(options).not.toHaveProperty("contentType");
         expect(options.expires).toBeGreaterThan(beforeCall);
     });

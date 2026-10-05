@@ -101,6 +101,7 @@ describe("Rule 8a: every Json column is typed via prisma-json-types-generator", 
     const jsonFields = findJsonFields(
         readSource("database/prisma/schema.prisma")
     );
+
     const prismaJsonTypes = readSource("types/prisma-json.d.ts");
 
     it.skipIf(jsonFields.length === 0).each(jsonFields)(
@@ -114,6 +115,7 @@ describe("Rule 8a: every Json column is typed via prisma-json-types-generator", 
                 typeName,
                 "missing `/// [TypeName]` above the field"
             ).toBeDefined();
+
             expect(prismaJsonTypes).toMatch(
                 new RegExp(`\\b(type|interface)\\s+${typeName}\\b`)
             );

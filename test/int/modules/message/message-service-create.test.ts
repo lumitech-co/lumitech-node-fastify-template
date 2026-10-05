@@ -67,6 +67,7 @@ describe("POST /api/messages", () => {
 
     it("should not insert a duplicate when the same create job runs twice", async () => {
         const messageService = server.di.resolve("messageService");
+
         const payload = {
             id: await server.di.resolve("messageRepository").generateId(),
             text: "Hello once",
@@ -77,6 +78,7 @@ describe("POST /api/messages", () => {
         const second = await messageService.createMessage(payload);
 
         expect(second.id).toBe(first.id);
+
         expect(
             await server.prisma.message.count({
                 where: { id: payload.id },

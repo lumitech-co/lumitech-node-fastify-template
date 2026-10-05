@@ -52,6 +52,7 @@ describe("s3Bucket.service - createS3BucketService", () => {
         const command = sendMock.mock.calls[0][0];
 
         expect(command).toBeInstanceOf(DeleteObjectCommand);
+
         expect(command.input).toMatchObject({
             Bucket: "test-bucket",
             Key: "avatars/user-1.png",
@@ -132,15 +133,18 @@ describe("s3Bucket.service - createS3BucketService", () => {
             .filter((command) => command instanceof DeleteObjectsCommand);
 
         expect(listCalls).toHaveLength(2);
+
         expect(listCalls[0].input).toMatchObject({
             Bucket: "test-bucket",
             Prefix: "avatars/user-1/",
         });
+
         expect(listCalls[1].input).toMatchObject({
             ContinuationToken: "token-1",
         });
 
         expect(deleteCalls).toHaveLength(2);
+
         expect(deleteCalls[0].input).toMatchObject({
             Bucket: "test-bucket",
             Delete: {
@@ -150,6 +154,7 @@ describe("s3Bucket.service - createS3BucketService", () => {
                 ],
             },
         });
+
         expect(deleteCalls[1].input).toMatchObject({
             Delete: { Objects: [{ Key: "avatars/user-1/c.png" }] },
         });
@@ -190,11 +195,13 @@ describe("s3Bucket.service - createS3BucketService", () => {
 
         expect(signedClient).toBe(client);
         expect(command).toBeInstanceOf(PutObjectCommand);
+
         expect(command.input).toMatchObject({
             Bucket: "test-bucket",
             Key: "documents/report.pdf",
             ContentType: "application/pdf",
         });
+
         expect(options).toEqual({ expiresIn: SIGNED_URL_EXPIRES_IN_SECONDS });
     });
 
@@ -216,10 +223,12 @@ describe("s3Bucket.service - createS3BucketService", () => {
 
         expect(signedClient).toBe(client);
         expect(command).toBeInstanceOf(GetObjectCommand);
+
         expect(command.input).toMatchObject({
             Bucket: "test-bucket",
             Key: "documents/report.pdf",
         });
+
         expect(options).toEqual({ expiresIn: SIGNED_URL_EXPIRES_IN_SECONDS });
     });
 });

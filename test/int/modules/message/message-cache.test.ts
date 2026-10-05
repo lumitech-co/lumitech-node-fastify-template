@@ -75,6 +75,7 @@ describe("Response cache for /api/messages", () => {
         });
 
         expect(refetched.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
         expect(refetched.json()).toMatchObject({
             data: {
                 messages: [{ text: "Hello, world!" }],
@@ -106,6 +107,7 @@ describe("Response cache for /api/messages", () => {
         });
 
         expect(refetched.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
         expect(refetched.json()).toMatchObject({
             data: {
                 messages: [{ text: "Updated text" }],
@@ -122,6 +124,7 @@ describe("Response cache for /api/messages", () => {
         });
 
         expect(primed.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
         expect(primed.json()).toMatchObject({
             data: { messages: [{ id: message.id }] },
         });

@@ -6,10 +6,10 @@ import stylisticJs from "@stylistic/eslint-plugin-js";
 import prettyImports from "eslint-plugin-pretty-imports";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import importX, { createNodeResolver } from "eslint-plugin-import-x";
-import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
 import { builtinRules } from "eslint/use-at-your-own-risk";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +22,8 @@ const restrictedSyntax = builtinRules.get("no-restricted-syntax");
 // Comments are not AST nodes, so no-restricted-syntax cannot see them.
 // Consecutive // lines count as one comment.
 const MAX_COMMENT_LINES = 5;
+
+const INDENT_SPACES = 4;
 
 const maxCommentLines = {
     meta: {
@@ -145,6 +147,7 @@ const layerDirection = {
 
         function check(node) {
             const source = node.source?.value;
+
             const target =
                 typeof source === "string" &&
                 source.match(/^@\/modules\/([^/]+)\//)?.[1];
@@ -170,6 +173,52 @@ const layerDirection = {
         }
 
         return { ImportDeclaration: check, ImportExpression: check };
+    },
+};
+
+// Rule 2: a service may open prisma.$transaction, but the transaction client
+// is only handed to repository methods — never queried in place.
+const transactionViaRepositories = {
+    meta: {
+        type: "problem",
+        schema: [],
+        messages: {
+            direct: "Inside $transaction, pass `{{name}}` to a repository method — queries still go through repositories (CLAUDE.md, Rule 2).",
+        },
+    },
+    create(context) {
+        const clients = [];
+
+        function clientOf(node) {
+            const [callback] = node.arguments;
+
+            const param = /Function/.test(callback?.type ?? "")
+                ? callback.params[0]
+                : null;
+
+            return param?.type === "Identifier" ? param.name : null;
+        }
+
+        return {
+            "CallExpression[callee.property.name='$transaction']"(node) {
+                clients.push(clientOf(node));
+            },
+            "CallExpression[callee.property.name='$transaction']:exit"() {
+                clients.pop();
+            },
+            MemberExpression(node) {
+                if (
+                    node.object.type === "Identifier" &&
+                    clients.includes(node.object.name)
+                ) {
+                    context.report({
+                        node,
+                        messageId: "direct",
+                        data: { name: node.object.name },
+                    });
+                }
+            },
+        };
     },
 };
 
@@ -213,6 +262,8 @@ const architecture = {
     rules: {
         "layer-direction": layerDirection,
         "file-naming": fileNaming,
+        "transaction-via-repositories": transactionViaRepositories,
+        "no-focused-tests": restrictedSyntax,
         "type-files": restrictedSyntax,
         "constant-files": restrictedSyntax,
         "return-reply": restrictedSyntax,
@@ -317,7 +368,7 @@ export default [
             ],
             "@typescript-eslint/no-use-before-define": "off",
 
-            indent: ["error", 4],
+            indent: ["error", INDENT_SPACES],
             "linebreak-style": ["error", "unix"],
             quotes: ["error", "double", "avoid-escape"],
             semi: ["error", "always"],
@@ -359,7 +410,7 @@ export default [
                 {
                     ignoreArrayIndexes: true,
                     ignore: [
-                        0, 1, -1, 200, 201, 202, 204, 400, 401, 403, 404, 409, 500,
+                        0, 1, -1, 200, 201, 202, 204, 400, 401, 403, 404, 409, 429, 500,
                     ],
                 },
             ],
@@ -848,6 +899,7 @@ export default [
 
         rules: {
             "arch/file-naming": "error",
+            "arch/transaction-via-repositories": "error",
             "arch/structured-logs": [
                 "error",
                 {
@@ -878,6 +930,7 @@ export default [
         files: ["src/**/*.constant.ts"],
 
         rules: {
+            "no-magic-numbers": "off",
             "arch/constant-files": [
                 "error",
                 {
@@ -1056,6 +1109,34 @@ export default [
         },
     },
     {
+        // Architecture rules don't apply to tests — they may use prisma,
+        // factories and raw numbers. What does apply is what makes a test lie.
+        files: ["test/**/*.ts"],
+
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: __dirname,
+            },
+        },
+
+        rules: {
+            "no-magic-numbers": "off",
+            "@typescript-eslint/no-floating-promises": "error",
+            "@typescript-eslint/no-misused-promises": "error",
+            "@typescript-eslint/await-thenable": "error",
+            "arch/no-focused-tests": [
+                "error",
+                {
+                    selector:
+                        "MemberExpression[object.name=/^(it|test|describe|suite)$/][property.name='only']",
+                    message:
+                        ".only makes CI run this test alone and skip the rest while staying green — remove it before committing.",
+                },
+            ],
+        },
+    },
+    {
         files: ["**/*.{ts,js,mjs}"],
 
         rules: {
@@ -1112,7 +1193,7 @@ export default [
                 },
             ],
             "arch/always-return": [
-                "warn",
+                "error",
                 {
                     selector:
                         ":matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator > :function[expression=false]:not(:has(ReturnStatement[argument]))",
@@ -1140,7 +1221,7 @@ export default [
                 },
             ],
             "arch/always-return": [
-                "warn",
+                "error",
                 {
                     selector:
                         ":matches(:function > ObjectExpression, ReturnStatement > ObjectExpression) > Property > :function[expression=false]:not(:has(ReturnStatement[argument]))",
@@ -1220,7 +1301,7 @@ export default [
 
         rules: {
             "arch/no-db-in-loops": [
-                "warn",
+                "error",
                 {
                     selector:
                         ":matches(ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement) CallExpression[callee.object.name=/Repository$/]",
@@ -1241,7 +1322,7 @@ export default [
 
         rules: {
             "arch/layer-imports": [
-                "warn",
+                "error",
                 {
                     patterns: [
                         {
@@ -1264,7 +1345,7 @@ export default [
 
         rules: {
             "arch/no-manual-new": [
-                "warn",
+                "error",
                 {
                     selector:
                         "NewExpression:not([callee.name=/(Error|^Date|^Map|^Set|^URL)$/])",
@@ -1328,7 +1409,7 @@ export default [
 
         rules: {
             "@typescript-eslint/consistent-type-assertions": [
-                "warn",
+                "error",
                 { assertionStyle: "never" },
             ],
         },

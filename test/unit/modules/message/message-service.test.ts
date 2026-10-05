@@ -53,9 +53,11 @@ describe("message.service - createMessage", () => {
             update: {},
             select: messageIdSelect,
         });
+
         expect(cache.invalidate).toHaveBeenCalledWith({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 });
@@ -78,18 +80,23 @@ describe("message.service - updateMessage", () => {
             meta: undefined,
             updatedAt: enqueuedAt,
         });
+
         expect(repository.findUniqueOrFail).not.toHaveBeenCalled();
+
         expect(cache.invalidate).toHaveBeenCalledWith({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 
     it("should skip a stale write without invalidating the cache", async () => {
         const repository = createFakeRepository();
+
         (
             repository.updateUnlessNewer as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce({ count: 0 });
+
         const cache = createFakeCache();
         const service = createService(repository, cache, log, config);
 
@@ -103,18 +110,22 @@ describe("message.service - updateMessage", () => {
             where: { id: messageId },
             select: messageIdSelect,
         });
+
         expect(cache.invalidate).not.toHaveBeenCalled();
         expect(result).toEqual({ id: messageId });
     });
 
     it("should propagate not-found when the message is gone", async () => {
         const repository = createFakeRepository();
+
         (
             repository.updateUnlessNewer as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce({ count: 0 });
+
         (
             repository.findUniqueOrFail as ReturnType<typeof vi.fn>
         ).mockRejectedValueOnce(new Error("Message not found."));
+
         const cache = createFakeCache();
         const service = createService(repository, cache, log, config);
 
@@ -141,9 +152,11 @@ describe("message.service - deleteMessage", () => {
         expect(repository.deleteMany).toHaveBeenCalledWith({
             where: { id: messageId },
         });
+
         expect(cache.invalidate).toHaveBeenCalledWith({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 });
@@ -151,6 +164,7 @@ describe("message.service - deleteMessage", () => {
 describe("message.service - getMessages", () => {
     it("should request the list select and return null nextCursor under the limit", async () => {
         const repository = createFakeRepository();
+
         (repository.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
             [
                 {
@@ -161,6 +175,7 @@ describe("message.service - getMessages", () => {
                 },
             ]
         );
+
         const service = createService(
             repository,
             createFakeCache(),
@@ -175,17 +190,20 @@ describe("message.service - getMessages", () => {
             orderBy: { id: "desc" },
             select: messageListSelect,
         });
+
         expect(result.data.nextCursor).toBeNull();
     });
 
     it("should set nextCursor to the last row's id when the page is full", async () => {
         const repository = createFakeRepository();
+
         (repository.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
             [
                 { id: missingId, createdAt: new Date(), text: "A", meta: null },
                 { id: messageId, createdAt: new Date(), text: "B", meta: null },
             ]
         );
+
         const service = createService(
             repository,
             createFakeCache(),
@@ -200,6 +218,7 @@ describe("message.service - getMessages", () => {
 
     it("should pass the cursor through to the repository", async () => {
         const repository = createFakeRepository();
+
         const service = createService(
             repository,
             createFakeCache(),

@@ -33,10 +33,12 @@ describe("messageQueue plugin", () => {
         const defaultJobOptions = server.messageQueue.opts.defaultJobOptions;
 
         expect(defaultJobOptions?.attempts).toBe(3);
+
         expect(defaultJobOptions?.backoff).toEqual({
             type: "exponential",
             delay: 1000,
         });
+
         expect(defaultJobOptions?.removeOnComplete).toBe(true);
         expect(defaultJobOptions?.removeOnFail).toBe(100);
     });
@@ -69,6 +71,7 @@ describe("messageQueue plugin", () => {
         const failed = await server.messageQueue.getJob(job.id ?? "");
 
         expect(failed?.attemptsMade).toBe(1);
+
         expect(
             await server.prisma.message.count({ where: { id: MISSING_ID } })
         ).toBe(0);

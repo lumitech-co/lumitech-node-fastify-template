@@ -1,11 +1,11 @@
 import { FastifyRequest } from "fastify";
 import { describe, expect, it } from "vitest";
+import { RouteCacheOptions } from "@/lib/cache/cache.type.js";
 import { createCacheKey, createRouteCacheKey } from "@/lib/cache/cache.util.js";
 import {
     CACHE_KEY_HASH_LENGTH,
     CACHE_KEY_PREFIX,
 } from "@/lib/cache/cache.constant.js";
-import { RouteCacheOptions } from "@/lib/cache/cache.type.js";
 
 type BuildRequestPayload = {
     method?: string;
@@ -53,6 +53,7 @@ describe("cache.util - createCacheKey", () => {
 
     it("should be deterministic for the same segments", () => {
         const first = createCacheKey({ namespace: "ns", segments: ["x", "y"] });
+
         const second = createCacheKey({
             namespace: "ns",
             segments: ["x", "y"],
@@ -63,6 +64,7 @@ describe("cache.util - createCacheKey", () => {
 
     it("should change the hash when a segment changes", () => {
         const first = createCacheKey({ namespace: "ns", segments: ["x", "y"] });
+
         const second = createCacheKey({
             namespace: "ns",
             segments: ["x", "z"],
@@ -80,6 +82,7 @@ describe("cache.util - createRouteCacheKey", () => {
                 query: { a: "1", b: "2" },
             })
         );
+
         const shuffled = routeKey(
             buildRequest({
                 url: "/api/messages?b=2&a=1",
@@ -94,6 +97,7 @@ describe("cache.util - createRouteCacheKey", () => {
         const one = routeKey(
             buildRequest({ url: "/api/messages?page=1", query: { page: 1 } })
         );
+
         const two = routeKey(
             buildRequest({ url: "/api/messages?page=2", query: { page: 2 } })
         );
@@ -105,6 +109,7 @@ describe("cache.util - createRouteCacheKey", () => {
         const clean = routeKey(
             buildRequest({ url: "/api/messages?page=1", query: { page: 1 } })
         );
+
         const polluted = routeKey(
             buildRequest({
                 url: "/api/messages?page=1&junk=abc",
@@ -147,10 +152,12 @@ describe("cache.util - createRouteCacheKey", () => {
             buildRequest({ headers: { "x-user": "alice" } }),
             options
         );
+
         const aliceAgain = routeKey(
             buildRequest({ headers: { "x-user": "alice" } }),
             options
         );
+
         const bob = routeKey(
             buildRequest({ headers: { "x-user": "bob" } }),
             options
@@ -169,6 +176,7 @@ describe("cache.util - createRouteCacheKey", () => {
             buildRequest({ headers: { "accept-language": "en" } }),
             options
         );
+
         const german = routeKey(
             buildRequest({ headers: { "accept-language": "de" } }),
             options
@@ -183,6 +191,7 @@ describe("cache.util - createRouteCacheKey", () => {
         };
 
         const missing = routeKey(buildRequest(), options);
+
         const empty = routeKey(
             buildRequest({ headers: { "accept-language": "" } }),
             options

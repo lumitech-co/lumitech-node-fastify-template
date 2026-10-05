@@ -1,12 +1,12 @@
 import { ZodError } from "zod";
 import { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
 import { MessageService } from "@/modules/message/message.service.js";
-import { createService } from "@/modules/message/mq/message.service.js";
-import { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import { MessageJobData } from "@/modules/message/mq/message.type.js";
+import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
+import { createService } from "@/modules/message/mq/message.service.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import {
     messageIdSelect,
     MessageRepository,
@@ -62,6 +62,7 @@ describe("mq/message.service - processMessageJob", () => {
             text: "Hello",
             enqueuedAt,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 
@@ -126,11 +127,13 @@ describe("mq/message.service - processMessageJob", () => {
 
     it("should propagate NotFoundError for a missing message", async () => {
         const messageService = createFakeMessageService();
+
         (
             messageService.updateMessage as ReturnType<typeof vi.fn>
         ).mockRejectedValueOnce(
             new NotFoundError(RESPONSE_MESSAGES.message.notFound)
         );
+
         const service = buildService({ messageService });
 
         await expect(
@@ -145,9 +148,11 @@ describe("mq/message.service - processMessageJob", () => {
     it("should rethrow other errors as-is", async () => {
         const messageService = createFakeMessageService();
         const transient = new Error("Connection lost");
+
         (
             messageService.deleteMessage as ReturnType<typeof vi.fn>
         ).mockRejectedValueOnce(transient);
+
         const service = buildService({ messageService });
 
         await expect(
@@ -171,10 +176,12 @@ describe("mq/message.service - enqueue*", () => {
         });
 
         expect(repository.generateId).toHaveBeenCalledOnce();
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Create, {
             text: "Hello",
             id: messageId,
         });
+
         expect(result).toEqual({
             message: RESPONSE_MESSAGES.message.createQueued,
             data: { id: messageId, jobId: `${MessageJobName.Create}-job-id` },
@@ -191,10 +198,12 @@ describe("mq/message.service - enqueue*", () => {
         });
 
         expect(repository.generateId).not.toHaveBeenCalled();
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Create, {
             id: missingId,
             text: "Hello",
         });
+
         expect(result.data.id).toBe(missingId);
     });
 
@@ -212,10 +221,12 @@ describe("mq/message.service - enqueue*", () => {
             where: { id: messageId },
             select: messageIdSelect,
         });
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Update, {
             id: messageId,
             meta: null,
         });
+
         expect(result.message).toBe(RESPONSE_MESSAGES.message.updateQueued);
     });
 
@@ -230,20 +241,24 @@ describe("mq/message.service - enqueue*", () => {
             where: { id: messageId },
             select: messageIdSelect,
         });
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Delete, {
             id: messageId,
         });
+
         expect(result.message).toBe(RESPONSE_MESSAGES.message.deleteQueued);
     });
 
     it("should not enqueue an update or delete for a missing message", async () => {
         const queue = createFakeQueue();
         const repository = createFakeRepository();
+
         (
             repository.findUniqueOrFail as ReturnType<typeof vi.fn>
         ).mockRejectedValue(
             new NotFoundError(RESPONSE_MESSAGES.message.notFound)
         );
+
         const service = buildService({ queue, repository });
 
         await expect(
@@ -252,6 +267,7 @@ describe("mq/message.service - enqueue*", () => {
                 payload: { text: "x" },
             })
         ).rejects.toThrow(NotFoundError);
+
         await expect(
             service.enqueueDeleteMessage({ id: missingId })
         ).rejects.toThrow(NotFoundError);
