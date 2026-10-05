@@ -1,6 +1,6 @@
 /**
  * Guards for CLAUDE.md rules that ESLint cannot see: generator wiring
- * (Rule 0) and typed Json columns (Rule 8a).
+ * (Rule 0), typed Json columns (Rule 8a) and blanket eslint-disable directives.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -119,4 +119,20 @@ describe("Rule 8a: every Json column is typed via prisma-json-types-generator", 
             );
         }
     );
+});
+
+describe("arch/* rules are never switched off", () => {
+    const sources = (
+        fs.readdirSync(SRC, { recursive: true, encoding: "utf8" }) as string[]
+    ).filter((file) => /\.(ts|js)$/.test(file));
+
+    it.each(sources)("%s has no blanket eslint-disable", (file) => {
+        expect(readSource(file)).not.toMatch(
+            /eslint-disable(-next-line|-line)?\s*(\*\/|$|--)/m
+        );
+    });
+
+    it.each(sources)("%s does not disable an arch/* rule", (file) => {
+        expect(readSource(file)).not.toMatch(/eslint-disable\S*[^\n]*\barch\//);
+    });
 });

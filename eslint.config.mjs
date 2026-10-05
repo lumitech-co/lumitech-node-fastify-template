@@ -83,8 +83,50 @@ const maxCommentLines = {
     },
 };
 
+// A blanket directive (no rule list) switches off every arch/* rule too.
+const DISABLE_DIRECTIVE = /^\s*eslint-disable(?:-next-line|-line)?(?:\s+([^]*?))?(?:\s+--[^]*)?\s*$/;
+
+const noArchDisable = {
+    meta: {
+        type: "problem",
+        schema: [],
+        messages: {
+            archRule:
+                "Never disable an arch/* rule — fix the code (CLAUDE.md, Architecture Rules).",
+            blanket:
+                "List the rules you disable — a blanket eslint-disable also switches off the arch/* rules.",
+        },
+    },
+    create(context) {
+        return {
+            Program() {
+                for (const comment of context.sourceCode.getAllComments()) {
+                    const match = comment.value.match(DISABLE_DIRECTIVE);
+
+                    if (!match) {
+                        continue;
+                    }
+
+                    const rules = match[1]?.trim();
+
+                    if (!rules) {
+                        context.report({ loc: comment.loc, messageId: "blanket" });
+                    } else if (/(^|[\s,])arch\//.test(rules)) {
+                        context.report({ loc: comment.loc, messageId: "archRule" });
+                    }
+                }
+            },
+        };
+    },
+};
+
 const architecture = {
     rules: {
+        "no-arch-disable": noArchDisable,
+        "file-layout": restrictedSyntax,
+        "factory-params": restrictedSyntax,
+        "di-files": restrictedSyntax,
+        "zod-placement": typescriptEslint.rules["no-restricted-imports"],
         "no-barrel-files": restrictedSyntax,
         "no-parent-imports": builtinRules.get("no-restricted-imports"),
         "no-classes": restrictedSyntax,
@@ -378,10 +420,10 @@ export default [
                 {
                     patterns: [
                         {
-                            regex: "^(awilix|bullmq|ioredis|redis|@aws-sdk/.+|@google-cloud/.+)$",
+                            regex: "^(?!@/|\\.{1,2}/|node:|fastify$|zod$|@prisma/client$).+",
                             allowTypeImports: true,
                             message:
-                                "Third-party clients reach handlers/services/repositories only through a plugin in src/plugins/ — use `import type` here (CLAUDE.md, Rule 6).",
+                                "Only @/, ./, node:, fastify, zod and @prisma/client are imported here — any other package reaches handlers/services/repositories through a plugin in src/plugins/; use `import type` (CLAUDE.md, Rule 6).",
                         },
                     ],
                 },
@@ -405,18 +447,200 @@ export default [
         },
     },
     {
-        files: ["src/database/repositories/**/*.type.ts"],
-        ignores: ["src/database/repositories/repository.type.ts"],
+        files: ["src/modules/**/*.{ts,js}"],
+        ignores: [
+            "src/modules/*/index.ts",
+            "src/modules/*/*.{route,handler,service,constant,type,util}.ts",
+            "src/modules/*/mq/*.{queue,worker,service,constant,type}.ts",
+        ],
 
         rules: {
-            "arch/repository-files": [
+            "arch/file-layout": [
                 "error",
                 {
                     selector: "Program",
                     message:
-                        "A repository never gets its own *.type.ts — keep its types in the repository file (CLAUDE.md, Rule 5).",
+                        "A module holds only index.ts, <name>.{route,handler,service,constant,type,util}.ts and mq/<name>.{queue,worker,service,constant,type}.ts (ARCHITECTURE.md, Directory layout).",
                 },
             ],
+        },
+    },
+    {
+        files: ["src/database/repositories/**/*.{ts,js}"],
+        ignores: [
+            "src/database/repositories/*/*.repository.ts",
+            "src/database/repositories/generate.repository.ts",
+            "src/database/repositories/repository.type.ts",
+        ],
+
+        rules: {
+            "arch/file-layout": [
+                "error",
+                {
+                    selector: "Program",
+                    message:
+                        "A repository folder holds only <name>.repository.ts — its types stay in that file, never in a *.type.ts (CLAUDE.md, Rules 0 and 5).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/lib/validation/**/*.{ts,js}"],
+        ignores: ["src/lib/validation/*/*.schema.ts"],
+
+        rules: {
+            "arch/file-layout": [
+                "error",
+                {
+                    selector: "Program",
+                    message:
+                        "src/lib/validation/<module>/ holds only <module>.schema.ts (CLAUDE.md, Rule 7).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/plugins/**/*.{ts,js}"],
+        ignores: ["src/plugins/*.ts", "src/plugins/mq/**"],
+
+        rules: {
+            "arch/file-layout": [
+                "error",
+                {
+                    selector: "Program",
+                    message:
+                        "src/plugins/ is flat — the only subfolder is mq/<name>/ (CLAUDE.md, Rule 6).",
+                },
+            ],
+        },
+    },
+    {
+        // CLASSIC injection resolves dependencies by parameter name.
+        files: [
+            "src/**/*.{service,handler}.ts",
+            "src/database/repositories/**/*.repository.ts",
+        ],
+
+        rules: {
+            "arch/factory-params": [
+                "error",
+                {
+                    selector:
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^create/] > :function > :matches(ObjectPattern, ArrayPattern, RestElement, AssignmentPattern)",
+                    message:
+                        "Awilix (CLASSIC) injects factory dependencies by parameter name — one plain parameter per dependency, no destructuring/defaults/rest (CLAUDE.md, Rule 1).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.service.ts"],
+
+        rules: {
+            "arch/di-files": [
+                "error",
+                {
+                    selector:
+                        "Program:not(:has(Program > ExportNamedDeclaration VariableDeclarator[id.name=/^create\\w*Service$/]))",
+                    message:
+                        "A *.service.ts exports its factory as createService (module) or create<Name>Service (lib) (CLAUDE.md, Rule 1).",
+                },
+                {
+                    selector:
+                        "Program:not(:has(Program > ExpressionStatement > CallExpression[callee.name='addDIResolverName']))",
+                    message:
+                        "Register the factory with a top-level addDIResolverName(factory, \"name\") (CLAUDE.md, Rule 1).",
+                },
+                {
+                    selector:
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^create/] > ArrowFunctionExpression:not([returnType])",
+                    message:
+                        "Annotate the factory's return type with its <Name>Service type.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.handler.ts"],
+
+        rules: {
+            "arch/di-files": [
+                "error",
+                {
+                    selector:
+                        "Program:not(:has(Program > ExportNamedDeclaration VariableDeclarator[id.name=/^create\\w*Handler$/]))",
+                    message:
+                        "A *.handler.ts exports its factory as createHandler (CLAUDE.md, Rule 1).",
+                },
+                {
+                    selector:
+                        "Program:not(:has(Program > ExpressionStatement > CallExpression[callee.name='addDIResolverName']))",
+                    message:
+                        "Register the factory with a top-level addDIResolverName(factory, \"name\") (CLAUDE.md, Rule 1).",
+                },
+                {
+                    selector:
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^create/] > ArrowFunctionExpression:not([returnType])",
+                    message:
+                        "Annotate the factory's return type with its <Name>Handler type.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/database/repositories/**/*.repository.ts"],
+        ignores: ["src/database/repositories/generate.repository.ts"],
+
+        rules: {
+            "arch/di-files": [
+                "error",
+                {
+                    selector:
+                        "Program:not(:has(Program > ExportNamedDeclaration VariableDeclarator[id.name=/^create\\w+Repository$/]))",
+                    message:
+                        "A *.repository.ts exports its factory as create<Name>Repository (CLAUDE.md, Rule 1).",
+                },
+                {
+                    selector:
+                        "Program:not(:has(Program > ExpressionStatement > CallExpression[callee.name='addDIResolverName']))",
+                    message:
+                        "Register the factory with a top-level addDIResolverName(factory, \"name\") (CLAUDE.md, Rule 1).",
+                },
+                {
+                    selector:
+                        "Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^create/] > ArrowFunctionExpression:not([returnType])",
+                    message:
+                        "Annotate the factory's return type with its <Name>Repository type.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+        ignores: ["src/lib/validation/**"],
+
+        rules: {
+            "arch/zod-placement": [
+                "error",
+                {
+                    paths: [
+                        {
+                            name: "zod",
+                            allowTypeImports: true,
+                            allowImportNames: ["ZodError"],
+                            message:
+                                "Zod schemas live only in src/lib/validation/<module>/<module>.schema.ts — import them from there; elsewhere only `import type` / ZodError (CLAUDE.md, Rule 7).",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["**/*.{ts,js,mjs}"],
+
+        rules: {
+            "arch/no-arch-disable": "error",
         },
     },
     {
