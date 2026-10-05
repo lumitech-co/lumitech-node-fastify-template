@@ -1,5 +1,5 @@
-import { Prisma } from "@prisma/client";
-import {
+import type { Prisma } from "@prisma/client";
+import type {
     GetFindResult,
     OperationPayload,
 } from "@prisma/client/runtime/library";

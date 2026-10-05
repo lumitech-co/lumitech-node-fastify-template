@@ -1,11 +1,12 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import { BaseRepository } from "@/database/repositories/repository.type.js";
-import { UpdateMessageJobData } from "@/lib/validation/message/message.schema.js";
+import type { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
+import type { BaseRepository } from "@/database/repositories/repository.type.js";
 import { generateRepository } from "@/database/repositories/generate.repository.js";
+import type { UpdateMessageJobData } from "@/lib/validation/message/message.schema.js";
 
 export const messageListSelect = {
     id: true,

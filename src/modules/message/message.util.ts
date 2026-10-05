@@ -1,4 +1,4 @@
-import { DiffObjectsPayload, IsEqualPayload } from "./message.type.js";
+import type { DiffObjectsPayload, IsEqualPayload } from "./message.type.js";
 
 /**
  * Example util: keys whose values differ between two flat objects,

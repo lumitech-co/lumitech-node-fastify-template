@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
-import { MessageHandler } from "./message.handler.js";
+import type { FastifyInstance } from "fastify";
+import type { MessageHandler } from "./message.handler.js";
 import {
     MESSAGE_CACHE_NAMESPACE,
     MESSAGE_CACHE_TTL_SECONDS,

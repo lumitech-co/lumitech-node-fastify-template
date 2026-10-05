@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import {
+import type {
     CreateCacheKeyPayload,
     CreateRouteCacheKeyPayload,
 } from "./cache.type.js";

@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
 import { S3Client } from "@aws-sdk/client-s3";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 
 const configureAwsS3 = async (fastify: FastifyInstance) => {

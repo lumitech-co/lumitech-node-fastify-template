@@ -2,19 +2,17 @@ import type { Queue } from "bullmq";
 import { MessageJobName } from "./message.constant.js";
 import { BadRequestError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { MessageService } from "@/modules/message/message.service.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import {
-    messageIdSelect,
-    MessageRepository,
-} from "@/database/repositories/message/message.repository.js";
+import type { MessageService } from "@/modules/message/message.service.js";
+import { messageIdSelect } from "@/database/repositories/message/message.repository.js";
+import type { EnqueueMessageResponse } from "@/lib/validation/message/message.schema.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
     createMessageJobSchema,
     updateMessageJobSchema,
     deleteMessageJobSchema,
-    EnqueueMessageResponse,
 } from "@/lib/validation/message/message.schema.js";
-import {
+import type {
     ProcessMessageJobPayload,
     MessageJobResult,
     EnqueueCreateMessagePayload,

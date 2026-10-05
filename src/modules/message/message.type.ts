@@ -1,4 +1,4 @@
-import {
+import type {
     CreateMessageJobData,
     UpdateMessageJobData,
 } from "@/lib/validation/message/message.schema.js";

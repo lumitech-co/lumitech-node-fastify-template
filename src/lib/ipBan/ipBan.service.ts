@@ -1,8 +1,8 @@
-import { Redis } from "ioredis";
-import { FastifyBaseLogger } from "fastify";
+import type { Redis } from "ioredis";
+import type { FastifyBaseLogger } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { REDIS_KEY_EXISTS } from "@/lib/constants/redis.constant.js";
-import { IsBannedPayload, RegisterAttemptPayload } from "./ipBan.type.js";
+import type { IsBannedPayload, RegisterAttemptPayload } from "./ipBan.type.js";
 import {
     IP_BAN_ATTEMPTS_KEY_PREFIX,
     IP_BAN_ATTEMPTS_WINDOW_SECONDS,

@@ -1,5 +1,5 @@
-import { MessageJobName } from "./message.constant.js";
-import {
+import type { MessageJobName } from "./message.constant.js";
+import type {
     CreateMessageInput,
     UpdateMessageInput,
     CreateMessageJobData,

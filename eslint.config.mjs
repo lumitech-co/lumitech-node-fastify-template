@@ -281,7 +281,8 @@ export default [
             quotes: ["error", "double", "avoid-escape"],
             semi: ["error", "always"],
 
-            "no-console": "warn",
+            "no-console": "error",
+            "no-inline-comments": "error",
 
             // log.trace()/log.debug() are suppressed in GCP (logger level is
             // 'info'), so they never reach Cloud Logging yet add noise. Flag
@@ -381,6 +382,32 @@ export default [
                         "src/plugins/mq/** may only contain *.worker.ts (BullMQ consumer) or *.queue.ts (producer) files.",
                 },
             ],
+        },
+    },
+    {
+        files: ["cli/**", "scripts/**"],
+
+        rules: {
+            "no-console": "off",
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: __dirname,
+            },
+        },
+
+        rules: {
+            "@typescript-eslint/consistent-type-imports": [
+                "error",
+                { prefer: "type-imports", fixStyle: "separate-type-imports" },
+            ],
+            "@typescript-eslint/no-floating-promises": "error",
+            "@typescript-eslint/no-misused-promises": "error",
         },
     },
     {

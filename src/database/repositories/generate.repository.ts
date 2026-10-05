@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { BaseRepository, Model } from "./repository.type.js";
+import type { PrismaClient } from "@prisma/client";
+import type { BaseRepository, Model } from "./repository.type.js";
 
 /**
  * Builds the base CRUD repository for a Prisma model.

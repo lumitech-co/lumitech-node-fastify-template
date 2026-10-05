@@ -1,4 +1,4 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { createApplicationRoutes } from "./application.route.js";
 
 // Define the endpoint prefix by providing autoPrefix module property.

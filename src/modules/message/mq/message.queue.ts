@@ -1,8 +1,8 @@
 import { Queue } from "bullmq";
-import { FastifyInstance } from "fastify";
-import { MessageJobData } from "./message.type.js";
+import type { FastifyInstance } from "fastify";
+import type { MessageJobData } from "./message.type.js";
+import type { MessageJobName } from "./message.constant.js";
 import {
-    MessageJobName,
     MESSAGE_QUEUE_NAME,
     MESSAGE_QUEUE_DEFAULT_JOB_OPTIONS,
 } from "./message.constant.js";

@@ -1,8 +1,8 @@
-import { MessageService } from "./message.service.js";
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { MessageService } from "./message.service.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { MessageJobService } from "./mq/message.service.js";
-import {
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { MessageJobService } from "./mq/message.service.js";
+import type {
     CreateMessageInput,
     UpdateMessageInput,
     MessageIdParam,

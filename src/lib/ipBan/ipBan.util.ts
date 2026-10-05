@@ -1,4 +1,4 @@
-import { IsAllowedPathPayload } from "./ipBan.type.js";
+import type { IsAllowedPathPayload } from "./ipBan.type.js";
 import {
     IP_BAN_ALLOWED_PATHS,
     IP_BAN_ALLOWED_PREFIXES,

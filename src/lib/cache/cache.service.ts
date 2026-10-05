@@ -1,5 +1,5 @@
-import { Redis } from "ioredis";
-import { FastifyBaseLogger } from "fastify";
+import type { Redis } from "ioredis";
+import type { FastifyBaseLogger } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import {
     CACHE_INVALIDATION_SCAN_COUNT,
@@ -9,7 +9,7 @@ import {
     CACHE_LOCK_PREFIX,
     CACHE_LOCK_TTL_MS,
 } from "./cache.constant.js";
-import {
+import type {
     GetCachePayload,
     SetCachePayload,
     SleepPayload,

@@ -10,10 +10,10 @@ export const extendCradle = (namePascal, nameCamel, nameKebab) => {
     let diContent = fs.readFileSync(diContainerPath, "utf8");
 
     if (!diContent.includes(`${namePascal}Repository`)) {
-        const importMarker = 'import { EnvConfig } from "./env.type.js";';
+        const importMarker = 'import type { EnvConfig } from "./env.type.js";';
 
         const newImports = `
-import { ${namePascal}Repository } from "@/database/repositories/${nameKebab}/${nameKebab}.repository.js";`;
+import type { ${namePascal}Repository } from "@/database/repositories/${nameKebab}/${nameKebab}.repository.js";`;
 
         diContent = diContent.replace(
             importMarker,

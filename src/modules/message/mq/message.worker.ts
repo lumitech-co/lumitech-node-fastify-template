@@ -1,9 +1,10 @@
 import { ZodError } from "zod";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { UnrecoverableError, Worker } from "bullmq";
-import { MessageJobData, MessageJobResult } from "./message.type.js";
+import { MESSAGE_QUEUE_NAME } from "./message.constant.js";
+import type { MessageJobName } from "./message.constant.js";
 import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
-import { MESSAGE_QUEUE_NAME, MessageJobName } from "./message.constant.js";
+import type { MessageJobData, MessageJobResult } from "./message.type.js";
 
 export const configureMessageWorker = async (fastify: FastifyInstance) => {
     const messageJobService = fastify.di.resolve("messageJobService");

@@ -1,5 +1,5 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { Storage } from "@google-cloud/storage";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 

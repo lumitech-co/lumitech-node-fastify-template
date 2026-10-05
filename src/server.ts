@@ -1,8 +1,9 @@
 import path from "path";
+import Fastify from "fastify";
 import autoload from "@fastify/autoload";
-import Fastify, { FastifyInstance } from "fastify";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import type { FastifyInstance } from "fastify";
 import { resolveTrustProxy } from "@/lib/proxy/proxy.util.js";
 import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";
 import { QUEUE_WORKER_PLUGIN_PATTERN } from "@/lib/constants/bullmq.constant.js";

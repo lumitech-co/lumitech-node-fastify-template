@@ -1,5 +1,5 @@
 import { RESOLVER } from "awilix";
-import { Cradle } from "@/types/di-container.type.js";
+import type { Cradle } from "@/types/di-container.type.js";
 
 /**
  * Sets the Awilix RESOLVER name a factory is registered under.

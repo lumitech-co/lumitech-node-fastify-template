@@ -1,11 +1,11 @@
-import { Storage } from "@google-cloud/storage";
-import { EnvConfig } from "@/types/env.type.js";
+import type { Storage } from "@google-cloud/storage";
+import type { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import {
     GCP_BUCKET_NOT_CONFIGURED,
     SIGNED_URL_EXPIRES_IN_MS,
 } from "./gcpBucket.constant.js";
-import {
+import type {
     DeleteFilePayload,
     DeleteFolderPayload,
     CreateUploadSignedUrlPayload,

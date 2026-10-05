@@ -16,8 +16,8 @@ addDIResolverName(createHandler, "${nameCamel}Handler");
 
     route: (namePascal, nameCamel, nameKebab, nameUpper) =>
         `
-import { FastifyInstance } from "fastify";
-import { ${namePascal}Handler } from "./${nameKebab}.handler.js";
+import type { FastifyInstance } from "fastify";
+import type { ${namePascal}Handler } from "./${nameKebab}.handler.js";
 
 // Declare the module tag and route paths here, unexported:
 // const ${nameUpper}_TAG = "${nameKebab}";
@@ -31,7 +31,7 @@ export const create${namePascal}Routes = (
 
     index: (namePascal, nameCamel, nameKebab) =>
         `
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { create${namePascal}Routes } from "./${nameKebab}.route.js";
 
 // Define the endpoint prefix by providing autoPrefix module property.

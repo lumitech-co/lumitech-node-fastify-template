@@ -1,6 +1,7 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
-import { Redis, RedisOptions } from "ioredis";
+import { Redis } from "ioredis";
+import type { RedisOptions } from "ioredis";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {
     BULLMQ_CONNECT_TIMEOUT_MS,

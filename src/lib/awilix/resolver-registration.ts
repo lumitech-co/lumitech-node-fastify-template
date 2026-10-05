@@ -1,10 +1,6 @@
-import { Cradle } from "@/types/di-container.type.js";
-import {
-    asFunction,
-    AwilixContainer,
-    BuildResolverOptions,
-    RESOLVER,
-} from "awilix";
+import { asFunction, RESOLVER } from "awilix";
+import type { Cradle } from "@/types/di-container.type.js";
+import type { AwilixContainer, BuildResolverOptions } from "awilix";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ResolveRegistration = BuildResolverOptions<any>["register"];
