@@ -171,7 +171,10 @@ a custom index); if a generated migration would be destructive, stop and ask.
   arrow/function-expression constant, placed **after** the factory's `return` (file-level
   helpers after the factory itself) (`arch/service-helpers`). The factory returns the
   service object literal directly — never `const service = { … }; return service;`
-  (`arch/service-return`).
+  (`arch/service-return`). A helper stays inside the factory only if it uses a DI dependency;
+  a pure one goes to `<name>.util.ts` or a file-level function (`arch/no-dependency-free-factory-helper`).
+  No helper that only forwards its arguments to one dependency (`arch/no-pass-through-helper`);
+  a method used only by `return { name }` is written inline (`arch/inline-unshared-service-method`).
 - Keep handlers thin — delegate to services. Validate inputs with Zod.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).

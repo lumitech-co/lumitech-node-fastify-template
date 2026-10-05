@@ -9,13 +9,17 @@ import fileNaming from "./scripts/eslint-rules/file-naming.mjs";
 import importX, { createNodeResolver } from "eslint-plugin-import-x";
 import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
 import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
+import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
 import preferFindUniqueOrFail from "./scripts/eslint-rules/prefer-find-unique-or-fail.mjs";
 import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
+import noDuplicateRepositoryRead from "./scripts/eslint-rules/no-duplicate-repository-read.mjs";
 import transactionViaRepositories from "./scripts/eslint-rules/transaction-via-repositories.mjs";
+import inlineUnsharedServiceMethod from "./scripts/eslint-rules/inline-unshared-service-method.mjs";
 import maxCommentLines, {
     MAX_COMMENT_LINES,
 } from "./scripts/eslint-rules/max-comment-lines.mjs";
 import noSingleRepositoryTransaction from "./scripts/eslint-rules/no-single-repository-transaction.mjs";
+import noDependencyFreeFactoryHelper from "./scripts/eslint-rules/no-dependency-free-factory-helper.mjs";
 import noPrismaShapeOutsideRepository from "./scripts/eslint-rules/no-prisma-shape-outside-repository.mjs";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
@@ -42,6 +46,10 @@ const architecture = {
         "prefer-find-unique-or-fail": preferFindUniqueOrFail,
         "no-single-repository-transaction": noSingleRepositoryTransaction,
         "no-relation-join-with-cursor": noRelationJoinWithCursor,
+        "no-duplicate-repository-read": noDuplicateRepositoryRead,
+        "no-dependency-free-factory-helper": noDependencyFreeFactoryHelper,
+        "no-pass-through-helper": noPassThroughHelper,
+        "inline-unshared-service-method": inlineUnsharedServiceMethod,
         "no-unsafe-raw-sql": restrictedSyntax,
         "worker-imports": typescriptEslint.rules["no-restricted-imports"],
         "thin-workers": restrictedSyntax,
@@ -681,6 +689,7 @@ export default [
             "arch/file-naming": "error",
             "arch/transaction-via-repositories": "error",
             "arch/no-relation-join-with-cursor": "error",
+            "arch/no-duplicate-repository-read": "error",
             "arch/no-unsafe-raw-sql": [
                 "error",
                 {
@@ -707,6 +716,20 @@ export default [
 
         rules: {
             "arch/no-prisma-shape-outside-repository": "error",
+        },
+    },
+    {
+        // The shape of a DI factory body: helpers inside it close over its
+        // dependencies, pure ones live outside, and nothing is a bare hop.
+        files: [
+            "src/**/*.service.ts",
+            "src/database/repositories/**/*.repository.ts",
+        ],
+
+        rules: {
+            "arch/no-dependency-free-factory-helper": "error",
+            "arch/no-pass-through-helper": "error",
+            "arch/inline-unshared-service-method": "error",
         },
     },
     {

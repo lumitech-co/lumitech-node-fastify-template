@@ -28,6 +28,13 @@ const REPOSITORY = "src/database/repositories/demo/demo.repository.ts";
 const ROUTE_OPTIONS =
     '{ schema: { tags: [DEMO_TAG], summary: "s", response: {} } }';
 
+const factory = (...body: string[]): string =>
+    [
+        "export const createService = (demoRepository: DemoRepository): DemoService => {",
+        ...body,
+        "};",
+    ].join("\n");
+
 const pair = (
     rule: string,
     bad: Omit<Case, "rule" | "reports">,
@@ -115,6 +122,90 @@ const CASES: Case[] = [
         {
             file: SERVICE,
             code: 'demoRepository.findMany({ take: 1, relationLoadStrategy: "join" });',
+        }
+    ),
+    ...pair(
+        "no-duplicate-repository-read",
+        {
+            file: SERVICE,
+            code: [
+                "const a = await demoRepository.findFirst({ where: { id } });",
+                "const b = await demoRepository.findMany({ where: { id }, take: 1 });",
+            ].join("\n"),
+        },
+        {
+            file: SERVICE,
+            code: [
+                "const a = await demoRepository.findFirst({ where: { id } });",
+                "await demoRepository.update({ where: { id }, data: {} });",
+                "const b = await demoRepository.findFirst({ where: { id } });",
+            ].join("\n"),
+        }
+    ),
+    {
+        rule: "no-duplicate-repository-read",
+        file: SERVICE,
+        code: [
+            "const rows = await demoRepository.findMany({ where: { id }, take: 1 });",
+            "const total = await demoRepository.count({ where: { id } });",
+        ].join("\n"),
+        reports: false,
+    },
+    {
+        rule: "no-duplicate-repository-read",
+        file: SERVICE,
+        code: "const row = flag ? await demoRepository.findFirst({ where: { id } }) : await demoRepository.findFirst({ where: { id } });",
+        reports: false,
+    },
+    ...pair(
+        "no-dependency-free-factory-helper",
+        {
+            file: SERVICE,
+            code: factory(
+                "return { a: async () => toRow(1) };",
+                "function toRow(value: number) { return { value }; }"
+            ),
+        },
+        {
+            file: SERVICE,
+            code: factory(
+                "return { a: async () => load(1) };",
+                "function load(id: number) { return demoRepository.findUniqueOrFail({ where: { id } }); }"
+            ),
+        }
+    ),
+    ...pair(
+        "no-pass-through-helper",
+        {
+            file: SERVICE,
+            code: factory(
+                "return { a: async ({ id }: P) => load({ id }) };",
+                "async function load({ id }: P) { return demoRepository.findUniqueOrFail({ id }); }"
+            ),
+        },
+        {
+            file: SERVICE,
+            code: factory(
+                "return { a: async ({ id }: P) => load({ id }) };",
+                "async function load({ id }: P) { return demoRepository.findUniqueOrFail({ where: { id } }); }"
+            ),
+        }
+    ),
+    ...pair(
+        "inline-unshared-service-method",
+        {
+            file: SERVICE,
+            code: factory(
+                "return { read };",
+                "async function read() { return demoRepository.findMany({ take: 1 }); }"
+            ),
+        },
+        {
+            file: SERVICE,
+            code: factory(
+                "return { list: async () => read() };",
+                "async function read() { return demoRepository.findMany({ take: 1 }); }"
+            ),
         }
     ),
     ...pair(
