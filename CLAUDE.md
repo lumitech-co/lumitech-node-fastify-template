@@ -19,9 +19,16 @@ npm run generate:repository <entityName>   # new repository
 npm run prisma:migrate:create              # create SQL migration (review before applying)
 npm run prisma:migrate:apply               # apply it
 
-# Finishing a feature — ALWAYS run both
-npm run lint:fix && npm run tsc-check
+# Finishing a feature and before EVERY commit — ALWAYS run all three
+npm run lint:fix && npm run lint && npm run tsc-check
 ```
+
+**Never commit with `--no-verify` / `-n`, never set `HUSKY=0`.** The pre-commit hook runs
+Prettier, `eslint --fix --max-warnings 0` and `tsc` on staged files, and commit-msg runs
+commitlint — the same gates as CI. Commitizen opens only in a terminal; without one (agents,
+IDE git UIs) `git commit -m "<conventional message>"` passes straight through. If a hook
+fails, fix the code and commit again — a bypassed hook only moves the failure to CI. For
+Claude Code this is enforced by `.claude/hooks/block-no-verify.mjs` (`.claude/settings.json`).
 
 ## Architecture Rules (non-negotiable)
 

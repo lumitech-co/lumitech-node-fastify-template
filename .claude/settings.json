@@ -1,0 +1,17 @@
+{
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Bash|PowerShell",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "shell": "bash",
+                        "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-no-verify.mjs\"",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ]
+    }
+}

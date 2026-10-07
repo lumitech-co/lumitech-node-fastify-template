@@ -44,7 +44,7 @@
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [
             "npm run format",
-            "eslint --color --fix",
+            "eslint --color --fix --max-warnings 0",
             "bash -c 'npm run tsc-check'"
         ],
         "**/*.prisma": [

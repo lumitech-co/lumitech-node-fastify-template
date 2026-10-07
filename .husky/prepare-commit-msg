@@ -1,1 +1,6 @@
-exec < /dev/tty && node_modules/.bin/cz --hook || true
+# Commitizen needs a terminal. Without one (agents, IDE git UIs) a failed
+# `exec < /dev/tty` aborts the hook — and the commit — before `|| true`, so
+# probe it in a subshell and fall through to the -m message instead.
+if (exec < /dev/tty) 2>/dev/null; then
+    exec < /dev/tty && node_modules/.bin/cz --hook || true
+fi
