@@ -180,7 +180,12 @@ a custom index); if a generated migration would be destructive, stop and ask.
   a pure one goes to `<name>.util.ts` or a file-level function (`arch/no-dependency-free-factory-helper`).
   No helper that only forwards its arguments to one dependency (`arch/no-pass-through-helper`);
   a method used only by `return { name }` is written inline (`arch/inline-unshared-service-method`).
-- Keep handlers thin — delegate to services. Validate inputs with Zod.
+- Keep handlers thin — delegate to services. Validate inputs with Zod. A handler has no
+  branching, loops or try/catch: it calls the service and returns `reply.status().send()`.
+- Every response schema is the envelope `z.object({ message, data })` (the health check is the
+  only exception).
+- Log errors under `err` — `log.error({ err: error }, "...")`; pino serializes an Error only
+  under that key.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).
 - Prisma only inside repositories; `$transaction` is the single exception (Rule 2). Never

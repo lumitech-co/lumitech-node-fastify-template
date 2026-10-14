@@ -42,6 +42,5 @@ const configureIpBan = async (fastify: FastifyInstance) => {
 };
 
 export default fp(configureIpBan, {
-    name: FastifyPlugin.IpBan,
     dependencies: [FastifyPlugin.Awilix, FastifyPlugin.Redis],
 });

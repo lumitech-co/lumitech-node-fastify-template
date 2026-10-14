@@ -40,4 +40,8 @@ export const generateModule = (nameCamel, namePascal, nameKebab) => {
     const indexContent = templates["index"](namePascal, nameCamel, nameKebab);
     const indexFilePath = path.join(modulePath, "index.ts");
     fs.writeFileSync(indexFilePath, `${indexContent}\n`);
+
+    const readmeContent = templates["readme"](namePascal, nameKebab);
+    const readmeFilePath = path.join(modulePath, "README.md");
+    fs.writeFileSync(readmeFilePath, `${readmeContent}\n`);
 };

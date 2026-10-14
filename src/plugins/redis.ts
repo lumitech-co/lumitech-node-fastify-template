@@ -27,7 +27,7 @@ const configureRedis = async (fastify: FastifyInstance) => {
     });
 
     redis.on("error", (error) => {
-        fastify.log.error({ error }, "Redis connection error");
+        fastify.log.error({ err: error }, "Redis connection error");
     });
 
     redis.connect().catch(() => {});

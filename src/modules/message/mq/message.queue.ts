@@ -19,7 +19,7 @@ export const configureMessageQueue = async (
     );
 
     messageQueue.on("error", (error) => {
-        fastify.log.error({ error }, "Message queue error");
+        fastify.log.error({ err: error }, "Message queue error");
     });
 
     fastify.decorate("messageQueue", messageQueue);

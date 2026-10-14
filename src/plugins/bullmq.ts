@@ -27,7 +27,7 @@ const configureBullMq = async (fastify: FastifyInstance) => {
         });
 
         connection.on("error", (error) => {
-            fastify.log.error({ error }, "BullMQ connection error");
+            fastify.log.error({ err: error }, "BullMQ connection error");
         });
 
         connection.connect().catch(() => {});

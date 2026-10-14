@@ -65,7 +65,7 @@ export const createCacheService = (
 
                 return removed;
             } catch (error) {
-                log.warn({ error, pattern }, "Cache invalidation failed");
+                log.warn({ err: error, pattern }, "Cache invalidation failed");
 
                 return 0;
             }
@@ -116,7 +116,7 @@ export const createCacheService = (
 
             return { hit: true, value: schema.parse(JSON.parse(raw)) };
         } catch (error) {
-            log.warn({ error, key }, "Cache read failed");
+            log.warn({ err: error, key }, "Cache read failed");
 
             return { hit: false, value: null };
         }
@@ -132,7 +132,7 @@ export const createCacheService = (
 
             return true;
         } catch (error) {
-            log.warn({ error, key }, "Cache write failed");
+            log.warn({ err: error, key }, "Cache write failed");
 
             return false;
         }
@@ -144,7 +144,7 @@ export const createCacheService = (
 
             return true;
         } catch (error) {
-            log.warn({ error, key }, "Cache removal failed");
+            log.warn({ err: error, key }, "Cache removal failed");
 
             return false;
         }
@@ -164,7 +164,7 @@ export const createCacheService = (
 
             return result === "OK" ? "acquired" : "taken";
         } catch (error) {
-            log.warn({ error, lockKey }, "Cache lock acquisition failed");
+            log.warn({ err: error, lockKey }, "Cache lock acquisition failed");
 
             return "unavailable";
         }

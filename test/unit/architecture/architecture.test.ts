@@ -249,6 +249,137 @@ describe("Prisma schema conventions", () => {
 
             expect(unindexed, "add @@index([...]) for these").toEqual([]);
         });
+
+        it("declares onDelete on every relation it owns", () => {
+            const implicit = model.lines.filter(
+                (line) =>
+                    /@relation\([^)]*fields:/.test(line) &&
+                    !line.includes("onDelete:")
+            );
+
+            expect(implicit).toEqual([]);
+        });
+
+        it('uses `id String @id @default(dbgenerated("uuidv7()")) @db.Uuid`', () => {
+            const ids = model.lines.filter((line) => /\s@id\b/.test(line));
+
+            expect(
+                ids.filter(
+                    (line) =>
+                        !/^id\s+String\s/.test(line) ||
+                        !line.includes('@default(dbgenerated("uuidv7()"))') ||
+                        !line.includes("@db.Uuid")
+                )
+            ).toEqual([]);
+        });
+    });
+});
+
+const srcFiles = (
+    fs.readdirSync(SRC, { recursive: true, encoding: "utf8" }) as string[]
+)
+    .map((file) => file.replaceAll("\\", "/"))
+    .filter((file) => file.endsWith(".ts"));
+
+const cradleKeys = [
+    ...cradle
+        .match(/export type Cradle = \{([\s\S]*?)\n\};/)![1]!
+        .matchAll(/^\s+(\w+):/gm),
+].map(([, key]) => key!);
+
+const resolverNames = srcFiles.flatMap((file) =>
+    [
+        ...readSource(file).matchAll(
+            /addDIResolverName\(\s*\w+,\s*"(\w+)"\s*\)/g
+        ),
+    ].map(([, name]) => ({ file, name: name! }))
+);
+
+const valueNames = [
+    ...readSource("plugins/awilix.ts").matchAll(/^\s+(\w+): asValue\(/gm),
+].map(([, name]) => name!);
+
+const LOADED_BY_AWILIX =
+    /^(modules\/.+\.(service|handler)|database\/repositories\/.+\.repository|lib\/.+\.service)\.ts$/;
+
+describe("Rule 1: Cradle matches what the container registers", () => {
+    const registered = new Set([
+        ...resolverNames.map(({ name }) => name),
+        ...valueNames,
+    ]);
+
+    it.each(cradleKeys)("%s is registered in the container", (key) => {
+        expect(registered.has(key)).toBe(true);
+    });
+
+    it.each(resolverNames)(
+        "$file is picked up by Awilix loadModules",
+        ({ file }) => {
+            expect(file).toMatch(LOADED_BY_AWILIX);
+        }
+    );
+});
+
+describe("Rule 6: plugin names are declared only when needed", () => {
+    const FOUNDATIONAL = new Set(["Prisma", "Env", "Jwt", "Awilix"]);
+
+    const pluginSources = srcFiles
+        .filter((file) => file.startsWith("plugins/"))
+        .map(readSource);
+
+    const fpOptions = pluginSources.map(
+        (source) => source.match(/export default fp\([\s\S]*$/)?.[0] ?? ""
+    );
+
+    const declared = new Set(
+        fpOptions.flatMap((options) =>
+            [...options.matchAll(/name:\s*FastifyPlugin\.(\w+)/g)].map(
+                ([, name]) => name!
+            )
+        )
+    );
+
+    const dependedOn = new Set(
+        fpOptions.flatMap((options) =>
+            [
+                ...(
+                    options.match(/dependencies:\s*\[([^\]]*)\]/)?.[1] ?? ""
+                ).matchAll(/FastifyPlugin\.(\w+)/g),
+            ].map(([, name]) => name!)
+        )
+    );
+
+    const members = [
+        ...readSource("lib/constants/fastify.constant.ts").matchAll(
+            /^\s+(\w+) = "/gm
+        ),
+    ].map(([, name]) => name!);
+
+    it.each([...dependedOn])("%s is declared as a plugin name", (name) => {
+        expect(declared.has(name)).toBe(true);
+    });
+
+    it.each(members)(
+        "FastifyPlugin.%s is depended on or foundational",
+        (name) => {
+            expect(dependedOn.has(name) || FOUNDATIONAL.has(name)).toBe(true);
+        }
+    );
+});
+
+describe("Rule 0: every module has the files the generator creates", () => {
+    describe.each(listDirs("modules"))("module %s", (name) => {
+        it.each([
+            "index.ts",
+            `${name}.route.ts`,
+            `${name}.handler.ts`,
+            `${name}.service.ts`,
+            "README.md",
+        ])("has %s", (file) => {
+            expect(fs.existsSync(path.join(SRC, "modules", name, file))).toBe(
+                true
+            );
+        });
     });
 });
 

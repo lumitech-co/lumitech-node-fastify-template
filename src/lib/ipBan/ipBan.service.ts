@@ -27,7 +27,7 @@ export const createIpBanService = (
 
             return banned === REDIS_KEY_EXISTS;
         } catch (error) {
-            log.warn({ error, ip }, "Ip ban lookup failed");
+            log.warn({ err: error, ip }, "Ip ban lookup failed");
 
             return false;
         }
@@ -66,7 +66,7 @@ export const createIpBanService = (
 
             return true;
         } catch (error) {
-            log.warn({ error, ip }, "Ip ban attempt registration failed");
+            log.warn({ err: error, ip }, "Ip ban attempt registration failed");
 
             return false;
         }

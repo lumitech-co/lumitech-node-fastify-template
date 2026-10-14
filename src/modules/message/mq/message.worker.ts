@@ -35,12 +35,12 @@ export const configureMessageWorker = async (
     );
 
     worker.on("error", (error) => {
-        fastify.log.error({ error }, "Message worker error");
+        fastify.log.error({ err: error }, "Message worker error");
     });
 
     worker.on("failed", (job, error) => {
         fastify.log.error(
-            { error, jobId: job?.id, jobName: job?.name },
+            { err: error, jobId: job?.id, jobName: job?.name },
             "Message job failed"
         );
     });

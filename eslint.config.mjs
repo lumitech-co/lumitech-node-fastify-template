@@ -103,6 +103,10 @@ const architecture = {
         "route-params-schema": routeParamsSchema,
         "plugin-names": restrictedSyntax,
         "no-interfaces": restrictedSyntax,
+        "log-error-key": restrictedSyntax,
+        "response-envelope": restrictedSyntax,
+        "route-registrar": restrictedSyntax,
+        "repository-select": restrictedSyntax,
     },
 };
 
@@ -140,6 +144,9 @@ const NODE_BUILTIN = builtinModules
 const MAX_DEPTH = 3;
 const MAX_COMPLEXITY = 10;
 const MAX_FILE_LINES = 300;
+
+const LOG_CALL =
+    "CallExpression[callee.property.name=/^(trace|debug|info|warn|error|fatal)$/]:matches([callee.object.name=/^(log|logger)$/], [callee.object.property.name='log'])";
 
 const MESSAGE_LITERAL =
     ":matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))";
@@ -784,8 +791,7 @@ export default [
             "arch/structured-logs": [
                 "error",
                 {
-                    selector:
-                        "CallExpression[callee.property.name=/^(trace|debug|info|warn|error|fatal)$/]:matches([callee.object.name=/^(log|logger)$/], [callee.object.property.name='log']) > :matches(TemplateLiteral[expressions.length>0], BinaryExpression[operator='+'])",
+                    selector: `${LOG_CALL} > :matches(TemplateLiteral[expressions.length>0], BinaryExpression[operator='+'])`,
                     message:
                         'Log structured data: log.info({ id }, "message") or printf-style log.info("... %s", value) — never interpolate into the message.',
                 },
@@ -960,6 +966,12 @@ export default [
                         "CallExpression[callee.property.name=/^(safe)?[pP]arse(Async)?$/]",
                     message:
                         "Handlers don't validate — the route schema does; business logic belongs in the service (CLAUDE.md, Conventions).",
+                },
+                {
+                    selector:
+                        ":matches(IfStatement, SwitchStatement, TryStatement, ConditionalExpression, ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement)",
+                    message:
+                        "A handler only calls the service and returns reply.status().send() — branching, loops and error handling belong in the service or the error plugin (CLAUDE.md, Conventions).",
                 },
             ],
         },
@@ -1614,6 +1626,86 @@ export default [
                     max: MAX_FILE_LINES,
                     skipBlankLines: true,
                     skipComments: true,
+                },
+            ],
+        },
+    },
+    {
+        // Pino serializes an Error only under `err`; under any other key it
+        // is logged as {} and the message and stack are lost.
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/log-error-key": [
+                "error",
+                {
+                    selector: `${LOG_CALL} > ObjectExpression:first-child > Property[key.name='error']`,
+                    message:
+                        'Log errors under `err`: log.error({ err: error }, "...") — pino serializes Error objects only under that key.',
+                },
+            ],
+        },
+    },
+    {
+        // healthCheck answers probes with a bare string; cached is the cache
+        // plugin's storage shape, not an HTTP response.
+        files: ["src/lib/validation/**/*.schema.ts"],
+
+        rules: {
+            "arch/response-envelope": [
+                "error",
+                {
+                    selector:
+                        "VariableDeclarator[id.name=/ResponseSchema$/]:not([id.name=/^(healthCheck|cached)ResponseSchema$/]):not(:has(> CallExpression[callee.object.name='z'][callee.property.name='object']:has(> ObjectExpression:has(> Property[key.name='message']):has(> Property[key.name='data']))))",
+                    message:
+                        "A response schema is the envelope z.object({ message, data }) so every endpoint answers in the same shape.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/*/*.route.ts"],
+
+        rules: {
+            "arch/route-registrar": [
+                "error",
+                {
+                    selector:
+                        "Program:not(:has(Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^create\\w+Routes$/]))",
+                    message:
+                        "A <name>.route.ts exports its registrar as create<Name>Routes(fastify, <name>Handler) (CLAUDE.md, Rule 1).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/*/index.ts"],
+
+        rules: {
+            "arch/route-registrar": [
+                "error",
+                {
+                    selector:
+                        "Program:not(:has(CallExpression[callee.property.name='resolve'][callee.object.property.name='di'] > Literal[value=/Handler$/]))",
+                    message:
+                        'A module\'s index.ts resolves its handler from the container — fastify.di.resolve("<name>Handler") — and passes it to create<Name>Routes (CLAUDE.md, Rule 1).',
+                },
+            ],
+        },
+    },
+    {
+        // Calls that forward the caller's args (generated findUniqueOrFail)
+        // inherit the caller's select.
+        files: ["src/database/repositories/**/*.ts"],
+
+        rules: {
+            "arch/repository-select": [
+                "warn",
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^find(Many|First|Unique)(OrThrow)?$/][arguments.0.type='ObjectExpression']:not(:has(> ObjectExpression:has(> Property[key.name='select'])))",
+                    message:
+                        "Pass a select so a repository returns only the columns the caller needs, never whole rows.",
                 },
             ],
         },

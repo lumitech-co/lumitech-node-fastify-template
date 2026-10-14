@@ -587,6 +587,63 @@ const CASES: Case[] = [
         }
     ),
     ...pair(
+        "log-error-key",
+        { file: SERVICE, code: 'log.warn({ error }, "Cache read failed");' },
+        {
+            file: SERVICE,
+            code: 'log.warn({ err: error }, "Cache read failed");',
+        }
+    ),
+    ...pair(
+        "thin-handlers",
+        {
+            file: HANDLER,
+            code: "if (request.body) { await demoService.run(); }",
+        },
+        { file: HANDLER, code: "const data = await demoService.run();" }
+    ),
+    ...pair(
+        "response-envelope",
+        {
+            file: SCHEMA,
+            code: "const demoResponseSchema = z.object({ data: z.string() });",
+        },
+        {
+            file: SCHEMA,
+            code: "const demoResponseSchema = z.object({ message: z.string(), data: z.string() });",
+        }
+    ),
+    ...pair(
+        "route-registrar",
+        {
+            file: ROUTE,
+            code: "export const registerDemo = (fastify: FastifyInstance): void => {};",
+        },
+        {
+            file: ROUTE,
+            code: "export const createDemoRoutes = (fastify: FastifyInstance): void => {};",
+        }
+    ),
+    ...pair(
+        "route-registrar",
+        {
+            file: "src/modules/demo/index.ts",
+            code: 'export const autoPrefix = "/api/demo";\nexport default async function (fastify: FastifyInstance): Promise<void> { createDemoRoutes(fastify, demoHandler); }',
+        },
+        {
+            file: "src/modules/demo/index.ts",
+            code: 'export const autoPrefix = "/api/demo";\nexport default async function (fastify: FastifyInstance): Promise<void> { createDemoRoutes(fastify, fastify.di.resolve("demoHandler")); }',
+        }
+    ),
+    ...pair(
+        "repository-select",
+        { file: REPOSITORY, code: "prisma.demo.findMany({ take: 1 });" },
+        {
+            file: REPOSITORY,
+            code: "prisma.demo.findMany({ take: 1, select: demoSelect });",
+        }
+    ),
+    ...pair(
         "no-interfaces",
         { file: MODULE_TYPE, code: "export interface Demo { id: string }" },
         {

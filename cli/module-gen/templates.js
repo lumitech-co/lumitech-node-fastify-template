@@ -1,6 +1,24 @@
 export const templates = {
     type: (nameKebab) => `// Types for the ${nameKebab} module\n`,
 
+    readme: (namePascal, nameKebab) =>
+        `
+# ${namePascal} Module
+
+TODO: what this module is responsible for.
+
+## Base Path
+
+\`\`\`
+/api/${nameKebab}
+\`\`\`
+
+## Endpoints
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+`.trim(),
+
     handler: (namePascal, nameCamel) =>
         `
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
