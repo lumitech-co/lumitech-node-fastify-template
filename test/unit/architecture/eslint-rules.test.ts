@@ -644,6 +644,22 @@ const CASES: Case[] = [
         }
     ),
     ...pair(
+        "repository-layout",
+        { file: REPOSITORY, code: "export type DemoInput = { id: string };" },
+        {
+            file: REPOSITORY,
+            code: 'export type DemoRepository = BaseRepository<"demo">;',
+        }
+    ),
+    ...pair(
+        "repository-layout",
+        { file: REPOSITORY, code: "const toInput = (id: string) => ({ id });" },
+        {
+            file: REPOSITORY,
+            code: "export const createDemoRepository = (prisma: PrismaClient): DemoRepository => ({});",
+        }
+    ),
+    ...pair(
         "no-interfaces",
         { file: MODULE_TYPE, code: "export interface Demo { id: string }" },
         {

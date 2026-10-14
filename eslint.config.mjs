@@ -107,6 +107,7 @@ const architecture = {
         "response-envelope": restrictedSyntax,
         "route-registrar": restrictedSyntax,
         "repository-select": restrictedSyntax,
+        "repository-layout": restrictedSyntax,
     },
 };
 
@@ -1100,6 +1101,10 @@ export default [
             "@typescript-eslint/await-thenable": "error",
             ...vitest.configs.recommended.rules,
             "vitest/no-disabled-tests": "error",
+            "vitest/expect-expect": [
+                "error",
+                { assertFunctionNames: ["expect", "expectTypeOf"] },
+            ],
         },
     },
     {
@@ -1706,6 +1711,31 @@ export default [
                         "CallExpression[callee.property.name=/^find(Many|First|Unique)(OrThrow)?$/][arguments.0.type='ObjectExpression']:not(:has(> ObjectExpression:has(> Property[key.name='select'])))",
                     message:
                         "Pass a select so a repository returns only the columns the caller needs, never whole rows.",
+                },
+            ],
+        },
+    },
+    {
+        // Rule 5: a repository file holds its <Name>Repository type, the
+        // factory and select constants; other types and helpers move out.
+        files: ["src/database/repositories/*/*.repository.ts"],
+
+        rules: {
+            "arch/repository-layout": [
+                "error",
+                {
+                    selector:
+                        "TSTypeAliasDeclaration:not([id.name=/Repository$/])",
+                    message:
+                        "Only the <Name>Repository type stays in the repository file — move other types to <name>.type.ts (CLAUDE.md, Rule 5).",
+                },
+                {
+                    selector: [
+                        ":matches(Program, Program > ExportNamedDeclaration) > FunctionDeclaration",
+                        ":matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator[id.name!=/^create\\w+Repository$/] > :function",
+                    ].join(", "),
+                    message:
+                        "Repository helpers live in <name>.util.ts next to it (CLAUDE.md, Rule 5).",
                 },
             ],
         },

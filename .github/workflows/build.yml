@@ -29,6 +29,9 @@ jobs:
             - name: Lint application
               run: npm run lint
 
+            - name: Type-check application and tests
+              run: npm run tsc-check
+
             - name: Check formatting
               run: npm run format:check
 

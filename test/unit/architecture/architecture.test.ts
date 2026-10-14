@@ -122,6 +122,22 @@ describe("Rule 8a: every Json column is typed via prisma-json-types-generator", 
             );
         }
     );
+
+    const typeAssertions = fs.readFileSync(
+        path.join(process.cwd(), "test/unit/architecture/prisma-json.test.ts"),
+        "utf8"
+    );
+
+    const prismaJsonNames = [
+        ...prismaJsonTypes.matchAll(/^\s+(?:type|interface)\s+(\w+)/gm),
+    ].map(([, name]) => name!);
+
+    it.each(prismaJsonNames)(
+        "PrismaJson.%s is checked against its Zod schema in prisma-json.test.ts (Rule 8b)",
+        (name) => {
+            expect(typeAssertions).toContain(`PrismaJson.${name}>`);
+        }
+    );
 });
 
 describe("arch/* rules are never switched off", () => {
@@ -457,4 +473,61 @@ describe("Rule 5a: every RESPONSE_MESSAGES entry is used", () => {
     it.each(entries)("%s is referenced in src/", (entry) => {
         expect(sources).toContain(entry);
     });
+});
+
+type RouteBinding = {
+    module: string;
+    method: string;
+    routeKeys: string[];
+};
+
+const sortedKeys = (source: string, pattern: RegExp): string[] =>
+    [...source.matchAll(pattern)].map(([, key]) => key!.toLowerCase()).sort();
+
+const routeBindings: RouteBinding[] = listDirs("modules").flatMap((module) =>
+    [
+        ...readSource(`modules/${module}/${module}.route.ts`).matchAll(
+            /fastify\.(?:get|post|put|patch|delete|head|options)\(([\s\S]*?)\b\w+Handler\.(\w+)\s*,?\s*\)/g
+        ),
+    ].map(([, options, method]) => ({
+        module,
+        method: method!,
+        routeKeys: sortedKeys(
+            options!,
+            /\b(body|params|querystring|headers):/g
+        ),
+    }))
+);
+
+describe("Rule 7: every request part a handler reads is validated by its route", () => {
+    it("finds routes, so an empty scan cannot pass", () => {
+        expect(routeBindings.length).toBeGreaterThan(0);
+    });
+
+    it.each(routeBindings)(
+        "$module: $method declares a schema for every Body/Params/Querystring/Headers it types",
+        ({ module, method, routeKeys }) => {
+            const handlerType = readSource(
+                `modules/${module}/${module}.handler.ts`
+            );
+
+            const signature = [
+                ...handlerType.matchAll(
+                    /(\w+):\s*\(\s*request:\s*FastifyRequest(?:<\{([\s\S]*?)\}>)?/g
+                ),
+            ].find(([, name]) => name === method);
+
+            expect(
+                signature,
+                `${method} is not in the handler type`
+            ).toBeDefined();
+
+            expect(
+                sortedKeys(
+                    signature![2] ?? "",
+                    /\b(Body|Params|Querystring|Headers):/g
+                )
+            ).toEqual(routeKeys);
+        }
+    );
 });
