@@ -1,21 +1,22 @@
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
-import { CreateMessagePayload } from "./message.type.js";
+import { MessageJobResult } from "./mq/message.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { CacheService } from "@/lib/cache/cache.service.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import { CreateMessagePayload, UpdateMessagePayload } from "./message.type.js";
 import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
     FetchMessagesQuery,
-    CreateMessageResponse,
     FetchMessagesResponse,
+    DeleteMessageJobData,
 } from "@/lib/validation/message/message.schema.js";
 
 export type MessageService = {
-    createMessage: (
-        payload: CreateMessagePayload
-    ) => Promise<CreateMessageResponse>;
+    createMessage: (payload: CreateMessagePayload) => Promise<MessageJobResult>;
+    updateMessage: (payload: UpdateMessagePayload) => Promise<MessageJobResult>;
+    deleteMessage: (payload: DeleteMessageJobData) => Promise<MessageJobResult>;
     getMessages: (query: FetchMessagesQuery) => Promise<FetchMessagesResponse>;
 };
 
@@ -25,50 +26,58 @@ export const createService = (
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
-    createMessage: async ({ payload }) => {
-        const { text, meta } = payload;
-
-        const message = await messageRepository.create({
-            data: { text, meta },
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
-            },
+    createMessage: async ({ id, text, meta, enqueuedAt }) => {
+        await messageRepository.createIfAbsent({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
         });
 
-        await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
 
-        return {
-            message: RESPONSE_MESSAGES.message.created,
-            data: {
-                message,
-            },
-        };
+        return { id };
+    },
+
+    updateMessage: async ({ id, text, meta, enqueuedAt }) => {
+        const updated = await messageRepository.updateIfNotNewer({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
+        });
+
+        if (!updated) {
+            return { id };
+        }
+
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
+    },
+
+    deleteMessage: async ({ id }) => {
+        await messageRepository.deleteMany({ where: { id } });
+
+        await cacheService.invalidate({
+            namespace: MESSAGE_CACHE_NAMESPACE,
+        });
+
+        return { id };
     },
 
     getMessages: async ({ cursor, limit }) => {
         log.info("Current environment: %s", config.NODE_ENV);
 
-        const messages = await messageRepository.findMany({
-            take: limit,
-            orderBy: { id: "desc" },
-            ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-            select: {
-                id: true,
-                createdAt: true,
-                text: true,
-                meta: true,
-            },
-        });
-
-        const nextCursor =
-            messages.length === limit ? messages[messages.length - 1].id : null;
+        const data = await messageRepository.findPage({ cursor, limit });
 
         return {
             message: RESPONSE_MESSAGES.message.fetched,
-            data: { messages, nextCursor },
+            data,
         };
     },
 });

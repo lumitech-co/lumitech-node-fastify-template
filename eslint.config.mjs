@@ -86,7 +86,7 @@ export default [
                 {
                     ignoreArrayIndexes: true,
                     ignore: [
-                        0, 1, -1, 200, 201, 204, 400, 401, 403, 404, 409, 500,
+                        0, 1, -1, 200, 201, 202, 204, 400, 401, 403, 404, 409, 500,
                     ],
                 },
             ],
@@ -127,6 +127,27 @@ export default [
                     blankLine: "any",
                     prev: ["case", "default"],
                     next: ["case", "default", "return"],
+                },
+            ],
+        },
+    },
+    {
+        // configureServer()'s runQueueWorker flag (src/server.ts) excludes
+        // the BullMQ consumer from the API server by matching *.worker.ts —
+        // any other filename in this tree would silently keep running there.
+        files: ["src/plugins/mq/**/*.{ts,js}"],
+        ignores: [
+            "src/plugins/mq/**/*.worker.{ts,js}",
+            "src/plugins/mq/**/*.queue.{ts,js}",
+        ],
+
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "Program",
+                    message:
+                        "src/plugins/mq/** may only contain *.worker.ts (BullMQ consumer) or *.queue.ts (producer) files.",
                 },
             ],
         },
