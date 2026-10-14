@@ -29,6 +29,14 @@ jobs:
             - name: Lint application
               run: npm run lint
 
+            - name: Check formatting
+              run: npm run format:check
+
+            - name: Validate Prisma schema
+              run: npx prisma validate && npm run prisma:format -- --check
+              env:
+                  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
             - name: Check migrations (CLAUDE.md Rule 9)
               run: npm run check:migrations
               env:

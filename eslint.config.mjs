@@ -22,6 +22,7 @@ import noSingleRepositoryTransaction from "./scripts/eslint-rules/no-single-repo
 import noDependencyFreeFactoryHelper from "./scripts/eslint-rules/no-dependency-free-factory-helper.mjs";
 import noPrismaShapeOutsideRepository from "./scripts/eslint-rules/no-prisma-shape-outside-repository.mjs";
 import { fileURLToPath } from "node:url";
+import { builtinModules } from "node:module";
 import { FlatCompat } from "@eslint/eslintrc";
 import { builtinRules } from "eslint/use-at-your-own-risk";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
@@ -91,6 +92,11 @@ const architecture = {
         "max-comment-lines": maxCommentLines,
         "service-helpers": restrictedSyntax,
         "service-return": restrictedSyntax,
+        "no-http-in-services": typescriptEslint.rules["no-restricted-imports"],
+        "decorate-in-plugins": restrictedSyntax,
+        "no-process-exit": restrictedSyntax,
+        "no-math-random": restrictedSyntax,
+        "node-protocol": restrictedSyntax,
     },
 };
 
@@ -120,6 +126,10 @@ const PRISMA_CALLS = [
     "MemberExpression[object.property.name='prisma']",
     "MemberExpression[property.name=/^\\$(queryRaw|executeRaw)(Unsafe)?$/]",
 ].map((selector) => ({ selector, message: PRISMA_CALLS_MESSAGE }));
+
+const NODE_BUILTIN = builtinModules
+    .filter((name) => /^[a-z]/.test(name) && !/[/:]/.test(name))
+    .join("|");
 
 const compat = new FlatCompat({
     baseDirectory: __dirname,
@@ -301,8 +311,18 @@ export default [
             "@typescript-eslint/no-non-null-assertion": "error",
             "@typescript-eslint/await-thenable": "error",
             "@typescript-eslint/return-await": ["error", "in-try-catch"],
+            "@typescript-eslint/only-throw-error": "error",
+            "@typescript-eslint/require-await": "error",
+            "@typescript-eslint/no-deprecated": "error",
             eqeqeq: ["error", "always", { null: "ignore" }],
             "import-x/no-cycle": ["error", { ignoreExternal: true }],
+            "import-x/no-extraneous-dependencies": [
+                "error",
+                { devDependencies: false },
+            ],
+            "import-x/no-duplicates": "error",
+            "import-x/no-self-import": "error",
+            "import-x/no-useless-path-segments": "error",
         },
     },
     {
@@ -1299,6 +1319,115 @@ export default [
                         "TSQualifiedName[left.name='Prisma'][right.name=/^(Json|InputJson|NullableJson)/], ImportSpecifier[imported.name=/^(Json|InputJson)(Value|Object|Array)$/]",
                     message:
                         "Type Json columns via prisma-json-types-generator (PrismaJson namespace), never Prisma.Json* (CLAUDE.md, Rule 8).",
+                },
+            ],
+        },
+    },
+    {
+        // HTTP stays in handlers — services, repositories and queue code get
+        // plain data, so they also run from workers and tests.
+        files: [
+            "src/**/*.service.ts",
+            "src/database/repositories/**/*.ts",
+            "src/modules/**/mq/*.ts",
+        ],
+
+        rules: {
+            "arch/no-http-in-services": [
+                "error",
+                {
+                    paths: [
+                        {
+                            name: "fastify",
+                            importNames: ["FastifyRequest", "FastifyReply"],
+                            message:
+                                "Services, repositories and mq/ never see the HTTP request/reply — the handler passes plain data (CLAUDE.md, Conventions: keep handlers thin).",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+        ignores: ["src/plugins/**", "src/modules/**/mq/*.queue.ts"],
+
+        rules: {
+            "arch/decorate-in-plugins": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^decorate(Request|Reply)?$/]",
+                    message:
+                        "Fastify is decorated only from a plugin in src/plugins/ (CLAUDE.md, Rule 6).",
+                },
+            ],
+        },
+    },
+    {
+        // Exiting anywhere else skips graceful shutdown and drops in-flight
+        // BullMQ jobs.
+        files: ["src/**/*.ts"],
+        ignores: ["src/index.ts", "src/server.ts", "src/worker.ts"],
+
+        rules: {
+            "arch/no-process-exit": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.object.name='process'][callee.property.name='exit']",
+                    message:
+                        "Only the entry points (index.ts, server.ts, worker.ts) call process.exit — throw an error instead.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/no-math-random": [
+                "error",
+                {
+                    selector:
+                        "MemberExpression[object.name='Math'][property.name='random']",
+                    message:
+                        "Math.random is not cryptographically secure — use randomUUID / randomInt / randomBytes from node:crypto.",
+                },
+            ],
+        },
+    },
+    {
+        // Fastify requires a plugin body to be async even when it awaits nothing.
+        files: [
+            "src/plugins/**/*.ts",
+            "src/modules/*/index.ts",
+            "src/modules/**/mq/*.{queue,worker}.ts",
+        ],
+
+        rules: {
+            "@typescript-eslint/require-await": "off",
+        },
+    },
+    {
+        // Sequential I/O in business code is almost always an N+1; cursor and
+        // polling loops in src/lib/ are sequential by design.
+        files: ["src/modules/**/*.ts", "src/database/**/*.ts"],
+
+        rules: {
+            "no-await-in-loop": "error",
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/node-protocol": [
+                "error",
+                {
+                    selector: `:matches(ImportDeclaration, ImportExpression, ExportNamedDeclaration, ExportAllDeclaration) > Literal.source[value=/^(${NODE_BUILTIN})([^\\w-]|$)/]`,
+                    message:
+                        'Import Node built-ins with the node: prefix — "node:fs", not "fs".',
                 },
             ],
         },

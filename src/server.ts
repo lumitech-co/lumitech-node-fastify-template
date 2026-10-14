@@ -1,8 +1,7 @@
-import path from "path";
 import Fastify from "fastify";
 import autoload from "@fastify/autoload";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import path, { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import { resolveTrustProxy } from "@/lib/proxy/proxy.util.js";
 import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";

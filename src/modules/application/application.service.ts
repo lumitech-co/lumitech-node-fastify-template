@@ -7,9 +7,7 @@ export type ApplicationService = {
 };
 
 export const createService = (): ApplicationService => ({
-    healthChecker: async () => {
-        return HEALTH_CHECK_RESPONSE;
-    },
+    healthChecker: () => Promise.resolve(HEALTH_CHECK_RESPONSE),
 });
 
 addDIResolverName(createService, "applicationService");

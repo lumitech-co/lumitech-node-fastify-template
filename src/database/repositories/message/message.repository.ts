@@ -1,7 +1,6 @@
-import type { Prisma } from "@prisma/client";
 import { toMetaInput } from "./message.util.js";
-import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";

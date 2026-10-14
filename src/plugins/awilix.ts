@@ -1,7 +1,6 @@
-import path from "path";
 import fp from "fastify-plugin";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import path, { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import { asValue, createContainer, InjectionMode } from "awilix";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";

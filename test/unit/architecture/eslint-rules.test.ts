@@ -24,6 +24,7 @@ const WORKER = "src/modules/demo/mq/demo.worker.ts";
 const SCHEMA = "src/lib/validation/demo/demo.schema.ts";
 const LIB_UTIL = "src/lib/demo/demo.util.ts";
 const REPOSITORY = "src/database/repositories/demo/demo.repository.ts";
+const PLUGIN = "src/plugins/demo.ts";
 
 const ROUTE_OPTIONS =
     '{ schema: { tags: [DEMO_TAG], summary: "s", response: {} } }';
@@ -504,6 +505,37 @@ const CASES: Case[] = [
             code: "export const createService = (): DemoService => { return {}; };",
         }
     ),
+    ...pair(
+        "no-http-in-services",
+        {
+            file: SERVICE,
+            code: 'import type { FastifyRequest } from "fastify";',
+        },
+        {
+            file: HANDLER,
+            code: 'import type { FastifyRequest } from "fastify";',
+        }
+    ),
+    ...pair(
+        "decorate-in-plugins",
+        { file: SERVICE, code: 'fastify.decorate("demo", 1);' },
+        { file: PLUGIN, code: 'fastify.decorate("demo", 1);' }
+    ),
+    ...pair(
+        "no-process-exit",
+        { file: SERVICE, code: "process.exit(1);" },
+        { file: "src/server.ts", code: "process.exit(1);" }
+    ),
+    ...pair(
+        "no-math-random",
+        { file: LIB_UTIL, code: "const a = Math.random();" },
+        { file: LIB_UTIL, code: "const a = Math.max(1, 2);" }
+    ),
+    ...pair(
+        "node-protocol",
+        { file: LIB_UTIL, code: 'import { readFile } from "fs/promises";' },
+        { file: LIB_UTIL, code: 'import { promises } from "node:fs";' }
+    ),
 ];
 
 const TYPE_AWARE_RULES = [
@@ -512,6 +544,9 @@ const TYPE_AWARE_RULES = [
     "@typescript-eslint/switch-exhaustiveness-check",
     "@typescript-eslint/await-thenable",
     "@typescript-eslint/return-await",
+    "@typescript-eslint/only-throw-error",
+    "@typescript-eslint/require-await",
+    "@typescript-eslint/no-deprecated",
     "import-x/no-cycle",
 ];
 
