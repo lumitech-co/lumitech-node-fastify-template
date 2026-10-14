@@ -85,8 +85,11 @@ route registrars `(fastify, handler)`, and `generateRepository(prisma, model)`.
   or a union of those); the moment one has a non-primitive field — an object, an array, an
   imported type — it moves to `<name>.type.ts` and the service/handler imports it from
   there. Everything else the module needs goes to `<name>.type.ts`.
-- Repository types → the same file as the repository factory; a repository never gets its
-  own `<name>.type.ts` (`BaseRepository` lives in `repositories/repository.type.ts`).
+- Repository types → the `<Name>Repository` type stays in the same file as its factory;
+  every other type the repository needs (method inputs, result shapes) goes to
+  `src/database/repositories/<name>/<name>.type.ts` and its helpers to
+  `<name>.util.ts` in the same folder (`BaseRepository` lives in
+  `repositories/repository.type.ts`).
 - Lib types → `src/lib/<name>/<name>.type.ts`; global constants → `src/lib/constants/`;
   global types → `src/types/`.
 

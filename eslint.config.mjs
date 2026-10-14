@@ -453,7 +453,7 @@ export default [
     {
         files: ["src/database/repositories/**/*.{ts,js}"],
         ignores: [
-            "src/database/repositories/*/*.repository.ts",
+            "src/database/repositories/*/*.{repository,type,util}.ts",
             "src/database/repositories/generate.repository.ts",
             "src/database/repositories/repository.type.ts",
         ],
@@ -464,7 +464,7 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "A repository folder holds only <name>.repository.ts — its types stay in that file, never in a *.type.ts (CLAUDE.md, Rules 0 and 5).",
+                        "A repository folder holds only <name>.{repository,type,util}.ts (CLAUDE.md, Rules 0 and 5).",
                 },
             ],
         },

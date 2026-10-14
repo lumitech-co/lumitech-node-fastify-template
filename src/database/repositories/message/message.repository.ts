@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { toMetaInput } from "./message.util.js";
 import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
@@ -6,7 +7,12 @@ import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
 import type { BaseRepository } from "@/database/repositories/repository.type.js";
 import { generateRepository } from "@/database/repositories/generate.repository.js";
-import type { UpdateMessageJobData } from "@/lib/validation/message/message.schema.js";
+import type {
+    MessagePage,
+    MessageWrite,
+    MessageUpdate,
+    MessagePageResult,
+} from "./message.type.js";
 
 export const messageListSelect = {
     id: true,
@@ -25,13 +31,9 @@ export type MessageRepository = BaseRepository<"message"> & {
         Prisma.$MessagePayload
     >;
     generateId: () => Promise<string>;
-    updateUnlessNewer: (
-        payload: UpdateMessageUnlessNewerPayload
-    ) => Promise<Prisma.BatchPayload>;
-};
-
-export type UpdateMessageUnlessNewerPayload = UpdateMessageJobData & {
-    updatedAt: Date;
+    createIfAbsent: (data: MessageWrite) => Promise<void>;
+    updateIfNotNewer: (data: MessageUpdate) => Promise<boolean>;
+    findPage: (page: MessagePage) => Promise<MessagePageResult>;
 };
 
 export const createMessageRepository = (
@@ -51,10 +53,6 @@ export const createMessageRepository = (
             return message;
         },
 
-        /**
-         * Asks Postgres for the same `uuidv7()` the column defaults to, so a
-         * create job can carry its id before the row exists.
-         */
         generateId: async () => {
             const [{ id }] = await prisma.$queryRaw<
                 [{ id: string }]
@@ -63,16 +61,52 @@ export const createMessageRepository = (
             return id;
         },
 
-        /** `null` meta clears the column (`DbNull`); `undefined` leaves it. */
-        updateUnlessNewer: ({ id, text, meta, updatedAt }) =>
-            prisma.message.updateMany({
-                where: { id, updatedAt: { lte: updatedAt } },
-                data: {
-                    text,
-                    meta: meta === null ? Prisma.DbNull : meta,
-                    updatedAt,
-                },
-            }),
+        createIfAbsent: async ({ id, meta, ...data }) => {
+            await prisma.message.upsert({
+                where: { id },
+                create: { id, meta: toMetaInput(meta), ...data },
+                update: {},
+                select: messageIdSelect,
+            });
+        },
+
+        updateIfNotNewer: async ({ id, meta, ...data }) => {
+            const { count } = await prisma.message.updateMany({
+                where: { id, updatedAt: { lte: data.updatedAt } },
+                data: { meta: toMetaInput(meta), ...data },
+            });
+
+            if (count > 0) {
+                return true;
+            }
+
+            const message = await prisma.message.findUnique({
+                where: { id },
+                select: messageIdSelect,
+            });
+
+            if (!message) {
+                throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
+            }
+
+            return false;
+        },
+
+        findPage: async ({ cursor, limit }) => {
+            const messages = await prisma.message.findMany({
+                take: limit,
+                orderBy: { id: "desc" },
+                ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+                select: messageListSelect,
+            });
+
+            const nextCursor =
+                messages.length === limit
+                    ? messages[messages.length - 1].id
+                    : null;
+
+            return { messages, nextCursor };
+        },
     };
 };
 

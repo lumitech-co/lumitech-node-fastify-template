@@ -10,10 +10,6 @@ import type {
     UpdateMessagePayload,
 } from "./message.type.js";
 import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
-import {
-    messageIdSelect,
-    messageListSelect,
-} from "@/database/repositories/message/message.repository.js";
 import type {
     FetchMessagesQuery,
     FetchMessagesResponse,
@@ -34,11 +30,11 @@ export const createService = (
     config: EnvConfig
 ): MessageService => ({
     createMessage: async ({ id, text, meta, enqueuedAt }) => {
-        await messageRepository.upsert({
-            where: { id },
-            create: { id, text, meta, updatedAt: enqueuedAt },
-            update: {},
-            select: messageIdSelect,
+        await messageRepository.createIfAbsent({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
         });
 
         await cacheService.invalidate({
@@ -49,19 +45,14 @@ export const createService = (
     },
 
     updateMessage: async ({ id, text, meta, enqueuedAt }) => {
-        const { count } = await messageRepository.updateUnlessNewer({
+        const updated = await messageRepository.updateIfNotNewer({
             id,
             text,
             meta,
             updatedAt: enqueuedAt,
         });
 
-        if (count === 0) {
-            await messageRepository.findUniqueOrFail({
-                where: { id },
-                select: messageIdSelect,
-            });
-
+        if (!updated) {
             return { id };
         }
 
@@ -85,19 +76,11 @@ export const createService = (
     getMessages: async ({ cursor, limit }) => {
         log.info("Current environment: %s", config.NODE_ENV);
 
-        const messages = await messageRepository.findMany({
-            take: limit,
-            orderBy: { id: "desc" },
-            ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-            select: messageListSelect,
-        });
-
-        const nextCursor =
-            messages.length === limit ? messages[messages.length - 1].id : null;
+        const data = await messageRepository.findPage({ cursor, limit });
 
         return {
             message: RESPONSE_MESSAGES.message.fetched,
-            data: { messages, nextCursor },
+            data,
         };
     },
 });

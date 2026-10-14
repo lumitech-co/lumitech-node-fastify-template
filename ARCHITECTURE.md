@@ -103,7 +103,8 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Repository Pattern
-The repository type and its factory live in the same `<name>.repository.ts` file. Every
+The repository type and its factory live in the same `<name>.repository.ts` file; other
+repository types go to `<name>.type.ts` and helpers to `<name>.util.ts` next to it. Every
 repository exposes `findUniqueOrFail`, which throws `NotFoundError` with the entity's
 message from `RESPONSE_MESSAGES`:
 ```typescript

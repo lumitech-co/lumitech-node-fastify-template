@@ -273,19 +273,21 @@ From `RESPONSE_MESSAGES.message` in `src/lib/messages/messages.constant.ts`:
 ## Repository Methods
 
 `MessageRepository` is `BaseRepository<"message">` (the Prisma delegate methods wired by
-`generateRepository`) plus one hand-written method:
+`generateRepository`) plus hand-written domain methods:
 
-| Method                                         | Description                                   |
-|------------------------------------------------|-----------------------------------------------|
-| `create`, `createMany`                         | Insert one or many messages                   |
-| `findUnique`, `findFirst`, `findMany`, `count` | Read messages                                 |
-| `update`, `updateMany`, `upsert`               | Update messages                               |
-| `delete`, `deleteMany`                         | Delete messages                               |
-| `findUniqueOrFail`                             | Find or throw `NotFoundError` with `notFound` |
-| `updateUnlessNewer`                            | Update only if not newer; `meta: null` clears |
+| Method                                         | Description                                                                 |
+|------------------------------------------------|-----------------------------------------------------------------------------|
+| `create`, `createMany`                         | Insert one or many messages                                                 |
+| `findUnique`, `findFirst`, `findMany`, `count` | Read messages                                                               |
+| `update`, `updateMany`, `upsert`               | Update messages                                                             |
+| `delete`, `deleteMany`                         | Delete messages                                                             |
+| `findUniqueOrFail`                             | Find or throw `NotFoundError` with `notFound`                               |
+| `createIfAbsent`                               | Idempotent create; a retried job leaves the existing row untouched          |
+| `updateIfNotNewer`                             | `false` for a stale write, `NotFoundError` if gone; `meta: null` clears     |
+| `findPage`                                     | Cursor page `{ messages, nextCursor }`                                      |
 
-The worker uses `upsert`, `updateUnlessNewer` and `deleteMany`; the enqueue existence check
-and the stale-update check use `findUniqueOrFail`; reads use `findMany`.
+The worker uses `createIfAbsent`, `updateIfNotNewer` and `deleteMany`; the enqueue existence
+check uses `findUniqueOrFail`; reads use `findPage`.
 
 ---
 
