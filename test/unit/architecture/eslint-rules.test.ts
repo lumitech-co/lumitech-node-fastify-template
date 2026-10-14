@@ -536,6 +536,71 @@ const CASES: Case[] = [
         { file: LIB_UTIL, code: 'import { readFile } from "fs/promises";' },
         { file: LIB_UTIL, code: 'import { promises } from "node:fs";' }
     ),
+    ...pair(
+        "response-messages",
+        { file: HANDLER, code: 'reply.status(404).send("Not found");' },
+        {
+            file: HANDLER,
+            code: "reply.status(404).send(RESPONSE_MESSAGES.demo.notFound);",
+        }
+    ),
+    ...pair(
+        "response-messages",
+        { file: SCHEMA, code: 'const s = z.email("Invalid email");' },
+        {
+            file: SCHEMA,
+            code: "const s = z.email(RESPONSE_MESSAGES.demo.invalidEmail);",
+        }
+    ),
+    ...pair(
+        "parse-external-data",
+        { file: LIB_UTIL, code: "const a = JSON.parse(raw);" },
+        { file: LIB_UTIL, code: "const a = schema.parse(JSON.parse(raw));" }
+    ),
+    ...pair(
+        "parse-external-data",
+        { file: LIB_UTIL, code: "const a = await response.json();" },
+        {
+            file: LIB_UTIL,
+            code: "const a = schema.parse(await response.json());",
+        }
+    ),
+    ...pair(
+        "bounded-pagination",
+        { file: SCHEMA, code: "const s = z.object({ limit: z.number() });" },
+        {
+            file: SCHEMA,
+            code: "const s = z.object({ limit: z.number().max(MAX) });",
+        }
+    ),
+    ...pair(
+        "route-params-schema",
+        {
+            file: ROUTE,
+            code: [
+                'enum DemoRoute { ById = "/:id" }',
+                `fastify.get(DemoRoute.ById, ${ROUTE_OPTIONS}, demoHandler.get);`,
+            ].join("\n"),
+        },
+        {
+            file: ROUTE,
+            code: [
+                'enum DemoRoute { ById = "/:id" }',
+                'fastify.get(DemoRoute.ById, { schema: { tags: [DEMO_TAG], summary: "s", params: demoIdSchema, response: {} } }, demoHandler.get);',
+            ].join("\n"),
+        }
+    ),
+    ...pair(
+        "plugin-names",
+        {
+            file: PLUGIN,
+            code: 'export default fp(configure, { name: "demo" });',
+        },
+        {
+            file: PLUGIN,
+            code: "export default fp(configure, { name: FastifyPlugin.Demo });",
+        }
+    ),
 ];
 
 const TYPE_AWARE_RULES = [

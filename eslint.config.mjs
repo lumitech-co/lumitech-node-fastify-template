@@ -9,6 +9,7 @@ import fileNaming from "./scripts/eslint-rules/file-naming.mjs";
 import importX, { createNodeResolver } from "eslint-plugin-import-x";
 import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
 import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
+import routeParamsSchema from "./scripts/eslint-rules/route-params-schema.mjs";
 import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
 import preferFindUniqueOrFail from "./scripts/eslint-rules/prefer-find-unique-or-fail.mjs";
 import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
@@ -97,6 +98,10 @@ const architecture = {
         "no-process-exit": restrictedSyntax,
         "no-math-random": restrictedSyntax,
         "node-protocol": restrictedSyntax,
+        "parse-external-data": restrictedSyntax,
+        "bounded-pagination": restrictedSyntax,
+        "route-params-schema": routeParamsSchema,
+        "plugin-names": restrictedSyntax,
     },
 };
 
@@ -131,6 +136,16 @@ const NODE_BUILTIN = builtinModules
     .filter((name) => /^[a-z]/.test(name) && !/[/:]/.test(name))
     .join("|");
 
+const MESSAGE_LITERAL =
+    ":matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))";
+
+// Zod checks whose first argument may be the error message.
+const ZOD_MESSAGE_FIRST =
+    "^(string|number|boolean|bigint|date|email|url|httpUrl|uuid|uuidv4|uuidv6|uuidv7|guid|cuid|cuid2|ulid|nanoid|xid|ksuid|ipv4|ipv6|cidrv4|cidrv6|base64|base64url|e164|jwt|emoji|datetime|time|duration|int|int32|positive|negative|nonnegative|nonpositive|finite|safe|nonempty)$";
+
+const PARSE_CALL =
+    "CallExpression[callee.property.name=/^(safe)?[pP]arse(Async)?$/]";
+
 const compat = new FlatCompat({
     baseDirectory: __dirname,
     recommendedConfig: js.configs.recommended,
@@ -138,6 +153,7 @@ const compat = new FlatCompat({
 });
 
 export default [
+    { ignores: ["build/**", "coverage/**"] },
     ...compat.extends(
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended"
@@ -1231,6 +1247,16 @@ export default [
                     message:
                         "Error messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
                 },
+                {
+                    selector: `CallExpression[callee.property.name='send'] > ${MESSAGE_LITERAL}`,
+                    message:
+                        "Client-facing messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
+                },
+                {
+                    selector: `CallExpression[callee.property.name=/${ZOD_MESSAGE_FIRST}/] > ${MESSAGE_LITERAL}:first-child`,
+                    message:
+                        "Client-facing messages come from RESPONSE_MESSAGES in src/lib/messages/messages.constant.ts (CLAUDE.md, Rule 5a).",
+                },
             ],
         },
     },
@@ -1473,6 +1499,64 @@ export default [
                     selector: `:matches(ImportDeclaration, ImportExpression, ExportNamedDeclaration, ExportAllDeclaration) > Literal.source[value=/^(${NODE_BUILTIN})([^\\w-]|$)/]`,
                     message:
                         'Import Node built-ins with the node: prefix — "node:fs", not "fs".',
+                },
+            ],
+        },
+    },
+    {
+        // Rule 7: JSON from Redis, HTTP responses or files is untrusted.
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/parse-external-data": [
+                "error",
+                {
+                    selector: `CallExpression[callee.object.name='JSON'][callee.property.name='parse']:not(${PARSE_CALL} > CallExpression)`,
+                    message:
+                        "Validate parsed JSON right away: schema.parse(JSON.parse(raw)) (CLAUDE.md, Rule 7).",
+                },
+                {
+                    selector: `AwaitExpression[argument.callee.property.name='json'][argument.arguments.length=0]:not(${PARSE_CALL} > AwaitExpression)`,
+                    message:
+                        "Validate the response body right away: schema.parse(await response.json()) (CLAUDE.md, Rule 7).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/lib/validation/**/*.schema.ts"],
+
+        rules: {
+            "arch/bounded-pagination": [
+                "error",
+                {
+                    selector:
+                        "Property[key.name=/^(limit|take|pageSize|perPage)$/]:not(:has(CallExpression[callee.property.name='max']))",
+                    message:
+                        "A page size is bounded — add .max(...) so a client cannot request the whole table (CLAUDE.md, Conventions: paginate all lists).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.route.ts"],
+
+        rules: {
+            "arch/route-params-schema": "error",
+        },
+    },
+    {
+        // A typo in a literal name only fails when the server boots.
+        files: ["src/plugins/**/*.ts"],
+
+        rules: {
+            "arch/plugin-names": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.name='fp'] > ObjectExpression > Property[key.name=/^(name|dependencies)$/] :matches(Literal, TemplateLiteral)",
+                    message:
+                        "Plugin names and dependencies come from the FastifyPlugin enum in src/lib/constants/fastify.constant.ts (CLAUDE.md, Rule 6).",
                 },
             ],
         },

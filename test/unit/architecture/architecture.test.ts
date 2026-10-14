@@ -1,6 +1,7 @@
 /**
  * Guards for CLAUDE.md rules that ESLint cannot see: generator wiring
- * (Rule 0), typed Json columns (Rule 8a) and blanket eslint-disable directives.
+ * (Rule 0), typed Json columns (Rule 8a), Prisma schema conventions, env
+ * schema sync, unused RESPONSE_MESSAGES and blanket eslint-disable directives.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -136,5 +137,193 @@ describe("arch/* rules are never switched off", () => {
 
     it.each(sources)("%s does not disable an arch/* rule", (file) => {
         expect(readSource(file)).not.toMatch(/eslint-disable\S*[^\n]*\barch\//);
+    });
+});
+
+type PrismaModel = {
+    name: string;
+    lines: string[];
+};
+
+const prismaModels: PrismaModel[] = [
+    ...readSource("database/prisma/schema.prisma").matchAll(
+        /^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm
+    ),
+].map(([, name, body]) => ({
+    name: name!,
+    lines: body!
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line !== "" && !line.startsWith("//")),
+}));
+
+const modelNames = new Set(prismaModels.map(({ name }) => name));
+
+const toSnakeCase = (name: string): string =>
+    name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+
+const fieldsOf = (model: PrismaModel): string[][] =>
+    model.lines
+        .filter((line) => !line.startsWith("@@"))
+        .map((line) => line.split(/\s+/));
+
+const blockIndexes = (model: PrismaModel): string[][] =>
+    model.lines
+        .map((line) => line.match(/^@@(?:index|unique|id)\(\[([^\]]*)\]/))
+        .filter((match) => match !== null)
+        .map((match) => match[1]!.split(",").map((field) => field.trim()));
+
+describe("Prisma schema conventions", () => {
+    it("finds models, so an empty scan cannot pass", () => {
+        expect(prismaModels.length).toBeGreaterThan(0);
+    });
+
+    describe.each(prismaModels)("model $name", (model) => {
+        it('maps to a snake_case table with @@map("...")', () => {
+            const table = model.lines
+                .map((line) => line.match(/^@@map\("([^"]+)"\)/)?.[1])
+                .find(Boolean);
+
+            expect(table, "missing @@map").toMatch(/^[a-z][a-z0-9_]*$/);
+        });
+
+        it("has createdAt and an @updatedAt updatedAt", () => {
+            const fields = fieldsOf(model);
+
+            expect(fields.some(([name]) => name === "createdAt")).toBe(true);
+
+            expect(
+                fields.some(
+                    ([name, ...rest]) =>
+                        name === "updatedAt" && rest.includes("@updatedAt")
+                )
+            ).toBe(true);
+        });
+
+        it("maps every camelCase column to snake_case", () => {
+            const unmapped = fieldsOf(model)
+                .filter(
+                    ([name, type]) =>
+                        /[A-Z]/.test(name!) &&
+                        !modelNames.has(type!.replace(/[?[\]]/g, ""))
+                )
+                .filter(
+                    ([name, ...rest]) =>
+                        !rest
+                            .join(" ")
+                            .includes(`@map("${toSnakeCase(name!)}")`)
+                )
+                .map(([name]) => name);
+
+            expect(unmapped).toEqual([]);
+        });
+
+        it("indexes every foreign key (Postgres does not do it for you)", () => {
+            const indexes = blockIndexes(model);
+
+            const unindexed = model.lines
+                .map((line) =>
+                    line.match(/@relation\([^)]*fields:\s*\[([^\]]*)\]/)
+                )
+                .filter((match) => match !== null)
+                .map((match) =>
+                    match[1]!.split(",").map((field) => field.trim())
+                )
+                .filter(
+                    (foreignKey) =>
+                        !indexes.some((index) =>
+                            foreignKey.every((field, at) => index[at] === field)
+                        ) &&
+                        !(
+                            foreignKey.length === 1 &&
+                            fieldsOf(model).some(
+                                ([name, , ...rest]) =>
+                                    name === foreignKey[0] &&
+                                    rest.some((attr) =>
+                                        /^@(id|unique)\b/.test(attr)
+                                    )
+                            )
+                        )
+                )
+                .map((foreignKey) => foreignKey.join(", "));
+
+            expect(unindexed, "add @@index([...]) for these").toEqual([]);
+        });
+    });
+});
+
+describe("Rule 7: the env schema, EnvConfig and .env.example agree", () => {
+    const envPlugin = readSource("plugins/env.ts");
+
+    const props = envPlugin
+        .split(".prop(")
+        .slice(1)
+        .map((segment) => ({
+            name: segment.match(/"(\w+)"/)![1]!,
+            hasDefault: segment.includes(".default("),
+        }));
+
+    const required = new Set(
+        [
+            ...envPlugin
+                .match(/\.required\(\[([\s\S]*?)\]\)/)![1]!
+                .matchAll(/"(\w+)"/g),
+        ].map(([, name]) => name!)
+    );
+
+    const envConfig = new Map(
+        [
+            ...readSource("types/env.type.ts").matchAll(
+                /^\s+(\w+):\s*([^;]+);/gm
+            ),
+        ].map(([, name, type]) => [name!, /\|\s*undefined/.test(type!)])
+    );
+
+    const envExample = fs.readFileSync(
+        path.join(process.cwd(), ".env.example"),
+        "utf8"
+    );
+
+    it("declares the same keys in env.ts and EnvConfig", () => {
+        expect([...envConfig.keys()].sort()).toEqual(
+            props.map(({ name }) => name).sort()
+        );
+    });
+
+    it.each(props)(
+        "$name is `| undefined` in EnvConfig only when optional without a default",
+        ({ name, hasDefault }) => {
+            expect(envConfig.get(name)).toBe(
+                !required.has(name) && !hasDefault
+            );
+        }
+    );
+
+    it.each(props.filter(({ hasDefault }) => !hasDefault))(
+        "$name is listed in .env.example",
+        ({ name }) => {
+            expect(envExample).toMatch(new RegExp(`^${name}=`, "m"));
+        }
+    );
+});
+
+describe("Rule 5a: every RESPONSE_MESSAGES entry is used", () => {
+    const sources = (
+        fs.readdirSync(SRC, { recursive: true, encoding: "utf8" }) as string[]
+    )
+        .filter((file) => /\.ts$/.test(file))
+        .filter((file) => !file.endsWith("messages.constant.ts"))
+        .map(readSource)
+        .join("\n");
+
+    const entries = Object.entries(RESPONSE_MESSAGES).flatMap(
+        ([group, messages]) =>
+            Object.keys(messages).map(
+                (key) => `RESPONSE_MESSAGES.${group}.${key}`
+            )
+    );
+
+    it.each(entries)("%s is referenced in src/", (entry) => {
+        expect(sources).toContain(entry);
     });
 });
