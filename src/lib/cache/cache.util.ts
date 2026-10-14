@@ -27,7 +27,7 @@ export const createCacheKey = ({
  * `request.query` rather than the raw query string, so unknown parameters
  * stripped by the route's Zod schema cannot mint a new cache entry each time.
  */
-export const serializeQuery = (query: unknown): string => {
+const serializeQuery = (query: unknown): string => {
     if (!query || typeof query !== "object") {
         return "";
     }

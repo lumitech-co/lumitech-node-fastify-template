@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import path from "node:path";
 import globals from "globals";
+import vitest from "@vitest/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import stylistic from "@stylistic/eslint-plugin";
 import prettyImports from "eslint-plugin-pretty-imports";
@@ -55,7 +56,6 @@ const architecture = {
         "no-unsafe-raw-sql": restrictedSyntax,
         "worker-imports": typescriptEslint.rules["no-restricted-imports"],
         "thin-workers": restrictedSyntax,
-        "no-focused-tests": restrictedSyntax,
         "type-files": restrictedSyntax,
         "constant-files": restrictedSyntax,
         "return-reply": restrictedSyntax,
@@ -1063,6 +1063,8 @@ export default [
         // factories and raw numbers. What does apply is what makes a test lie.
         files: ["test/**/*.ts"],
 
+        plugins: { vitest },
+
         languageOptions: {
             parserOptions: {
                 projectService: true,
@@ -1079,15 +1081,8 @@ export default [
             "@typescript-eslint/no-floating-promises": "error",
             "@typescript-eslint/no-misused-promises": "error",
             "@typescript-eslint/await-thenable": "error",
-            "arch/no-focused-tests": [
-                "error",
-                {
-                    selector:
-                        "MemberExpression[object.name=/^(it|test|describe|suite)$/][property.name='only']",
-                    message:
-                        ".only makes CI run this test alone and skip the rest while staying green — remove it before committing.",
-                },
-            ],
+            ...vitest.configs.recommended.rules,
+            "vitest/no-disabled-tests": "error",
         },
     },
     {

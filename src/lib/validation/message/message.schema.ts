@@ -105,7 +105,6 @@ const fetchMessagesResponseSchema = z.object({
 type FetchMessagesResponse = z.infer<typeof fetchMessagesResponseSchema>;
 
 export {
-    messageMetaSchema,
     createMessageBodySchema,
     updateMessageBodySchema,
     messageIdParamSchema,

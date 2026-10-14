@@ -231,11 +231,6 @@ const CASES: Case[] = [
         { file: WORKER, code: 'fastify.di.resolve("demoService");' }
     ),
     ...pair(
-        "no-focused-tests",
-        { file: "test/unit/demo.test.ts", code: 'it.only("a", () => {});' },
-        { file: "test/unit/demo.test.ts", code: 'it("a", () => {});' }
-    ),
-    ...pair(
         "type-files",
         { file: MODULE_TYPE, code: "export const A = 1;" },
         { file: MODULE_TYPE, code: "export type A = { a: string };" }

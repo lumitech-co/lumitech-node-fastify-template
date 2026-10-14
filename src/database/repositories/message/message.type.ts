@@ -17,7 +17,7 @@ export type MessagePage = {
     limit: number;
 };
 
-export type MessageListItem = Prisma.MessageGetPayload<{
+type MessageListItem = Prisma.MessageGetPayload<{
     select: typeof messageListSelect;
 }>;
 

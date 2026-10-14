@@ -19,8 +19,8 @@ npm run generate:repository <entityName>   # new repository
 npm run prisma:migrate:create              # create SQL migration (review before applying)
 npm run prisma:migrate:apply               # apply it
 
-# Finishing a feature — ALWAYS run both
-npm run lint:fix && npm run tsc-check
+# Finishing a feature — ALWAYS run all three
+npm run lint:fix && npm run tsc-check && npm run knip
 ```
 
 ## Architecture Rules (non-negotiable)
@@ -30,8 +30,10 @@ instead of working around it. Code examples for each live in
 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs` (custom ones in
-`scripts/eslint-rules/`), Rule 0, Rule 8a and BullMQ plugin wiring by `test/unit/architecture/`,
-Rule 9 by `npm run check:migrations` and `npm run check:drift` in CI. Every `arch/*` rule has a
+`scripts/eslint-rules/`), Rule 0, Rule 8a, BullMQ plugin wiring, Prisma schema conventions, env
+schema sync and unused `RESPONSE_MESSAGES` by `test/unit/architecture/`, Rule 9 by
+`npm run check:migrations`, `npm run check:drift` and squawk (`.squawk.toml`) on new migrations in
+CI, dead files/exports/dependencies by `npm run knip`. Every `arch/*` rule has a
 firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
 When one fails, fix the code — never disable the check.
 
