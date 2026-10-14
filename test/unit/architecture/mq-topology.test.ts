@@ -27,7 +27,7 @@ describe.each(KINDS)("mq $suffix topology", ({ suffix, configure }) => {
     const pluginFiles = filesUnder(path.join(SRC, "plugins", "mq"), suffix);
 
     const exportsOf = (file: string): string[] =>
-        [...read(file).matchAll(configure)].map(([, name]) => name);
+        [...read(file).matchAll(configure)].map(([, name]) => name!);
 
     it("finds files on both sides, so an empty scan cannot pass", () => {
         expect(moduleFiles.length).toBeGreaterThan(0);

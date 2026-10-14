@@ -1,6 +1,6 @@
-import { FastifyRequest } from "fastify";
+import type { FastifyRequest } from "fastify";
 import { describe, expect, it } from "vitest";
-import { RouteCacheOptions } from "@/lib/cache/cache.type.js";
+import type { RouteCacheOptions } from "@/lib/cache/cache.type.js";
 import { createCacheKey, createRouteCacheKey } from "@/lib/cache/cache.util.js";
 import {
     CACHE_KEY_HASH_LENGTH,

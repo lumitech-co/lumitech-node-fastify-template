@@ -101,7 +101,7 @@ export const createMessageRepository = (
 
             const nextCursor =
                 messages.length === limit
-                    ? messages[messages.length - 1].id
+                    ? (messages.at(-1)?.id ?? null)
                     : null;
 
             return { messages, nextCursor };

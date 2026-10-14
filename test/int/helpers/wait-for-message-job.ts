@@ -1,5 +1,5 @@
 import { QueueEvents } from "bullmq";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 
 const DEFAULT_TIMEOUT_MS = 15000;
 

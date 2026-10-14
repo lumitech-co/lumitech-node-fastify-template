@@ -13,35 +13,27 @@ export const generateRepository = <T extends Model>(
 
     const delegate = prisma[modelInstanceName];
 
-    const create = delegate["create"] as (typeof delegate)["create"];
+    const create = delegate.create;
 
-    const createMany = delegate[
-        "createMany"
-    ] as (typeof delegate)["createMany"];
+    const createMany = delegate.createMany;
 
-    const count = delegate["count"] as (typeof delegate)["count"];
+    const count = delegate.count;
 
-    const findUnique = delegate[
-        "findUnique"
-    ] as (typeof delegate)["findUnique"];
+    const findUnique = delegate.findUnique;
 
-    const findFirst = delegate["findFirst"] as (typeof delegate)["findFirst"];
+    const findFirst = delegate.findFirst;
 
-    const update = delegate["update"] as (typeof delegate)["update"];
+    const update = delegate.update;
 
-    const upsert = delegate["upsert"] as (typeof delegate)["upsert"];
+    const upsert = delegate.upsert;
 
-    const updateMany = delegate[
-        "updateMany"
-    ] as (typeof delegate)["updateMany"];
+    const updateMany = delegate.updateMany;
 
-    const deleteOne = delegate["delete"] as (typeof delegate)["delete"];
+    const deleteOne = delegate.delete;
 
-    const findMany = delegate["findMany"] as (typeof delegate)["findMany"];
+    const findMany = delegate.findMany;
 
-    const deleteMany = delegate[
-        "deleteMany"
-    ] as (typeof delegate)["deleteMany"];
+    const deleteMany = delegate.deleteMany;
 
     return {
         create,

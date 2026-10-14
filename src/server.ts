@@ -19,12 +19,13 @@ export const configureServer = async ({
     registerRoutes = true,
     runQueueWorker = true,
 }: ConfigureServerOptions = {}): Promise<FastifyInstance> => {
+    const nodeEnv = process.env.NODE_ENV as
+        | keyof typeof ENV_TO_LOGGER
+        | undefined;
+
     const fastify = Fastify({
         trustProxy: resolveTrustProxy(process.env.TRUSTED_PROXY_HOPS),
-        logger:
-            ENV_TO_LOGGER[
-                process.env.NODE_ENV as "development" | "production" | "test"
-            ] ?? GCP_LOGGER,
+        logger: (nodeEnv && ENV_TO_LOGGER[nodeEnv]) ?? GCP_LOGGER,
     });
 
     try {

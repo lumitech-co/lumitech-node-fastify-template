@@ -314,6 +314,47 @@ export default [
             "@typescript-eslint/only-throw-error": "error",
             "@typescript-eslint/require-await": "error",
             "@typescript-eslint/no-deprecated": "error",
+            "@typescript-eslint/no-unsafe-assignment": "error",
+            "@typescript-eslint/no-unsafe-member-access": "error",
+            "@typescript-eslint/no-unsafe-call": "error",
+            "@typescript-eslint/no-unsafe-return": "error",
+            "@typescript-eslint/no-unsafe-argument": "error",
+            "@typescript-eslint/no-unnecessary-condition": "error",
+            "@typescript-eslint/prefer-nullish-coalescing": "error",
+            "@typescript-eslint/prefer-optional-chain": "error",
+            "@typescript-eslint/no-unnecessary-type-assertion": "error",
+            "@typescript-eslint/naming-convention": [
+                "error",
+                {
+                    selector: "default",
+                    format: ["camelCase"],
+                    leadingUnderscore: "allow",
+                },
+                {
+                    selector: "variable",
+                    modifiers: ["const"],
+                    format: ["camelCase", "UPPER_CASE"],
+                    leadingUnderscore: "allowDouble",
+                },
+                {
+                    selector: "variable",
+                    modifiers: ["const"],
+                    filter: { regex: "Error$", match: true },
+                    format: ["PascalCase"],
+                },
+                {
+                    selector: ["variable", "parameter"],
+                    modifiers: ["destructured"],
+                    format: null,
+                },
+                { selector: "typeLike", format: ["PascalCase"] },
+                { selector: "enumMember", format: ["PascalCase"] },
+                { selector: "import", format: null },
+                {
+                    selector: ["objectLiteralProperty", "typeProperty"],
+                    format: null,
+                },
+            ],
             eqeqeq: ["error", "always", { null: "ignore" }],
             "import-x/no-cycle": ["error", { ignoreExternal: true }],
             "import-x/no-extraneous-dependencies": [
@@ -1015,6 +1056,10 @@ export default [
 
         rules: {
             "no-magic-numbers": "off",
+            "@typescript-eslint/consistent-type-imports": [
+                "error",
+                { prefer: "type-imports", fixStyle: "separate-type-imports" },
+            ],
             "@typescript-eslint/no-floating-promises": "error",
             "@typescript-eslint/no-misused-promises": "error",
             "@typescript-eslint/await-thenable": "error",

@@ -34,3 +34,14 @@ declare module "fastify" {
         cacheState: RequestCacheState | null;
     }
 }
+
+declare global {
+    namespace NodeJS {
+        interface ProcessEnv {
+            NODE_ENV?: string;
+            TRUSTED_PROXY_HOPS?: string;
+            DATABASE_URL?: string;
+            REDIS_URL?: string;
+        }
+    }
+}

@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
+import type { FastifyInstance } from "fastify";
 import { setTimeout } from "node:timers/promises";
 import { beforeEach, describe, expect, it } from "vitest";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";

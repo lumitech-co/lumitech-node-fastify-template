@@ -40,7 +40,7 @@ const findJsonFields = (schema: string): JsonField[] => {
         const modelMatch = line.match(/^model\s+(\w+)/);
 
         if (modelMatch) {
-            model = modelMatch[1];
+            model = modelMatch[1]!;
         }
 
         const fieldMatch = line.match(/^(\w+)\s+Json(\?|\[\])?(\s|$)/);
@@ -53,13 +53,13 @@ const findJsonFields = (schema: string): JsonField[] => {
 
         for (
             let cursor = index - 1;
-            cursor >= 0 && lines[cursor].startsWith("///");
+            cursor >= 0 && lines[cursor]!.startsWith("///");
             cursor--
         ) {
-            docLines.push(lines[cursor]);
+            docLines.push(lines[cursor]!);
         }
 
-        fields.push({ model, field: fieldMatch[1], docLines });
+        fields.push({ model, field: fieldMatch[1]!, docLines });
     });
 
     return fields;

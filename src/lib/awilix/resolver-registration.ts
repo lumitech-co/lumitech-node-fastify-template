@@ -1,19 +1,22 @@
 import { asFunction, RESOLVER } from "awilix";
 import type { Cradle } from "@/types/di-container.type.js";
-import type { AwilixContainer, BuildResolverOptions } from "awilix";
+import type {
+    AwilixContainer,
+    BuildResolverOptions,
+    FunctionReturning,
+} from "awilix";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ResolveRegistration = BuildResolverOptions<any>["register"];
+type RegisteredFactory = FunctionReturning<unknown> & {
+    [RESOLVER]: { name: keyof Cradle };
+};
 
 /** Custom resolver options register function that will throw an error
  * if the provided container name is already registered within the system.
  **/
-export const resolverOptionsRegister: (
-    di: AwilixContainer<Cradle>
-) => ResolveRegistration =
-    (di) =>
-    (...args) => {
-        const name = args[0][RESOLVER].name;
+export const resolverOptionsRegister =
+    (di: AwilixContainer<Cradle>) =>
+    (factory: RegisteredFactory, options?: BuildResolverOptions<unknown>) => {
+        const name = factory[RESOLVER].name;
 
         if (di.hasRegistration(name)) {
             throw new Error(
@@ -21,5 +24,5 @@ export const resolverOptionsRegister: (
             );
         }
 
-        return asFunction(args[0], args[1]);
+        return asFunction(factory, options);
     };

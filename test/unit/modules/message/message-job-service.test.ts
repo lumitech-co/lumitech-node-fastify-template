@@ -1,16 +1,14 @@
 import { ZodError } from "zod";
-import { Queue } from "bullmq";
+import type { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import { MessageService } from "@/modules/message/message.service.js";
-import { MessageJobData } from "@/modules/message/mq/message.type.js";
 import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
 import { createService } from "@/modules/message/mq/message.service.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageJobName } from "@/modules/message/mq/message.constant.js";
-import {
-    messageIdSelect,
-    MessageRepository,
-} from "@/database/repositories/message/message.repository.js";
+import type { MessageService } from "@/modules/message/message.service.js";
+import type { MessageJobData } from "@/modules/message/mq/message.type.js";
+import { messageIdSelect } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 
 type FakeMessageQueue = Queue<MessageJobData, unknown, MessageJobName>;
 

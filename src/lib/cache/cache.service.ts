@@ -114,9 +114,9 @@ export const createCacheService = (
                 return { hit: false, value: null };
             }
 
-            const value = JSON.parse(raw);
+            const value: unknown = JSON.parse(raw);
 
-            return { hit: true, value: schema ? schema.parse(value) : value };
+            return { hit: true, value: schema.parse(value) };
         } catch (error) {
             log.warn({ error, key }, "Cache read failed");
 

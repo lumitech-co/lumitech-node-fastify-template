@@ -1,7 +1,8 @@
+import Fastify from "fastify";
 import fp from "fastify-plugin";
 import cachePlugin from "@/plugins/cache.js";
-import Fastify, { FastifyInstance } from "fastify";
 import { Redis } from "ioredis";
+import type { FastifyInstance } from "fastify";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createCacheService } from "@/lib/cache/cache.service.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";

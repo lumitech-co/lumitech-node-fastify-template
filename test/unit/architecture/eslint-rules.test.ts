@@ -547,6 +547,15 @@ const TYPE_AWARE_RULES = [
     "@typescript-eslint/only-throw-error",
     "@typescript-eslint/require-await",
     "@typescript-eslint/no-deprecated",
+    "@typescript-eslint/no-unsafe-assignment",
+    "@typescript-eslint/no-unsafe-member-access",
+    "@typescript-eslint/no-unsafe-call",
+    "@typescript-eslint/no-unsafe-return",
+    "@typescript-eslint/no-unsafe-argument",
+    "@typescript-eslint/no-unnecessary-condition",
+    "@typescript-eslint/prefer-nullish-coalescing",
+    "@typescript-eslint/prefer-optional-chain",
+    "@typescript-eslint/no-unnecessary-type-assertion",
     "import-x/no-cycle",
 ];
 
@@ -564,11 +573,13 @@ const reportedRules = async ({ file, code }: Case): Promise<string[]> => {
         filePath: path.join(process.cwd(), file),
     });
 
-    const fatal = result.messages.filter((message) => message.fatal);
+    const { messages } = result!;
+
+    const fatal = messages.filter((message) => message.fatal);
 
     expect(fatal, "the fixture must parse").toEqual([]);
 
-    return result.messages.map((message) => message.ruleId ?? "");
+    return messages.map((message) => message.ruleId ?? "");
 };
 
 describe("arch/* ESLint rules", () => {

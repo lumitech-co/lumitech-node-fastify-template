@@ -1,4 +1,5 @@
-import { EnvConfig } from "@/types/env.type.js";
+import type { S3Client } from "@aws-sdk/client-s3";
+import type { EnvConfig } from "@/types/env.type.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createS3BucketService } from "@/lib/s3Bucket/s3Bucket.service.js";
 import {
@@ -6,7 +7,6 @@ import {
     SIGNED_URL_EXPIRES_IN_SECONDS,
 } from "@/lib/s3Bucket/s3Bucket.constant.js";
 import {
-    S3Client,
     GetObjectCommand,
     PutObjectCommand,
     DeleteObjectCommand,
@@ -49,7 +49,7 @@ describe("s3Bucket.service - createS3BucketService", () => {
         expect(deletedKey).toBe("avatars/user-1.png");
         expect(sendMock).toHaveBeenCalledOnce();
 
-        const command = sendMock.mock.calls[0][0];
+        const command = sendMock.mock.calls[0]![0];
 
         expect(command).toBeInstanceOf(DeleteObjectCommand);
 
@@ -134,18 +134,18 @@ describe("s3Bucket.service - createS3BucketService", () => {
 
         expect(listCalls).toHaveLength(2);
 
-        expect(listCalls[0].input).toMatchObject({
+        expect(listCalls[0]!.input).toMatchObject({
             Bucket: "test-bucket",
             Prefix: "avatars/user-1/",
         });
 
-        expect(listCalls[1].input).toMatchObject({
+        expect(listCalls[1]!.input).toMatchObject({
             ContinuationToken: "token-1",
         });
 
         expect(deleteCalls).toHaveLength(2);
 
-        expect(deleteCalls[0].input).toMatchObject({
+        expect(deleteCalls[0]!.input).toMatchObject({
             Bucket: "test-bucket",
             Delete: {
                 Objects: [
@@ -155,7 +155,7 @@ describe("s3Bucket.service - createS3BucketService", () => {
             },
         });
 
-        expect(deleteCalls[1].input).toMatchObject({
+        expect(deleteCalls[1]!.input).toMatchObject({
             Delete: { Objects: [{ Key: "avatars/user-1/c.png" }] },
         });
     });
@@ -173,7 +173,7 @@ describe("s3Bucket.service - createS3BucketService", () => {
         await s3BucketService.deleteFolder({ prefix: "empty/" });
 
         expect(sendMock).toHaveBeenCalledOnce();
-        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(ListObjectsV2Command);
+        expect(sendMock.mock.calls[0]![0]).toBeInstanceOf(ListObjectsV2Command);
     });
 
     it("should create a presigned upload url", async () => {
@@ -191,7 +191,8 @@ describe("s3Bucket.service - createS3BucketService", () => {
         expect(url).toBe("https://upload.example/signed");
         expect(getSignedUrlMock).toHaveBeenCalledOnce();
 
-        const [signedClient, command, options] = getSignedUrlMock.mock.calls[0];
+        const [signedClient, command, options] =
+            getSignedUrlMock.mock.calls[0]!;
 
         expect(signedClient).toBe(client);
         expect(command).toBeInstanceOf(PutObjectCommand);
@@ -219,7 +220,8 @@ describe("s3Bucket.service - createS3BucketService", () => {
         expect(url).toBe("https://read.example/signed");
         expect(getSignedUrlMock).toHaveBeenCalledOnce();
 
-        const [signedClient, command, options] = getSignedUrlMock.mock.calls[0];
+        const [signedClient, command, options] =
+            getSignedUrlMock.mock.calls[0]!;
 
         expect(signedClient).toBe(client);
         expect(command).toBeInstanceOf(GetObjectCommand);

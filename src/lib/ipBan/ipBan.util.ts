@@ -6,7 +6,7 @@ import {
 } from "./ipBan.constant.js";
 
 export const extractPathname = ({ url }: { url: string }): string =>
-    url.split(URL_QUERY_SEPARATOR)[0];
+    url.split(URL_QUERY_SEPARATOR)[0] ?? url;
 
 export const isAllowedPath = ({ path }: IsAllowedPathPayload): boolean =>
     IP_BAN_ALLOWED_PATHS.includes(path) ||

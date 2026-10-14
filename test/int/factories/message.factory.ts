@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Message, Prisma, PrismaClient } from "@prisma/client";
+import type { Message, Prisma, PrismaClient } from "@prisma/client";
 
 /**
  * Arrange factory: seeds a precondition directly through Prisma so a test can
