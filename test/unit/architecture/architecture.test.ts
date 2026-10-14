@@ -311,7 +311,7 @@ describe("Rule 5a: every RESPONSE_MESSAGES entry is used", () => {
     const sources = (
         fs.readdirSync(SRC, { recursive: true, encoding: "utf8" }) as string[]
     )
-        .filter((file) => /\.ts$/.test(file))
+        .filter((file) => file.endsWith(".ts"))
         .filter((file) => !file.endsWith("messages.constant.ts"))
         .map(readSource)
         .join("\n");

@@ -4,6 +4,7 @@ import type {
     AwilixContainer,
     BuildResolverOptions,
     FunctionReturning,
+    Resolver,
 } from "awilix";
 
 type RegisteredFactory = FunctionReturning<unknown> & {
@@ -15,7 +16,10 @@ type RegisteredFactory = FunctionReturning<unknown> & {
  **/
 export const resolverOptionsRegister =
     (di: AwilixContainer<Cradle>) =>
-    (factory: RegisteredFactory, options?: BuildResolverOptions<unknown>) => {
+    (
+        factory: RegisteredFactory,
+        options?: BuildResolverOptions<unknown>
+    ): Resolver<unknown> => {
         const name = factory[RESOLVER].name;
 
         if (di.hasRegistration(name)) {

@@ -13,11 +13,9 @@ const anySchema = z.unknown();
 
 const patternToRegex = (pattern: string): RegExp =>
     new RegExp(
-        "^" +
-            pattern.replace(/[.*+?^${}()|[\]\\]/g, (char) =>
-                char === "*" ? ".*" : `\\${char}`
-            ) +
-            "$"
+        `^${pattern.replace(/[.*+?^${}()|[\]\\]/g, (char) =>
+            char === "*" ? ".*" : `\\${char}`
+        )}$`
     );
 
 const createFakeRedis = () => {

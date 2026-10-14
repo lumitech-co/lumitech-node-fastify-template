@@ -7,7 +7,9 @@ import {
     MESSAGE_QUEUE_DEFAULT_JOB_OPTIONS,
 } from "./message.constant.js";
 
-export const configureMessageQueue = async (fastify: FastifyInstance) => {
+export const configureMessageQueue = async (
+    fastify: FastifyInstance
+): Promise<void> => {
     const messageQueue = new Queue<MessageJobData, unknown, MessageJobName>(
         MESSAGE_QUEUE_NAME,
         {

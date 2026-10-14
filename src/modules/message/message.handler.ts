@@ -43,39 +43,37 @@ export type MessageHandler = {
 export const createHandler = (
     messageJobService: MessageJobService,
     messageService: MessageService
-): MessageHandler => {
-    return {
-        createMessage: async (request, reply) => {
-            const data = await messageJobService.enqueueCreateMessage({
-                payload: request.body,
-            });
+): MessageHandler => ({
+    createMessage: async (request, reply) => {
+        const data = await messageJobService.enqueueCreateMessage({
+            payload: request.body,
+        });
 
-            return reply.status(202).send(data);
-        },
+        return reply.status(202).send(data);
+    },
 
-        updateMessage: async (request, reply) => {
-            const data = await messageJobService.enqueueUpdateMessage({
-                id: request.params.id,
-                payload: request.body,
-            });
+    updateMessage: async (request, reply) => {
+        const data = await messageJobService.enqueueUpdateMessage({
+            id: request.params.id,
+            payload: request.body,
+        });
 
-            return reply.status(200).send(data);
-        },
+        return reply.status(200).send(data);
+    },
 
-        deleteMessage: async (request, reply) => {
-            const data = await messageJobService.enqueueDeleteMessage({
-                id: request.params.id,
-            });
+    deleteMessage: async (request, reply) => {
+        const data = await messageJobService.enqueueDeleteMessage({
+            id: request.params.id,
+        });
 
-            return reply.status(200).send(data);
-        },
+        return reply.status(200).send(data);
+    },
 
-        getMessages: async (request, reply) => {
-            const data = await messageService.getMessages(request.query);
+    getMessages: async (request, reply) => {
+        const data = await messageService.getMessages(request.query);
 
-            return reply.status(200).send(data);
-        },
-    };
-};
+        return reply.status(200).send(data);
+    },
+});
 
 addDIResolverName(createHandler, "messageHandler");

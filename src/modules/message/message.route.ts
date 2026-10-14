@@ -25,7 +25,7 @@ enum MessageRoute {
 export const createMessageRoutes = (
     fastify: FastifyInstance,
     messageHandler: MessageHandler
-) => {
+): void => {
     fastify.post(
         MessageRoute.Root,
         {

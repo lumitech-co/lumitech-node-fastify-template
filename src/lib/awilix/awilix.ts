@@ -8,10 +8,9 @@ import type { Cradle } from "@/types/di-container.type.js";
 export const addDIResolverName = <T extends object>(
     fn: T,
     name: keyof Cradle
-): T => {
-    return Object.assign(fn, {
+): T =>
+    Object.assign(fn, {
         [RESOLVER]: {
-            name: name,
+            name,
         },
     });
-};

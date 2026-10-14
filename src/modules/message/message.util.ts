@@ -1,4 +1,5 @@
-import type { DiffObjectsPayload, IsEqualPayload } from "./message.type.js";
+import { isDeepStrictEqual } from "node:util";
+import type { DiffObjectsPayload } from "./message.type.js";
 
 /**
  * Example util: keys whose values differ between two flat objects,
@@ -17,45 +18,10 @@ export const diffObjects = <
         const oldValue = oldObj[key];
         const newValue = newObj[key];
 
-        if (!isEqual({ a: oldValue, b: newValue })) {
+        if (!isDeepStrictEqual(oldValue, newValue)) {
             diff[key] = newValue;
         }
     }
 
     return diff;
-};
-
-const isEqual = ({ a, b }: IsEqualPayload): boolean => {
-    if (a === b) {
-        return true;
-    }
-
-    if (a == null || b == null) {
-        return a === b;
-    }
-
-    if (a instanceof Date && b instanceof Date) {
-        return a.getTime() === b.getTime();
-    }
-
-    if (Array.isArray(a) && Array.isArray(b)) {
-        return (
-            a.length === b.length &&
-            a.every((val, index) => isEqual({ a: val, b: b[index] }))
-        );
-    }
-
-    if (typeof a === "object" && typeof b === "object") {
-        const aKeys = Object.keys(a);
-        const bKeys = Object.keys(b);
-
-        return (
-            aKeys.length === bKeys.length &&
-            aKeys.every((key) =>
-                isEqual({ a: Reflect.get(a, key), b: Reflect.get(b, key) })
-            )
-        );
-    }
-
-    return false;
 };

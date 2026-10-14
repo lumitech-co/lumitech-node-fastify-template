@@ -5,6 +5,7 @@
  * only a deliberate violation proves it still works.
  */
 import path from "node:path";
+import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 
@@ -586,6 +587,14 @@ const CASES: Case[] = [
         }
     ),
     ...pair(
+        "no-interfaces",
+        { file: MODULE_TYPE, code: "export interface Demo { id: string }" },
+        {
+            file: "src/types/demo.d.ts",
+            code: 'declare module "fastify" { interface FastifyInstance { demo: string } }',
+        }
+    ),
+    ...pair(
         "plugin-names",
         {
             file: PLUGIN,
@@ -598,24 +607,12 @@ const CASES: Case[] = [
     ),
 ];
 
+// Fixtures are linted without a TS program, so every rule that needs type
+// information is switched off; import-x/no-cycle needs the real file graph.
 const TYPE_AWARE_RULES = [
-    "@typescript-eslint/no-floating-promises",
-    "@typescript-eslint/no-misused-promises",
-    "@typescript-eslint/switch-exhaustiveness-check",
-    "@typescript-eslint/await-thenable",
-    "@typescript-eslint/return-await",
-    "@typescript-eslint/only-throw-error",
-    "@typescript-eslint/require-await",
-    "@typescript-eslint/no-deprecated",
-    "@typescript-eslint/no-unsafe-assignment",
-    "@typescript-eslint/no-unsafe-member-access",
-    "@typescript-eslint/no-unsafe-call",
-    "@typescript-eslint/no-unsafe-return",
-    "@typescript-eslint/no-unsafe-argument",
-    "@typescript-eslint/no-unnecessary-condition",
-    "@typescript-eslint/prefer-nullish-coalescing",
-    "@typescript-eslint/prefer-optional-chain",
-    "@typescript-eslint/no-unnecessary-type-assertion",
+    ...Object.entries(typescriptEslint.rules)
+        .filter(([, rule]) => rule.meta.docs?.requiresTypeChecking)
+        .map(([name]) => `@typescript-eslint/${name}`),
     "import-x/no-cycle",
 ];
 

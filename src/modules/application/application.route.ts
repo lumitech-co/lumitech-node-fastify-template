@@ -11,7 +11,7 @@ enum ApplicationRoute {
 export const createApplicationRoutes = (
     fastify: FastifyInstance,
     applicationHandler: ApplicationHandler
-) => {
+): void => {
     fastify.get(
         ApplicationRoute.HealthCheck,
         {

@@ -102,6 +102,7 @@ const architecture = {
         "bounded-pagination": restrictedSyntax,
         "route-params-schema": routeParamsSchema,
         "plugin-names": restrictedSyntax,
+        "no-interfaces": restrictedSyntax,
     },
 };
 
@@ -135,6 +136,10 @@ const PRISMA_CALLS = [
 const NODE_BUILTIN = builtinModules
     .filter((name) => /^[a-z]/.test(name) && !/[/:]/.test(name))
     .join("|");
+
+const MAX_DEPTH = 3;
+const MAX_COMPLEXITY = 10;
+const MAX_FILE_LINES = 300;
 
 const MESSAGE_LITERAL =
     ":matches(Literal[value=/[A-Za-z]/], TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/]))";
@@ -1552,6 +1557,63 @@ export default [
                         "CallExpression[callee.name='fp'] > ObjectExpression > Property[key.name=/^(name|dependencies)$/] :matches(Literal, TemplateLiteral)",
                     message:
                         "Plugin names and dependencies come from the FastifyPlugin enum in src/lib/constants/fastify.constant.ts (CLAUDE.md, Rule 6).",
+                },
+            ],
+        },
+    },
+    {
+        // Code style the codebase already follows — locked in so it cannot drift.
+        files: ["src/**/*.ts", "test/**/*.ts"],
+
+        rules: {
+            "@typescript-eslint/method-signature-style": ["error", "property"],
+            "@typescript-eslint/array-type": ["error", { default: "array" }],
+            "@typescript-eslint/consistent-type-exports": "error",
+            "@typescript-eslint/no-unnecessary-template-expression": "error",
+            "@typescript-eslint/prefer-promise-reject-errors": "error",
+            "@typescript-eslint/prefer-includes": "error",
+            "@typescript-eslint/no-confusing-void-expression": "error",
+            "@typescript-eslint/prefer-string-starts-ends-with": "error",
+            "@typescript-eslint/restrict-template-expressions": "error",
+            "no-else-return": "error",
+            "no-lonely-if": "error",
+            "no-nested-ternary": "error",
+            "no-useless-return": "error",
+            "max-depth": ["error", MAX_DEPTH],
+            "arrow-body-style": ["error", "as-needed"],
+            "object-shorthand": "error",
+            "prefer-template": "error",
+        },
+    },
+    {
+        // Module augmentation (declare module / global / namespace) needs
+        // interfaces; everywhere else the codebase writes `type`.
+        files: ["src/**/*.ts", "test/**/*.ts"],
+
+        rules: {
+            "arch/no-interfaces": [
+                "error",
+                {
+                    selector:
+                        "TSInterfaceDeclaration:not(TSModuleDeclaration TSInterfaceDeclaration)",
+                    message:
+                        "Use `type` — interfaces are only for augmenting a module (declare module / declare global).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "@typescript-eslint/explicit-module-boundary-types": "error",
+            complexity: ["warn", MAX_COMPLEXITY],
+            "max-lines": [
+                "warn",
+                {
+                    max: MAX_FILE_LINES,
+                    skipBlankLines: true,
+                    skipComments: true,
                 },
             ],
         },

@@ -6,7 +6,9 @@ import type { MessageJobName } from "./message.constant.js";
 import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
 import type { MessageJobData, MessageJobResult } from "./message.type.js";
 
-export const configureMessageWorker = async (fastify: FastifyInstance) => {
+export const configureMessageWorker = async (
+    fastify: FastifyInstance
+): Promise<void> => {
     const messageJobService = fastify.di.resolve("messageJobService");
 
     const worker = new Worker<MessageJobData, MessageJobResult, MessageJobName>(

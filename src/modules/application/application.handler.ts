@@ -11,14 +11,12 @@ export type ApplicationHandler = {
 
 export const createHandler = (
     applicationService: ApplicationService
-): ApplicationHandler => {
-    return {
-        healthChecker: async (_request, reply) => {
-            const data = await applicationService.healthChecker();
+): ApplicationHandler => ({
+    healthChecker: async (_request, reply) => {
+        const data = await applicationService.healthChecker();
 
-            return reply.send(data);
-        },
-    };
-};
+        return reply.send(data);
+    },
+});
 
 addDIResolverName(createHandler, "applicationHandler");

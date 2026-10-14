@@ -18,8 +18,3 @@ export type DiffObjectsPayload<
     oldObj: T;
     newObj: K;
 };
-
-export type IsEqualPayload = {
-    a: unknown;
-    b: unknown;
-};

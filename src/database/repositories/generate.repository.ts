@@ -50,6 +50,5 @@ export const generateRepository = <T extends Model>(
     };
 };
 
-const uncapitalizeString = <T extends string>(str: T): Uncapitalize<T> => {
-    return (str.charAt(0).toLowerCase() + str.slice(1)) as Uncapitalize<T>;
-};
+const uncapitalizeString = <T extends string>(str: T): Uncapitalize<T> =>
+    (str.charAt(0).toLowerCase() + str.slice(1)) as Uncapitalize<T>;

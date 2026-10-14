@@ -7,9 +7,7 @@ import { addDIResolverName } from "@/lib/awilix/awilix.js";
 
 export type ${namePascal}Handler = Record<string, never>;
 
-export const createHandler = (): ${namePascal}Handler => {
-    return {};
-};
+export const createHandler = (): ${namePascal}Handler => ({});
 
 addDIResolverName(createHandler, "${nameCamel}Handler");
 `.trim(),
@@ -26,7 +24,7 @@ import type { ${namePascal}Handler } from "./${nameKebab}.handler.js";
 export const create${namePascal}Routes = (
     _fastify: FastifyInstance,
     _${nameCamel}Handler: ${namePascal}Handler
-) => {};
+): void => {};
 `.trim(),
 
     index: (namePascal, nameCamel, nameKebab) =>
@@ -37,7 +35,7 @@ import { create${namePascal}Routes } from "./${nameKebab}.route.js";
 // Define the endpoint prefix by providing autoPrefix module property.
 export const autoPrefix = "/api/${nameKebab}";
 
-export default async function (fastify: FastifyInstance) {
+export default async function (fastify: FastifyInstance): Promise<void> {
     const ${nameCamel}Handler = fastify.di.resolve("${nameCamel}Handler");
     create${namePascal}Routes(fastify, ${nameCamel}Handler);
 }

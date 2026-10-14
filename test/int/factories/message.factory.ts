@@ -21,24 +21,22 @@ type CreateMessagesArgs = CreateMessageArgs & {
 export const createMessage = async ({
     prisma,
     overrides = {},
-}: CreateMessageArgs): Promise<Message> => {
-    return prisma.message.create({
+}: CreateMessageArgs): Promise<Message> =>
+    prisma.message.create({
         data: {
             text: `message-${randomUUID()}`,
             ...overrides,
         },
     });
-};
 
 export const createMessages = async ({
     prisma,
     count,
     overrides = {},
-}: CreateMessagesArgs): Promise<Message[]> => {
-    return prisma.message.createManyAndReturn({
+}: CreateMessagesArgs): Promise<Message[]> =>
+    prisma.message.createManyAndReturn({
         data: Array.from({ length: count }, () => ({
             text: `message-${randomUUID()}`,
             ...overrides,
         })),
     });
-};
