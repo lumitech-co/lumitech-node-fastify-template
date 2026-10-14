@@ -24,7 +24,7 @@ const main = async () => {
 
     closeWithGrace(
         {
-            delay: 500,
+            delay: 10_000,
             logger: fastify.log,
         },
         async function ({ err, signal }) {
