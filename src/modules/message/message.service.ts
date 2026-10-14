@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { FastifyBaseLogger } from "fastify";
 import { EnvConfig } from "@/types/env.type.js";
 import { MessageJobResult } from "./mq/message.type.js";
@@ -7,16 +6,12 @@ import { CacheService } from "@/lib/cache/cache.service.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { CreateMessagePayload, UpdateMessagePayload } from "./message.type.js";
+import { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
     FetchMessagesQuery,
     FetchMessagesResponse,
     DeleteMessageJobData,
 } from "@/lib/validation/message/message.schema.js";
-import {
-    messageIdSelect,
-    messageListSelect,
-    MessageRepository,
-} from "@/database/repositories/message/message.repository.js";
 
 export type MessageService = {
     createMessage: (payload: CreateMessagePayload) => Promise<MessageJobResult>;
@@ -32,11 +27,11 @@ export const createService = (
     config: EnvConfig
 ): MessageService => ({
     createMessage: async ({ id, text, meta, enqueuedAt }) => {
-        await messageRepository.upsert({
-            where: { id },
-            create: { id, text, meta, updatedAt: enqueuedAt },
-            update: {},
-            select: messageIdSelect,
+        await messageRepository.createIfAbsent({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
         });
 
         await cacheService.invalidate({
@@ -47,21 +42,14 @@ export const createService = (
     },
 
     updateMessage: async ({ id, text, meta, enqueuedAt }) => {
-        const { count } = await messageRepository.updateMany({
-            where: { id, updatedAt: { lte: enqueuedAt } },
-            data: {
-                text,
-                meta: meta === null ? Prisma.DbNull : meta,
-                updatedAt: enqueuedAt,
-            },
+        const updated = await messageRepository.updateIfNotNewer({
+            id,
+            text,
+            meta,
+            updatedAt: enqueuedAt,
         });
 
-        if (count === 0) {
-            await messageRepository.findUniqueOrFail({
-                where: { id },
-                select: messageIdSelect,
-            });
-
+        if (!updated) {
             return { id };
         }
 
@@ -85,19 +73,11 @@ export const createService = (
     getMessages: async ({ cursor, limit }) => {
         log.info("Current environment: %s", config.NODE_ENV);
 
-        const messages = await messageRepository.findMany({
-            take: limit,
-            orderBy: { id: "desc" },
-            ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-            select: messageListSelect,
-        });
-
-        const nextCursor =
-            messages.length === limit ? messages[messages.length - 1].id : null;
+        const data = await messageRepository.findPage({ cursor, limit });
 
         return {
             message: RESPONSE_MESSAGES.message.fetched,
-            data: { messages, nextCursor },
+            data,
         };
     },
 });
