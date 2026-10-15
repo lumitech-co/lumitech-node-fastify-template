@@ -360,8 +360,8 @@ const createMessageBodySchema = z.object({
 src/
 ├── database/
 │   ├── dbml/            # Generated ER diagram (npm run prisma:diagram) - never edit by hand
-│   ├── prisma/          # Schema, migrations and Prisma helper types
-│   └── repositories/    # Data access layer (all Prisma calls live here)
+│   ├── prisma/          # Schema and migrations
+│   └── repositories/    # Data access layer: domain types in and out, all Prisma calls inside
 ├── lib/
 │   ├── awilix/          # DI helpers
 │   ├── constants/       # Global constants
@@ -379,15 +379,17 @@ src/
 ### Add a new feature module
 1. Run `npm run generate:module featureName`
 2. Define Prisma model in `src/database/prisma/schema.prisma`
-3. Run `npm run generate:repository featureName`
-4. Implement service logic
+3. Run `npm run generate:repository featureName`, then add the model's fields to the domain
+   type in `<name>.type.ts` and the repository methods the service needs
+4. Implement service logic against those repository methods
 5. Define routes with Zod schemas
 
 ### Add a database model
 1. Edit `src/database/prisma/schema.prisma`
 2. Run `npm run prisma:migrate:create`
 3. Run `npm run prisma:migrate:apply`
-4. Run `npm run generate:repository modelName`
+4. Run `npm run generate:repository modelName` and describe the model's fields in its
+   domain type (`<name>.type.ts`)
 
 ### Run tests
 - Unit: `npm run test:unit`

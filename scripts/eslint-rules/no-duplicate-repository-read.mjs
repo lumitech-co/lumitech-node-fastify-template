@@ -1,6 +1,7 @@
-// Flags >=2 reads on the same *Repository with a text-identical `where` on one
-// execution path: fetch the rows once and derive the rest in memory. A write
-// or an early exit splits the path; count/exists and cursor reads never count.
+// Flags >=2 identical reads on one execution path — the same domain repository
+// method with the same argument, or the same Prisma delegate with the same
+// `where`: fetch once and derive the rest in memory. A write or an early exit
+// splits the path; count/exists and cursor reads never count.
 // Ported from tolmete-api.
 const isRepositoryReceiver = (node) => {
     if (node.type === "Identifier") {
@@ -96,41 +97,47 @@ const findProperty = (objectExpression, name) =>
                     property.key.value === name))
     );
 
-// `<receiver>.<readMethod>({ where: … })` → its receiver + where text, else null.
+// A read on a repository or a Prisma delegate → its receiver + the text that
+// picks the rows, else null. A Prisma call is keyed by its `where`; a domain
+// repository method (`findByIdOrFail({ id })`) by its whole argument.
 const asRepositoryRead = (node, sourceCode) => {
     if (
         node.type !== "CallExpression" ||
         node.callee.type !== "MemberExpression" ||
         node.callee.property.type !== "Identifier" ||
         !isReadMethod(node.callee.property.name) ||
-        !isRepositoryReceiver(node.callee.object)
+        !isDatabaseReceiver(node.callee.object)
     ) {
         return null;
     }
 
     const arg = node.arguments[0];
 
-    if (!arg || arg.type !== "ObjectExpression") {
-        return null;
-    }
-
-    // Cursor-based reads (prev/next neighbor, keyset pagination) intentionally
-    // fetch DIFFERENT rows despite an identical `where` — never a duplicate.
-    if (findProperty(arg, "cursor")) {
-        return null;
-    }
-
-    const whereProperty = findProperty(arg, "where");
-
-    if (!whereProperty) {
-        return null;
-    }
-
-    return {
+    const read = (whereText) => ({
         receiverText: sourceCode.getText(node.callee.object),
-        whereText: sourceCode.getText(whereProperty.value),
+        whereText,
         method: node.callee.property,
-    };
+    });
+
+    if (arg?.type === "ObjectExpression") {
+        // Cursor-based reads (prev/next neighbor, keyset pagination) fetch
+        // DIFFERENT rows despite identical arguments — never a duplicate.
+        if (findProperty(arg, "cursor")) {
+            return null;
+        }
+
+        const whereProperty = findProperty(arg, "where");
+
+        if (whereProperty) {
+            return read(sourceCode.getText(whereProperty.value));
+        }
+    }
+
+    if (!isRepositoryReceiver(node.callee.object)) {
+        return null;
+    }
+
+    return read(arg ? sourceCode.getText(arg) : "");
 };
 
 // Depth-first walk of `node`'s subtree calling `visit` on each node, not
@@ -254,7 +261,7 @@ export default {
         type: "suggestion",
         messages: {
             duplicateWhereRead:
-                '`{{receiver}}` is read {{count}} times with an identical `where` in this scope — fetch the rows once and derive the rest in memory (or one `relationLoadStrategy:"join"` read) instead of re-querying.',
+                '`{{receiver}}` is read {{count}} times with identical arguments in this scope — fetch the rows once and derive the rest in memory (or one `relationLoadStrategy:"join"` read) instead of re-querying.',
         },
         schema: [],
     },

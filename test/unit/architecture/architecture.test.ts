@@ -397,6 +397,32 @@ describe("Rule 0: every module has the files the generator creates", () => {
             );
         });
     });
+
+    describe.each(listDirs("database/repositories"))(
+        "repository %s",
+        (name) => {
+            it.each([`${name}.repository.ts`, `${name}.type.ts`])(
+                "has %s",
+                (file) => {
+                    expect(
+                        fs.existsSync(
+                            path.join(SRC, "database/repositories", name, file)
+                        )
+                    ).toBe(true);
+                }
+            );
+
+            it("declares its domain model in the type file", () => {
+                const pascal = kebabToCamel(name).replace(/^./, (char) =>
+                    char.toUpperCase()
+                );
+
+                expect(
+                    readSource(`database/repositories/${name}/${name}.type.ts`)
+                ).toMatch(new RegExp(`^(export )?type ${pascal} = \\{`, "m"));
+            });
+        }
+    );
 });
 
 describe("Rule 7: the env schema, EnvConfig and .env.example agree", () => {

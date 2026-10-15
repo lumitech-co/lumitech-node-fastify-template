@@ -76,6 +76,9 @@ grep -rho 'addDIResolverName([^,]*, *"\([^"]*\)"' -r src | sed 's/.*"\(.*\)"/\1/
 # Prisma outside a repository (the only allowed exception is $transaction)
 grep -rn "prisma\." src/modules src/lib src/plugins | grep -v "\$transaction"
 
+# Prisma types leaking past a repository (only Prisma.TransactionClient may)
+grep -rn "Prisma\.\|@prisma/client" src/modules src/database/repositories/*/*.type.ts | grep -v TransactionClient
+
 # DB call inside a loop
 grep -rn -B3 "await .*Repository\." src/modules | grep -E "for |while |\.map\(|\.forEach\("
 

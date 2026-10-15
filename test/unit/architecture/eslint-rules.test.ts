@@ -100,12 +100,12 @@ const CASES: Case[] = [
     ...pair(
         "no-relation-join-with-cursor",
         {
-            file: SERVICE,
-            code: 'demoRepository.findMany({ take: 1, relationLoadStrategy: "join", ...(cursor ? { cursor: { id: cursor } } : {}) });',
+            file: REPOSITORY,
+            code: 'prisma.demo.findMany({ take: 1, relationLoadStrategy: "join", ...(cursor ? { cursor: { id: cursor } } : {}) });',
         },
         {
-            file: SERVICE,
-            code: 'demoRepository.findMany({ take: 1, relationLoadStrategy: "join" });',
+            file: REPOSITORY,
+            code: 'prisma.demo.findMany({ take: 1, relationLoadStrategy: "join" });',
         }
     ),
     ...pair(
@@ -113,16 +113,34 @@ const CASES: Case[] = [
         {
             file: SERVICE,
             code: [
-                "const a = await demoRepository.findFirst({ where: { id } });",
-                "const b = await demoRepository.findMany({ where: { id }, take: 1 });",
+                "const a = await demoRepository.findByIdOrFail({ id });",
+                "const b = await demoRepository.findByIdOrFail({ id });",
             ].join("\n"),
         },
         {
             file: SERVICE,
             code: [
-                "const a = await demoRepository.findFirst({ where: { id } });",
-                "await demoRepository.update({ where: { id }, data: {} });",
-                "const b = await demoRepository.findFirst({ where: { id } });",
+                "const a = await demoRepository.findByIdOrFail({ id });",
+                "await demoRepository.updateById({ id, text });",
+                "const b = await demoRepository.findByIdOrFail({ id });",
+            ].join("\n"),
+        }
+    ),
+    ...pair(
+        "no-duplicate-repository-read",
+        {
+            file: REPOSITORY,
+            code: [
+                "const a = await prisma.demo.findUnique({ where: { id } });",
+                "const b = await prisma.demo.findFirst({ where: { id } });",
+            ].join("\n"),
+        },
+        {
+            file: REPOSITORY,
+            code: [
+                "const a = await prisma.demo.findUnique({ where: { id } });",
+                "await prisma.demo.updateMany({ where: { id }, data: {} });",
+                "const b = await prisma.demo.findFirst({ where: { id } });",
             ].join("\n"),
         }
     ),
@@ -130,15 +148,15 @@ const CASES: Case[] = [
         rule: "no-duplicate-repository-read",
         file: SERVICE,
         code: [
-            "const rows = await demoRepository.findMany({ where: { id }, take: 1 });",
-            "const total = await demoRepository.count({ where: { id } });",
+            "const rows = await demoRepository.findPage({ limit });",
+            "const total = await demoRepository.count({ limit });",
         ].join("\n"),
         reports: false,
     },
     {
         rule: "no-duplicate-repository-read",
         file: SERVICE,
-        code: "const row = flag ? await demoRepository.findFirst({ where: { id } }) : await demoRepository.findFirst({ where: { id } });",
+        code: "const row = flag ? await demoRepository.findByIdOrFail({ id }) : await demoRepository.findByIdOrFail({ id });",
         reports: false,
     },
     ...pair(
@@ -154,7 +172,7 @@ const CASES: Case[] = [
             file: SERVICE,
             code: factory(
                 "return { a: async () => load(1) };",
-                "function load(id: number) { return demoRepository.findUniqueOrFail({ where: { id } }); }"
+                "function load(id: string) { return demoRepository.findByIdOrFail({ id }); }"
             ),
         }
     ),
@@ -164,14 +182,14 @@ const CASES: Case[] = [
             file: SERVICE,
             code: factory(
                 "return { a: async ({ id }: P) => load({ id }) };",
-                "async function load({ id }: P) { return demoRepository.findUniqueOrFail({ id }); }"
+                "async function load({ id }: P) { return demoRepository.findByIdOrFail({ id }); }"
             ),
         },
         {
             file: SERVICE,
             code: factory(
                 "return { a: async ({ id }: P) => load({ id }) };",
-                "async function load({ id }: P) { return demoRepository.findUniqueOrFail({ where: { id } }); }"
+                "async function load({ id }: P) { return demoRepository.findByIdOrFail({ id: id.trim() }); }"
             ),
         }
     ),
@@ -181,14 +199,14 @@ const CASES: Case[] = [
             file: SERVICE,
             code: factory(
                 "return { read };",
-                "async function read() { return demoRepository.findMany({ take: 1 }); }"
+                "async function read() { return demoRepository.findPage({ limit: 1 }); }"
             ),
         },
         {
             file: SERVICE,
             code: factory(
                 "return { list: async () => read() };",
-                "async function read() { return demoRepository.findMany({ take: 1 }); }"
+                "async function read() { return demoRepository.findPage({ limit: 1 }); }"
             ),
         }
     ),
@@ -260,8 +278,8 @@ const CASES: Case[] = [
     ),
     ...pair(
         "paginate-lists",
-        { file: SERVICE, code: "demoRepository.findMany({ where: {} });" },
-        { file: SERVICE, code: "demoRepository.findMany({ take: 10 });" }
+        { file: REPOSITORY, code: "prisma.demo.findMany({ where: {} });" },
+        { file: REPOSITORY, code: "prisma.demo.findMany({ take: 10 });" }
     ),
     ...pair(
         "handler-imports",
@@ -413,11 +431,11 @@ const CASES: Case[] = [
         "no-db-in-loops",
         {
             file: SERVICE,
-            code: "for (const id of ids) { await demoRepository.findUnique({ where: { id } }); }",
+            code: "for (const id of ids) { await demoRepository.findByIdOrFail({ id }); }",
         },
         {
             file: SERVICE,
-            code: "await demoRepository.findMany({ where: { id: { in: ids } }, take: 10 });",
+            code: "await demoRepository.findByIds({ ids });",
         }
     ),
     ...pair(
@@ -661,6 +679,86 @@ const CASES: Case[] = [
         {
             file: REPOSITORY,
             code: "export type DemoRepository = { findByIdOrFail: (demo: DemoId) => Promise<Demo> };",
+        }
+    ),
+    {
+        rule: "domain-repository-types",
+        file: REPOSITORY,
+        code: "export type DemoRepository = { createInTransaction: (payload: { tx: Prisma.TransactionClient; demo: DemoWrite }) => Promise<void> };",
+        reports: false,
+    },
+    ...pair(
+        "no-db-in-loops",
+        {
+            file: REPOSITORY,
+            code: "await Promise.all(ids.map((id) => prisma.demo.findUnique({ where: { id }, select })));",
+        },
+        {
+            file: REPOSITORY,
+            code: "await prisma.demo.findMany({ where: { id: { in: ids } }, take: ids.length, select });",
+        }
+    ),
+    ...pair(
+        "prefer-repository-or-fail",
+        {
+            file: SERVICE,
+            code: [
+                "async function load(id: string) {",
+                "    const demo = await demoRepository.findById({ id });",
+                "    if (!demo) {",
+                "        throw new NotFoundError(MESSAGE);",
+                "    }",
+                "    return demo;",
+                "}",
+            ].join("\n"),
+        },
+        {
+            file: SERVICE,
+            code: "async function load(id: string) { return demoRepository.findByIdOrFail({ id }); }",
+        }
+    ),
+    ...pair(
+        "no-prisma-in-modules",
+        {
+            file: SERVICE,
+            code: "type Filter = Prisma.DemoWhereInput;",
+        },
+        {
+            file: SERVICE,
+            code: "type Tx = Prisma.TransactionClient;",
+        }
+    ),
+    ...pair(
+        "no-prisma-in-modules",
+        {
+            file: HANDLER,
+            code: 'import type { Demo } from "@prisma/client";',
+        },
+        {
+            file: HANDLER,
+            code: 'import type { Demo } from "@/database/repositories/demo/demo.type.js";',
+        }
+    ),
+    ...pair(
+        "repository-select",
+        {
+            file: REPOSITORY,
+            code: "prisma.demo.create({ data: { text } });",
+        },
+        {
+            file: REPOSITORY,
+            code: "prisma.demo.create({ data: { text }, select: demoSelect });",
+        }
+    ),
+    ...pair(
+        "domain-repository-imports",
+        {
+            file: LIB_UTIL,
+            code: 'import { demoSelect } from "@/database/repositories/demo/demo.repository.js";',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'import type { DemoRepository } from "@/database/repositories/demo/demo.repository.js";',
         }
     ),
     ...pair(

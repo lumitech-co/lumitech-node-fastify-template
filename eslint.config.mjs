@@ -12,6 +12,7 @@ import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
 import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
 import routeParamsSchema from "./scripts/eslint-rules/route-params-schema.mjs";
 import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
+import preferRepositoryOrFail from "./scripts/eslint-rules/prefer-repository-or-fail.mjs";
 import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
 import noDuplicateRepositoryRead from "./scripts/eslint-rules/no-duplicate-repository-read.mjs";
 import transactionViaRepositories from "./scripts/eslint-rules/transaction-via-repositories.mjs";
@@ -109,6 +110,8 @@ const architecture = {
         "domain-repository-types": restrictedSyntax,
         "domain-repository-imports":
             typescriptEslint.rules["no-restricted-imports"],
+        "prefer-repository-or-fail": preferRepositoryOrFail,
+        "no-prisma-in-modules": restrictedSyntax,
     },
 };
 
@@ -822,6 +825,7 @@ export default [
 
         rules: {
             "arch/no-single-repository-transaction": "error",
+            "arch/prefer-repository-or-fail": "error",
         },
     },
     {
@@ -1280,15 +1284,15 @@ export default [
                 "error",
                 {
                     selector:
-                        ":matches(ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement) CallExpression[callee.object.name=/Repository$/]",
+                        ":matches(ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement) CallExpression:matches([callee.object.name=/Repository$/], [callee.object.object.name=/^(prisma|tx)$/])",
                     message:
-                        "No repository calls inside loops — use a bulk operation or a single transaction (CLAUDE.md, Rule 3).",
+                        "No repository or Prisma calls inside loops — use a bulk operation or a single transaction (CLAUDE.md, Rule 3).",
                 },
                 {
                     selector:
-                        "CallExpression[callee.property.name=/^(map|forEach|flatMap|reduce|filter|find|some|every)$/] > :function CallExpression[callee.object.name=/Repository$/]",
+                        "CallExpression[callee.property.name=/^(map|forEach|flatMap|reduce|filter|find|some|every)$/] > :function CallExpression:matches([callee.object.name=/Repository$/], [callee.object.object.name=/^(prisma|tx)$/])",
                     message:
-                        "No repository calls inside map/forEach/etc. — use a bulk operation or a single transaction (CLAUDE.md, Rule 3).",
+                        "No repository or Prisma calls inside map/forEach/etc. — use a bulk operation or a single transaction (CLAUDE.md, Rule 3).",
                 },
             ],
         },
@@ -1697,12 +1701,12 @@ export default [
 
         rules: {
             "arch/repository-select": [
-                "warn",
+                "error",
                 {
                     selector:
-                        "CallExpression[callee.property.name=/^find(Many|First|Unique)(OrThrow)?$/][arguments.0.type='ObjectExpression']:not(:has(> ObjectExpression:has(> Property[key.name='select'])))",
+                        "CallExpression[callee.property.name=/^(find(Many|First|Unique)(OrThrow)?|create|update|upsert|delete)$/][arguments.0.type='ObjectExpression']:not(:has(> ObjectExpression:has(> Property[key.name='select'])))",
                     message:
-                        "Pass a select so a repository returns only the columns the caller needs, never whole rows.",
+                        "Pass a select so a repository returns only the columns its domain type declares — a whole row (password hashes, internal flags) must never leave the repository.",
                 },
             ],
         },
@@ -1764,15 +1768,15 @@ export default [
                 "error",
                 {
                     selector:
-                        "TSTypeAliasDeclaration[id.name=/Repository$/] :matches(TSQualifiedName[left.name='Prisma'], TSTypeReference[typeName.name=/^Prisma(Client|Promise)?$/])",
+                        "TSTypeAliasDeclaration[id.name=/Repository$/] :matches(TSQualifiedName[left.name='Prisma'][right.name!='TransactionClient'], TSTypeReference[typeName.name=/^Prisma(Client|Promise)?$/])",
                     message:
-                        "<Name>Repository methods take and return domain types from <name>.type.ts — keep Prisma inside the factory.",
+                        "<Name>Repository methods take and return domain types from <name>.type.ts — keep Prisma inside the factory (Prisma.TransactionClient is the one exception, Rule 2).",
                 },
             ],
         },
     },
     {
-        files: ["src/modules/**/*.ts"],
+        files: ["src/modules/**/*.ts", "src/lib/**/*.ts"],
 
         rules: {
             "arch/domain-repository-imports": [
@@ -1786,6 +1790,40 @@ export default [
                                 "Modules use a repository only through its injected type — never import its selects or other values.",
                         },
                     ],
+                },
+            ],
+        },
+    },
+    {
+        // Modules work with domain types only. A service opening
+        // prisma.$transaction (Rule 2) is the one place that names
+        // PrismaClient and Prisma.TransactionClient.
+        files: ["src/modules/**/*.ts"],
+
+        rules: {
+            "arch/no-prisma-in-modules": [
+                "error",
+                {
+                    selector:
+                        "TSQualifiedName[left.name='Prisma'][right.name!='TransactionClient']",
+                    message:
+                        "Modules never see Prisma types — take and return the repository's domain types (CLAUDE.md, Rule 2).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts"],
+        ignores: ["src/modules/**/*.service.ts"],
+
+        rules: {
+            "arch/no-prisma-in-modules": [
+                "error",
+                {
+                    selector:
+                        "TSQualifiedName[left.name='Prisma'][right.name!='TransactionClient'], ImportDeclaration[source.value=/^@prisma.client/]",
+                    message:
+                        "Only a service opening prisma.$transaction imports from @prisma/client — everything else in a module uses domain types (CLAUDE.md, Rule 2).",
                 },
             ],
         },

@@ -63,13 +63,15 @@ handler from the container and passes it to the registrar.
 - **Repositories speak the domain, not Prisma.** Method inputs and outputs are our own types
   in `<name>.type.ts`; `Prisma.*` types, selects and where clauses never leave the factory
   body, and a module imports from `@/database/**` only with `import type`
-  (`arch/domain-repository-types`, `arch/domain-repository-imports`). A small duplication
-  between the domain type and the Prisma model is deliberate.
+  (`arch/domain-repository-types`, `arch/domain-repository-imports`). The one Prisma type a
+  method may take is `Prisma.TransactionClient`, for the transaction exception above. A small
+  duplication between the domain type and the Prisma model is deliberate.
 
 ### 3. No database calls in loops
-Never call a repository inside `for` / `while` / `map` / `forEach`. Use bulk operations
-(`createMany`, `updateMany`, `deleteMany`, `findMany` with `where: { id: { in: [...] } }`)
-or a single transaction. If a loop looks unavoidable, redesign the query.
+Never call a repository (or, inside a repository, Prisma) in `for` / `while` / `map` /
+`forEach`. Add a bulk repository method instead (`findByIds`, `deleteByIds`, …) implemented
+with one `createMany` / `updateMany` / `deleteMany` / `findMany` with `where: { id: { in } }`,
+or use a single transaction. If a loop looks unavoidable, redesign the query.
 
 ### 4. Function signatures
 Applies to exactly two kinds of functions — **service methods** (functions on a
@@ -194,6 +196,9 @@ a custom index); if a generated migration would be destructive, stop and ask.
   offset/skip-based).
 - Prisma only inside repositories; `$transaction` is the single exception (Rule 2). Never
   query the database in a loop (Rule 3).
+- Repositories take and return domain types (Rule 2). Every Prisma call that returns rows
+  passes a `select` matching the domain type (`arch/repository-select`), and a not-found check
+  lives in a `…OrFail` repository method, not in the service (`arch/prefer-repository-or-fail`).
 - Client-facing messages come from `RESPONSE_MESSAGES` (Rule 5a).
 - Route tag, route paths and `autoPrefix` stay with the routes, not in `*.constant.ts` (Rule 5).
 - A Prisma `Json` column is always both typed and Zod-validated (Rule 8).
