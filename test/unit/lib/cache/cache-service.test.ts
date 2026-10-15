@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { Redis } from "ioredis";
-import { FastifyBaseLogger } from "fastify";
+import type { Redis } from "ioredis";
+import type { FastifyBaseLogger } from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { createCacheService } from "@/lib/cache/cache.service.js";
 import {
@@ -9,13 +9,13 @@ import {
     CACHE_LOCK_PREFIX,
 } from "@/lib/cache/cache.constant.js";
 
+const anySchema = z.unknown();
+
 const patternToRegex = (pattern: string): RegExp =>
     new RegExp(
-        "^" +
-            pattern.replace(/[.*+?^${}()|[\]\\]/g, (char) =>
-                char === "*" ? ".*" : `\\${char}`
-            ) +
-            "$"
+        `^${pattern.replace(/[.*+?^${}()|[\]\\]/g, (char) =>
+            char === "*" ? ".*" : `\\${char}`
+        )}$`
     );
 
 const createFakeRedis = () => {
@@ -60,16 +60,19 @@ const createFakeRedis = () => {
             ): Promise<[string, string[]]> => {
                 const regex = patternToRegex(pattern);
                 const sorted = [...store.keys()].sort();
+
                 const from =
                     cursor === "0"
                         ? 0
                         : sorted.findIndex((key) => key > cursor);
+
                 const start = from === -1 ? sorted.length : from;
                 const slice = sorted.slice(start, start + count);
+
                 const next =
                     start + count >= sorted.length
                         ? "0"
-                        : slice[slice.length - 1];
+                        : slice[slice.length - 1]!;
 
                 return [next, slice.filter((key) => regex.test(key))];
             }
@@ -98,13 +101,17 @@ describe("cache.service - get", () => {
 
         redis.store.set("key", JSON.stringify({ value: 1 }));
 
-        expect(await service.get({ key: "key" })).toEqual({ value: 1 });
+        expect(await service.get({ key: "key", schema: anySchema })).toEqual({
+            value: 1,
+        });
     });
 
     it("should return null on a miss", async () => {
         const { service } = build();
 
-        expect(await service.get({ key: "absent" })).toBeNull();
+        expect(
+            await service.get({ key: "absent", schema: anySchema })
+        ).toBeNull();
     });
 
     it("should validate with the provided schema", async () => {
@@ -131,7 +138,7 @@ describe("cache.service - get", () => {
 
         redis.store.set("key", "{not json");
 
-        expect(await service.get({ key: "key" })).toBeNull();
+        expect(await service.get({ key: "key", schema: anySchema })).toBeNull();
         expect(logger.warn).toHaveBeenCalledOnce();
     });
 
@@ -140,7 +147,7 @@ describe("cache.service - get", () => {
 
         redis.get.mockRejectedValueOnce(new Error("down"));
 
-        expect(await service.get({ key: "key" })).toBeNull();
+        expect(await service.get({ key: "key", schema: anySchema })).toBeNull();
         expect(logger.warn).toHaveBeenCalledOnce();
     });
 });
@@ -152,6 +159,7 @@ describe("cache.service - set", () => {
         const ok = await service.set({ key: "key", value: { a: 1 }, ttl: 30 });
 
         expect(ok).toBe(true);
+
         expect(redis.set).toHaveBeenCalledWith(
             "key",
             JSON.stringify({ a: 1 }),
@@ -236,7 +244,12 @@ describe("cache.service - wrap", () => {
 
         redis.store.set("key", JSON.stringify({ value: "cached" }));
 
-        const result = await service.wrap({ key: "key", ttl: 30, resolver });
+        const result = await service.wrap({
+            key: "key",
+            ttl: 30,
+            resolver,
+            schema: anySchema,
+        });
 
         expect(result).toEqual({ value: "cached" });
         expect(resolver).not.toHaveBeenCalled();
@@ -246,7 +259,12 @@ describe("cache.service - wrap", () => {
         const { redis, service } = build();
         const resolver = vi.fn(async () => ({ value: "fresh" }));
 
-        const result = await service.wrap({ key: "key", ttl: 30, resolver });
+        const result = await service.wrap({
+            key: "key",
+            ttl: 30,
+            resolver,
+            schema: anySchema,
+        });
 
         expect(result).toEqual({ value: "fresh" });
         expect(resolver).toHaveBeenCalledOnce();
@@ -265,12 +283,14 @@ describe("cache.service - wrap", () => {
                     releaseFirst = resolve;
                 })
         );
+
         const secondResolver = vi.fn(async () => ({ value: "second" }));
 
         const first = service.wrap({
             key: "key",
             ttl: 30,
             resolver: firstResolver,
+            schema: anySchema,
         });
 
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -279,6 +299,7 @@ describe("cache.service - wrap", () => {
             key: "key",
             ttl: 30,
             resolver: secondResolver,
+            schema: anySchema,
         });
 
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -295,12 +316,13 @@ describe("cache.service - wrap", () => {
 
     it("should release the lock even when the resolver throws", async () => {
         const { redis, service } = build();
+
         const resolver = vi.fn(async () => {
             throw new Error("boom");
         });
 
         await expect(
-            service.wrap({ key: "key", ttl: 30, resolver })
+            service.wrap({ key: "key", ttl: 30, resolver, schema: anySchema })
         ).rejects.toThrow("boom");
 
         expect(redis.store.has(`${CACHE_LOCK_PREFIX}:key`)).toBe(false);
@@ -313,8 +335,14 @@ describe("cache.service - wrap", () => {
         redis.store.set("key", JSON.stringify(null));
 
         expect(
-            await service.wrap({ key: "key", ttl: 30, resolver })
+            await service.wrap({
+                key: "key",
+                ttl: 30,
+                resolver,
+                schema: anySchema,
+            })
         ).toBeNull();
+
         expect(resolver).not.toHaveBeenCalled();
     });
 
@@ -325,7 +353,12 @@ describe("cache.service - wrap", () => {
         redis.store.set(lockKey, "held-by-someone-else");
         redis.set.mockRejectedValueOnce(new Error("lock down"));
 
-        await service.wrap({ key: "key", ttl: 30, resolver: async () => 1 });
+        await service.wrap({
+            key: "key",
+            ttl: 30,
+            resolver: async () => 1,
+            schema: anySchema,
+        });
 
         expect(redis.store.get(lockKey)).toBe("held-by-someone-else");
     });
@@ -336,7 +369,12 @@ describe("cache.service - wrap", () => {
 
         redis.set.mockRejectedValueOnce(new Error("lock down"));
 
-        const result = await service.wrap({ key: "key", ttl: 30, resolver });
+        const result = await service.wrap({
+            key: "key",
+            ttl: 30,
+            resolver,
+            schema: anySchema,
+        });
 
         expect(result).toEqual({ value: "fresh" });
         expect(resolver).toHaveBeenCalledOnce();

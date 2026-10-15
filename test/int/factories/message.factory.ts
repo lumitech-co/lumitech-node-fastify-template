@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Message, Prisma, PrismaClient } from "@prisma/client";
+import type { Message, Prisma, PrismaClient } from "@prisma/client";
 
 /**
  * Arrange factory: seeds a precondition directly through Prisma so a test can
@@ -21,24 +21,22 @@ type CreateMessagesArgs = CreateMessageArgs & {
 export const createMessage = async ({
     prisma,
     overrides = {},
-}: CreateMessageArgs): Promise<Message> => {
-    return prisma.message.create({
+}: CreateMessageArgs): Promise<Message> =>
+    prisma.message.create({
         data: {
             text: `message-${randomUUID()}`,
             ...overrides,
         },
     });
-};
 
 export const createMessages = async ({
     prisma,
     count,
     overrides = {},
-}: CreateMessagesArgs): Promise<Message[]> => {
-    return prisma.message.createManyAndReturn({
+}: CreateMessagesArgs): Promise<Message[]> =>
+    prisma.message.createManyAndReturn({
         data: Array.from({ length: count }, () => ({
             text: `message-${randomUUID()}`,
             ...overrides,
         })),
     });
-};

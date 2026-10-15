@@ -1,15 +1,13 @@
-import { Queue, UnrecoverableError } from "bullmq";
+import { ZodError } from "zod";
+import type { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
-import { NotFoundError } from "@/lib/errors/errors.js";
-import { MessageService } from "@/modules/message/message.service.js";
+import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
 import { createService } from "@/modules/message/mq/message.service.js";
-import { MessageJobName } from "@/modules/message/mq/message.constant.js";
-import { MessageJobData } from "@/modules/message/mq/message.type.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import {
-    messageIdSelect,
-    MessageRepository,
-} from "@/database/repositories/message/message.repository.js";
+import { MessageJobName } from "@/modules/message/mq/message.constant.js";
+import type { MessageService } from "@/modules/message/message.service.js";
+import type { MessageJobData } from "@/modules/message/mq/message.type.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 
 type FakeMessageQueue = Queue<MessageJobData, unknown, MessageJobName>;
 
@@ -26,7 +24,7 @@ const createFakeMessageService = (): MessageService => ({
 
 const createFakeRepository = (): MessageRepository =>
     ({
-        findUniqueOrFail: vi.fn(async () => ({ id: messageId })),
+        assertExists: vi.fn(async () => undefined),
         generateId: vi.fn(async () => messageId),
     }) as unknown as MessageRepository;
 
@@ -61,6 +59,7 @@ describe("mq/message.service - processMessageJob", () => {
             text: "Hello",
             enqueuedAt,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 
@@ -96,7 +95,7 @@ describe("mq/message.service - processMessageJob", () => {
         });
     });
 
-    it("should fail an unknown job name without retries", async () => {
+    it("should reject an unknown job name with BadRequestError", async () => {
         const service = buildService();
 
         await expect(
@@ -105,10 +104,10 @@ describe("mq/message.service - processMessageJob", () => {
                 data: { id: messageId },
                 enqueuedAt,
             })
-        ).rejects.toThrow(UnrecoverableError);
+        ).rejects.toThrow(BadRequestError);
     });
 
-    it("should fail invalid job data without retries", async () => {
+    it("should reject invalid job data with ZodError", async () => {
         const messageService = createFakeMessageService();
         const service = buildService({ messageService });
 
@@ -118,18 +117,20 @@ describe("mq/message.service - processMessageJob", () => {
                 data: { id: messageId },
                 enqueuedAt,
             })
-        ).rejects.toThrow(UnrecoverableError);
+        ).rejects.toThrow(ZodError);
 
         expect(messageService.createMessage).not.toHaveBeenCalled();
     });
 
-    it("should fail a missing message without retries", async () => {
+    it("should propagate NotFoundError for a missing message", async () => {
         const messageService = createFakeMessageService();
+
         (
             messageService.updateMessage as ReturnType<typeof vi.fn>
         ).mockRejectedValueOnce(
             new NotFoundError(RESPONSE_MESSAGES.message.notFound)
         );
+
         const service = buildService({ messageService });
 
         await expect(
@@ -138,15 +139,17 @@ describe("mq/message.service - processMessageJob", () => {
                 data: { id: missingId, text: "Updated" },
                 enqueuedAt,
             })
-        ).rejects.toThrow(UnrecoverableError);
+        ).rejects.toThrow(NotFoundError);
     });
 
-    it("should rethrow other errors as-is so the job is retried", async () => {
+    it("should rethrow other errors as-is", async () => {
         const messageService = createFakeMessageService();
         const transient = new Error("Connection lost");
+
         (
             messageService.deleteMessage as ReturnType<typeof vi.fn>
         ).mockRejectedValueOnce(transient);
+
         const service = buildService({ messageService });
 
         await expect(
@@ -170,10 +173,12 @@ describe("mq/message.service - enqueue*", () => {
         });
 
         expect(repository.generateId).toHaveBeenCalledOnce();
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Create, {
             text: "Hello",
             id: messageId,
         });
+
         expect(result).toEqual({
             message: RESPONSE_MESSAGES.message.createQueued,
             data: { id: messageId, jobId: `${MessageJobName.Create}-job-id` },
@@ -190,10 +195,12 @@ describe("mq/message.service - enqueue*", () => {
         });
 
         expect(repository.generateId).not.toHaveBeenCalled();
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Create, {
             id: missingId,
             text: "Hello",
         });
+
         expect(result.data.id).toBe(missingId);
     });
 
@@ -207,14 +214,15 @@ describe("mq/message.service - enqueue*", () => {
             payload: { meta: null },
         });
 
-        expect(repository.findUniqueOrFail).toHaveBeenCalledWith({
-            where: { id: messageId },
-            select: messageIdSelect,
+        expect(repository.assertExists).toHaveBeenCalledWith({
+            id: messageId,
         });
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Update, {
             id: messageId,
             meta: null,
         });
+
         expect(result.message).toBe(RESPONSE_MESSAGES.message.updateQueued);
     });
 
@@ -225,24 +233,25 @@ describe("mq/message.service - enqueue*", () => {
 
         const result = await service.enqueueDeleteMessage({ id: messageId });
 
-        expect(repository.findUniqueOrFail).toHaveBeenCalledWith({
-            where: { id: messageId },
-            select: messageIdSelect,
+        expect(repository.assertExists).toHaveBeenCalledWith({
+            id: messageId,
         });
+
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Delete, {
             id: messageId,
         });
+
         expect(result.message).toBe(RESPONSE_MESSAGES.message.deleteQueued);
     });
 
     it("should not enqueue an update or delete for a missing message", async () => {
         const queue = createFakeQueue();
         const repository = createFakeRepository();
-        (
-            repository.findUniqueOrFail as ReturnType<typeof vi.fn>
-        ).mockRejectedValue(
+
+        (repository.assertExists as ReturnType<typeof vi.fn>).mockRejectedValue(
             new NotFoundError(RESPONSE_MESSAGES.message.notFound)
         );
+
         const service = buildService({ queue, repository });
 
         await expect(
@@ -251,6 +260,7 @@ describe("mq/message.service - enqueue*", () => {
                 payload: { text: "x" },
             })
         ).rejects.toThrow(NotFoundError);
+
         await expect(
             service.enqueueDeleteMessage({ id: missingId })
         ).rejects.toThrow(NotFoundError);

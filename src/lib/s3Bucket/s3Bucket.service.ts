@@ -1,18 +1,18 @@
-import { EnvConfig } from "@/types/env.type.js";
+import type { S3Client } from "@aws-sdk/client-s3";
+import type { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
     AWS_S3_BUCKET_NOT_CONFIGURED,
     SIGNED_URL_EXPIRES_IN_SECONDS,
 } from "./s3Bucket.constant.js";
-import {
+import type {
     DeleteFilePayload,
     DeleteFolderPayload,
     CreateUploadSignedUrlPayload,
     CreateReadSignedUrlPayload,
 } from "./s3Bucket.type.js";
 import {
-    S3Client,
     GetObjectCommand,
     PutObjectCommand,
     DeleteObjectCommand,
@@ -35,14 +35,6 @@ export const createS3BucketService = (
     awsS3Client: S3Client,
     config: EnvConfig
 ): S3BucketService => {
-    const requireBucket = (): string => {
-        if (!config.AWS_S3_BUCKET_NAME) {
-            throw new Error(AWS_S3_BUCKET_NOT_CONFIGURED);
-        }
-
-        return config.AWS_S3_BUCKET_NAME;
-    };
-
     return {
         deleteFile: async ({ key }) => {
             const bucket = requireBucket();
@@ -126,6 +118,14 @@ export const createS3BucketService = (
             });
         },
     };
+
+    function requireBucket(): string {
+        if (!config.AWS_S3_BUCKET_NAME) {
+            throw new Error(AWS_S3_BUCKET_NOT_CONFIGURED);
+        }
+
+        return config.AWS_S3_BUCKET_NAME;
+    }
 };
 
 addDIResolverName(createS3BucketService, "s3BucketService");

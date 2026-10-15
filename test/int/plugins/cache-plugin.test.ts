@@ -1,8 +1,9 @@
+import Fastify from "fastify";
 import fp from "fastify-plugin";
-import { Redis } from "ioredis";
-import Fastify, { FastifyInstance } from "fastify";
-import { beforeEach, describe, expect, it } from "vitest";
 import cachePlugin from "@/plugins/cache.js";
+import { Redis } from "ioredis";
+import type { FastifyInstance } from "fastify";
+import { beforeEach, describe, expect, it } from "vitest";
 import { createCacheService } from "@/lib/cache/cache.service.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {
@@ -160,6 +161,7 @@ describe("response-cache plugin", () => {
             url: "/maybe",
             headers,
         });
+
         const second = await app.inject({
             method: "GET",
             url: "/maybe",
@@ -180,11 +182,13 @@ describe("response-cache plugin", () => {
             url: "/vary",
             headers: alice,
         });
+
         const aliceHit = await app.inject({
             method: "GET",
             url: "/vary",
             headers: alice,
         });
+
         const bobMiss = await app.inject({
             method: "GET",
             url: "/vary",

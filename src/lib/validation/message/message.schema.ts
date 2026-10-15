@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 
 const messageMetaSchema = z.object({
     source: z.enum(["web", "mobile", "api"]),
@@ -37,7 +38,7 @@ const updateMessageBodySchema = z
     })
     .partial()
     .refine((value) => Object.keys(value).length > 0, {
-        message: "At least one field must be provided.",
+        message: RESPONSE_MESSAGES.message.updateEmpty,
     });
 
 type UpdateMessageInput = z.infer<typeof updateMessageBodySchema>;

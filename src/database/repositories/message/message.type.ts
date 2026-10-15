@@ -1,5 +1,11 @@
-import { Prisma } from "@prisma/client";
-import type { messageListSelect } from "./message.repository.js";
+type Message = {
+    id: string;
+    text: string;
+    meta: PrismaJson.MessageMeta | null;
+    createdAt: Date;
+};
+
+export type MessageId = Pick<Message, "id">;
 
 export type MessageWrite = {
     id: string;
@@ -17,11 +23,7 @@ export type MessagePage = {
     limit: number;
 };
 
-export type MessageListItem = Prisma.MessageGetPayload<{
-    select: typeof messageListSelect;
-}>;
-
 export type MessagePageResult = {
-    messages: MessageListItem[];
+    messages: Message[];
     nextCursor: string | null;
 };

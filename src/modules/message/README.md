@@ -181,7 +181,7 @@ type ErrorResponse = {
 | Status | Error               | When                                       |
 |--------|---------------------|--------------------------------------------|
 | 400    | Bad Request         | Validation failed (missing/invalid fields) |
-| 404    | Not Found           | Message not found (findUniqueOrFail)       |
+| 404    | Not Found           | Message not found (assertExists)           |
 | 500    | Internal Server Error | Database or server errors                |
 
 ---
@@ -272,19 +272,20 @@ From `RESPONSE_MESSAGES.message` in `src/lib/messages/messages.constant.ts`:
 
 ## Repository Methods
 
-`MessageRepository` is `BaseRepository<"message">` (the Prisma delegate methods wired by
-`generateRepository`) plus one hand-written method:
+`MessageRepository` exposes domain methods only; inputs and outputs are the types in
+`src/database/repositories/message/message.type.ts`:
 
-| Method                                         | Description                                   |
-|------------------------------------------------|-----------------------------------------------|
-| `create`, `createMany`                         | Insert one or many messages                   |
-| `findUnique`, `findFirst`, `findMany`, `count` | Read messages                                 |
-| `update`, `updateMany`, `upsert`               | Update messages                               |
-| `delete`, `deleteMany`                         | Delete messages                               |
-| `findUniqueOrFail`                             | Find or throw `NotFoundError` with `notFound` |
+| Method                                         | Description                                                                 |
+|------------------------------------------------|-----------------------------------------------------------------------------|
+| `generateId`                                   | New uuidv7 id from the database                                             |
+| `assertExists`                                 | Throw `NotFoundError` with `notFound` if the message is gone                |
+| `createIfAbsent`                               | Idempotent create; a retried job leaves the existing row untouched          |
+| `updateIfNotNewer`                             | `false` for a stale write, `NotFoundError` if gone; `meta: null` clears     |
+| `deleteById`                                   | Idempotent delete; a missing message is not an error                        |
+| `findPage`                                     | Cursor page `{ messages, nextCursor }`                                      |
 
-The worker uses `upsert`, `updateMany` and `deleteMany`; the enqueue existence check
-and the stale-update check use `findUniqueOrFail`; reads use `findMany`.
+The worker uses `createIfAbsent`, `updateIfNotNewer` and `deleteById`; the enqueue existence
+check uses `assertExists`; reads use `findPage`.
 
 ---
 

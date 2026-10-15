@@ -1,8 +1,8 @@
-import path from "path";
 import fp from "fastify-plugin";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FastifyInstance } from "fastify";
+import path, { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { FastifyInstance } from "fastify";
+import type { Cradle } from "@/types/di-container.type.js";
 import { asValue, createContainer, InjectionMode } from "awilix";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import { resolverOptionsRegister } from "@/lib/awilix/resolver-registration.js";
@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const configureAwilix = async (fastify: FastifyInstance) => {
-    const container = createContainer({
+    const container = createContainer<Cradle>({
         injectionMode: InjectionMode.CLASSIC,
         strict: true,
     });

@@ -1,13 +1,16 @@
-import { FastifyBaseLogger } from "fastify";
-import { EnvConfig } from "@/types/env.type.js";
-import { MessageJobResult } from "./mq/message.type.js";
+import type { FastifyBaseLogger } from "fastify";
+import type { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { CacheService } from "@/lib/cache/cache.service.js";
+import type { MessageJobResult } from "./mq/message.type.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
+import type { CacheService } from "@/lib/cache/cache.service.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import { CreateMessagePayload, UpdateMessagePayload } from "./message.type.js";
-import { MessageRepository } from "@/database/repositories/message/message.repository.js";
-import {
+import type {
+    CreateMessagePayload,
+    UpdateMessagePayload,
+} from "./message.type.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type {
     FetchMessagesQuery,
     FetchMessagesResponse,
     DeleteMessageJobData,
@@ -61,7 +64,7 @@ export const createService = (
     },
 
     deleteMessage: async ({ id }) => {
-        await messageRepository.deleteMany({ where: { id } });
+        await messageRepository.deleteById({ id });
 
         await cacheService.invalidate({
             namespace: MESSAGE_CACHE_NAMESPACE,

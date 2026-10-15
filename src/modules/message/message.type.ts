@@ -1,4 +1,4 @@
-import {
+import type {
     CreateMessageJobData,
     UpdateMessageJobData,
 } from "@/lib/validation/message/message.schema.js";
@@ -17,9 +17,4 @@ export type DiffObjectsPayload<
 > = {
     oldObj: T;
     newObj: K;
-};
-
-export type IsEqualPayload = {
-    a: unknown;
-    b: unknown;
 };

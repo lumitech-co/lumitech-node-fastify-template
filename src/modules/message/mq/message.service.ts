@@ -1,21 +1,17 @@
-import { ZodError } from "zod";
-import { Queue, UnrecoverableError } from "bullmq";
-import { NotFoundError } from "@/lib/errors/errors.js";
-import { MessageService } from "../message.service.js";
+import type { Queue } from "bullmq";
 import { MessageJobName } from "./message.constant.js";
+import { BadRequestError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import {
-    messageIdSelect,
-    MessageRepository,
-} from "@/database/repositories/message/message.repository.js";
+import type { MessageService } from "@/modules/message/message.service.js";
+import type { EnqueueMessageResponse } from "@/lib/validation/message/message.schema.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import {
     createMessageJobSchema,
     updateMessageJobSchema,
     deleteMessageJobSchema,
-    EnqueueMessageResponse,
 } from "@/lib/validation/message/message.schema.js";
-import {
+import type {
     ProcessMessageJobPayload,
     MessageJobResult,
     EnqueueCreateMessagePayload,
@@ -43,95 +39,68 @@ export const createService = (
     messageService: MessageService,
     messageRepository: MessageRepository,
     messageQueue: Queue<MessageJobData, unknown, MessageJobName>
-): MessageJobService => {
-    const runMessageJob = ({
-        name,
-        data,
-        enqueuedAt,
-    }: ProcessMessageJobPayload): Promise<MessageJobResult> => {
+): MessageJobService => ({
+    processMessageJob: async ({ name, data, enqueuedAt }) => {
         switch (name) {
-        case MessageJobName.Create:
-            return messageService.createMessage({
-                ...createMessageJobSchema.parse(data),
-                enqueuedAt,
-            });
-        case MessageJobName.Update:
-            return messageService.updateMessage({
-                ...updateMessageJobSchema.parse(data),
-                enqueuedAt,
-            });
-        case MessageJobName.Delete:
-            return messageService.deleteMessage(
-                deleteMessageJobSchema.parse(data)
-            );
-        default:
-            throw new UnrecoverableError(
-                `Unknown message job name: ${name}`
-            );
+            case MessageJobName.Create:
+                return messageService.createMessage({
+                    ...createMessageJobSchema.parse(data),
+                    enqueuedAt,
+                });
+            case MessageJobName.Update:
+                return messageService.updateMessage({
+                    ...updateMessageJobSchema.parse(data),
+                    enqueuedAt,
+                });
+            case MessageJobName.Delete:
+                return messageService.deleteMessage(
+                    deleteMessageJobSchema.parse(data)
+                );
+            default:
+                throw new BadRequestError(
+                    `${RESPONSE_MESSAGES.message.unknownJobName}: ${String(name)}`
+                );
         }
-    };
+    },
 
-    return {
-        processMessageJob: async (payload) => {
-            try {
-                return await runMessageJob(payload);
-            } catch (error) {
-                if (
-                    error instanceof ZodError ||
-                    error instanceof NotFoundError
-                ) {
-                    throw new UnrecoverableError(error.message);
-                }
+    enqueueCreateMessage: async ({ payload }) => {
+        const id = payload.id ?? (await messageRepository.generateId());
 
-                throw error;
-            }
-        },
+        const job = await messageQueue.add(MessageJobName.Create, {
+            ...payload,
+            id,
+        });
 
-        enqueueCreateMessage: async ({ payload }) => {
-            const id = payload.id ?? (await messageRepository.generateId());
+        return {
+            message: RESPONSE_MESSAGES.message.createQueued,
+            data: { id, jobId: job.id ?? "" },
+        };
+    },
 
-            const job = await messageQueue.add(MessageJobName.Create, {
-                ...payload,
-                id,
-            });
+    enqueueUpdateMessage: async ({ id, payload }) => {
+        await messageRepository.assertExists({ id });
 
-            return {
-                message: RESPONSE_MESSAGES.message.createQueued,
-                data: { id, jobId: job.id ?? "" },
-            };
-        },
+        const job = await messageQueue.add(MessageJobName.Update, {
+            id,
+            ...payload,
+        });
 
-        enqueueUpdateMessage: async ({ id, payload }) => {
-            await messageRepository.findUniqueOrFail({
-                where: { id },
-                select: messageIdSelect,
-            });
+        return {
+            message: RESPONSE_MESSAGES.message.updateQueued,
+            data: { id, jobId: job.id ?? "" },
+        };
+    },
 
-            const job = await messageQueue.add(MessageJobName.Update, {
-                id,
-                ...payload,
-            });
+    enqueueDeleteMessage: async ({ id }) => {
+        await messageRepository.assertExists({ id });
 
-            return {
-                message: RESPONSE_MESSAGES.message.updateQueued,
-                data: { id, jobId: job.id ?? "" },
-            };
-        },
+        const job = await messageQueue.add(MessageJobName.Delete, { id });
 
-        enqueueDeleteMessage: async ({ id }) => {
-            await messageRepository.findUniqueOrFail({
-                where: { id },
-                select: messageIdSelect,
-            });
-
-            const job = await messageQueue.add(MessageJobName.Delete, { id });
-
-            return {
-                message: RESPONSE_MESSAGES.message.deleteQueued,
-                data: { id, jobId: job.id ?? "" },
-            };
-        },
-    };
-};
+        return {
+            message: RESPONSE_MESSAGES.message.deleteQueued,
+            data: { id, jobId: job.id ?? "" },
+        };
+    },
+});
 
 addDIResolverName(createService, "messageJobService");

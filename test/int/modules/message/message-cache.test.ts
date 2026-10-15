@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
+import type { FastifyInstance } from "fastify";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createMessage } from "../../factories/message.factory.js";
 import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";
@@ -75,6 +75,7 @@ describe("Response cache for /api/messages", () => {
         });
 
         expect(refetched.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
         expect(refetched.json()).toMatchObject({
             data: {
                 messages: [{ text: "Hello, world!" }],
@@ -106,6 +107,7 @@ describe("Response cache for /api/messages", () => {
         });
 
         expect(refetched.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
         expect(refetched.json()).toMatchObject({
             data: {
                 messages: [{ text: "Updated text" }],
@@ -122,6 +124,7 @@ describe("Response cache for /api/messages", () => {
         });
 
         expect(primed.headers[CACHE_STATUS_HEADER]).toBe(CACHE_STATUS_MISS);
+
         expect(primed.json()).toMatchObject({
             data: { messages: [{ id: message.id }] },
         });

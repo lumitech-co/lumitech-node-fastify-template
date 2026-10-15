@@ -1,0 +1,30 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    // Loaded by glob, not by import: @fastify/autoload (plugins, module
+    // entry points) and Awilix loadModules (services, handlers, repositories).
+    "entry": [
+        "src/plugins/**/*.ts",
+        "src/modules/*/index.ts",
+        "src/modules/**/*.{service,handler}.ts",
+        "src/database/repositories/**/*.repository.ts",
+        "src/lib/**/*.service.ts",
+        // The error catalog is offered to every module, used or not.
+        "src/lib/errors/errors.ts",
+        "cli/*/index.js",
+        "scripts/*.mjs"
+    ],
+    "project": [
+        "src/**/*.{ts,prisma}",
+        "cli/**/*.js",
+        "scripts/**/*.mjs",
+        "test/**/*.ts"
+    ],
+    // A dependency-free building block the template ships for new projects
+    // (CLAUDE.md, Rule 6).
+    "ignore": ["src/lib/hashing/**"],
+    "ignoreDependencies": [
+        "argon2",
+        // Referenced as a pino transport target string.
+        "pino-pretty"
+    ]
+}

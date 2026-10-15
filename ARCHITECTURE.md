@@ -66,6 +66,10 @@ export const createService = (
 addDIResolverName(createService, "messageService");  // Register with DI
 ```
 
+`addDIResolverName` sets the Awilix `RESOLVER` symbol on the factory, which is how the
+container learns the registration name — see Awilix
+[inlining resolver options](https://github.com/jeffijoe/awilix?tab=readme-ov-file#inlining-resolver-options).
+
 ### DI Container Type
 All dependencies are declared in `src/types/di-container.type.ts`:
 ```typescript
@@ -99,39 +103,58 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Repository Pattern
-The repository type and its factory live in the same `<name>.repository.ts` file. Every
-repository exposes `findUniqueOrFail`, which throws `NotFoundError` with the entity's
-message from `RESPONSE_MESSAGES`:
+A repository speaks the domain, not Prisma: its methods take and return our own types from
+`<name>.type.ts`, so a service never sees a Prisma type, select or where clause — Prisma stays
+inside the factory body. The repository type and its factory live in `<name>.repository.ts`;
+other types go to `<name>.type.ts`, helpers to `<name>.util.ts`.
+```typescript
+// src/database/repositories/message/message.type.ts
+export type Message = {
+    id: string;
+    text: string;
+    meta: PrismaJson.MessageMeta | null;
+    createdAt: Date;
+};
+
+export type MessageId = Pick<Message, "id">;
+```
 ```typescript
 // src/database/repositories/message/message.repository.ts
-export type MessageRepository = BaseRepository<"message"> & {
-    findUniqueOrFail: FindUniqueOrFail<
-        Prisma.MessageFindUniqueArgs,
-        Prisma.$MessagePayload
-    >;
+const messageIdSelect = {
+    id: true,
+} satisfies Prisma.MessageSelect;
+
+export type MessageRepository = {
+    assertExists: (message: MessageId) => Promise<void>;
+    deleteById: (message: MessageId) => Promise<void>;
 };
 
 export const createMessageRepository = (
     prisma: PrismaClient
-): MessageRepository => {
-    const repository = generateRepository(prisma, "Message");
+): MessageRepository => ({
+    assertExists: async ({ id }) => {
+        const message = await prisma.message.findUnique({
+            where: { id },
+            select: messageIdSelect,
+        });
 
-    return {
-        ...repository,
-        findUniqueOrFail: async (args) => {
-            const message = await prisma.message.findUnique(args);
+        if (!message) {
+            throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
+        }
+    },
 
-            if (!message) {
-                throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
-            }
-
-            return message;
-        },
-    };
-};
+    deleteById: async ({ id }) => {
+        await prisma.message.deleteMany({ where: { id } });
+    },
+});
 
 addDIResolverName(createMessageRepository, "messageRepository");
 ```
+
+The domain type repeats part of the Prisma model on purpose. It cannot drift: when a
+`select` returns other fields than the domain type declares, `tsc` fails on the factory.
+`npm run generate:repository` creates `<name>.type.ts` with `id`, `createdAt` and
+`updatedAt` plus a `findByIdOrFail` method; add the model's fields and methods from there.
 
 ### Route Registration
 Routes use Zod schemas for validation and OpenAPI docs; the tag and the path enum are
@@ -337,8 +360,8 @@ const createMessageBodySchema = z.object({
 src/
 ├── database/
 │   ├── dbml/            # Generated ER diagram (npm run prisma:diagram) - never edit by hand
-│   ├── prisma/          # Schema, migrations and Prisma helper types
-│   └── repositories/    # Data access layer (all Prisma calls live here)
+│   ├── prisma/          # Schema and migrations
+│   └── repositories/    # Data access layer: domain types in and out, all Prisma calls inside
 ├── lib/
 │   ├── awilix/          # DI helpers
 │   ├── constants/       # Global constants
@@ -356,15 +379,17 @@ src/
 ### Add a new feature module
 1. Run `npm run generate:module featureName`
 2. Define Prisma model in `src/database/prisma/schema.prisma`
-3. Run `npm run generate:repository featureName`
-4. Implement service logic
+3. Run `npm run generate:repository featureName`, then add the model's fields to the domain
+   type in `<name>.type.ts` and the repository methods the service needs
+4. Implement service logic against those repository methods
 5. Define routes with Zod schemas
 
 ### Add a database model
 1. Edit `src/database/prisma/schema.prisma`
 2. Run `npm run prisma:migrate:create`
 3. Run `npm run prisma:migrate:apply`
-4. Run `npm run generate:repository modelName`
+4. Run `npm run generate:repository modelName` and describe the model's fields in its
+   domain type (`<name>.type.ts`)
 
 ### Run tests
 - Unit: `npm run test:unit`

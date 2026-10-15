@@ -246,11 +246,11 @@ Where a finding carries a `suggestion`, use GitHub's **suggested changes** so th
 apply the fix in one click:
 
 ````markdown
-🟡 [Suggestion] A repository call inside a loop — replace with a single bulk write
+🟡 [Suggestion] A repository call inside a loop — replace with one bulk repository method
 (CLAUDE.md, Architecture Rules #3):
 
 ```suggestion
-await projectRepository.updateMany({ where: ..., data: ... });
+await projectRepository.archiveByIds({ ids });
 ```
 ````
 

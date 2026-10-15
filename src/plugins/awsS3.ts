@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
 import { S3Client } from "@aws-sdk/client-s3";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 
 const configureAwsS3 = async (fastify: FastifyInstance) => {
@@ -19,11 +19,11 @@ const configureAwsS3 = async (fastify: FastifyInstance) => {
         }),
         ...(AWS_ACCESS_KEY_ID &&
             AWS_SECRET_ACCESS_KEY && {
-            credentials: {
-                accessKeyId: AWS_ACCESS_KEY_ID,
-                secretAccessKey: AWS_SECRET_ACCESS_KEY,
-            },
-        }),
+                credentials: {
+                    accessKeyId: AWS_ACCESS_KEY_ID,
+                    secretAccessKey: AWS_SECRET_ACCESS_KEY,
+                },
+            }),
     });
 
     fastify.decorate("awsS3Client", s3Client);

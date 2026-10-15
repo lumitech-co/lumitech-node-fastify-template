@@ -1,9 +1,10 @@
+import Fastify from "fastify";
 import fp from "fastify-plugin";
-import { Redis } from "ioredis";
-import Fastify, { FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import rateLimitPlugin from "@/plugins/rateLimit.js";
+import { Redis } from "ioredis";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RATE_LIMIT_DEFAULT_MAX } from "@/lib/constants/rateLimit.constant.js";
 
 const RATE_LIMIT_HEADER = "x-ratelimit-limit";
@@ -65,6 +66,7 @@ describe("rate-limit plugin", () => {
         const response = await app.inject({ method: "GET", url: "/default" });
 
         expect(response.statusCode).toBe(200);
+
         expect(response.headers[RATE_LIMIT_HEADER]).toBe(
             String(RATE_LIMIT_DEFAULT_MAX)
         );
@@ -87,6 +89,7 @@ describe("rate-limit plugin", () => {
         const blocked = await app.inject({ method: "GET", url: "/limited" });
 
         expect(blocked.statusCode).toBe(429);
+
         expect(blocked.json()).toMatchObject({
             statusCode: 429,
             message: expect.stringContaining("Rate limit exceeded"),
@@ -120,6 +123,7 @@ describe("rate-limit plugin fail-open", () => {
             maxRetriesPerRequest: 1,
             retryStrategy: () => null,
         });
+
         redis.on("error", () => {});
 
         app = await buildApp(redis);

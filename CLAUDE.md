@@ -19,8 +19,8 @@ npm run generate:repository <entityName>   # new repository
 npm run prisma:migrate:create              # create SQL migration (review before applying)
 npm run prisma:migrate:apply               # apply it
 
-# Finishing a feature — ALWAYS run both
-npm run lint:fix && npm run tsc-check
+# Finishing a feature — ALWAYS run all three
+npm run lint:fix && npm run tsc-check && npm run knip
 ```
 
 ## Architecture Rules (non-negotiable)
@@ -28,6 +28,14 @@ npm run lint:fix && npm run tsc-check
 These are hard constraints. If a task cannot be done without breaking one, **stop and ask**
 instead of working around it. Code examples for each live in
 [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs` (custom ones in
+`scripts/eslint-rules/`), Rule 0, Rule 8a, BullMQ plugin wiring, Prisma schema conventions, env
+schema sync and unused `RESPONSE_MESSAGES` by `test/unit/architecture/`, Rule 9 by
+`npm run check:migrations`, `npm run check:drift` and squawk (`.squawk.toml`) on new migrations in
+CI, dead files/exports/dependencies by `npm run knip`. Every `arch/*` rule has a
+firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
+When one fails, fix the code — never disable the check.
 
 ### 0. Modules and repositories are created only by the generators
 Never create `src/modules/<name>/**` or `src/database/repositories/<name>/**` by hand — the
@@ -52,11 +60,18 @@ handler from the container and passes it to the registrar.
 - **The only business-logic exception:** transactions. A service may inject `prisma` solely
   to open `prisma.$transaction(...)` and pass the transaction client down to repository
   methods. Queries inside the transaction still go through repositories.
+- **Repositories speak the domain, not Prisma.** Method inputs and outputs are our own types
+  in `<name>.type.ts`; `Prisma.*` types, selects and where clauses never leave the factory
+  body, and a module imports from `@/database/**` only with `import type`
+  (`arch/domain-repository-types`, `arch/domain-repository-imports`). The one Prisma type a
+  method may take is `Prisma.TransactionClient`, for the transaction exception above. A small
+  duplication between the domain type and the Prisma model is deliberate.
 
 ### 3. No database calls in loops
-Never call a repository inside `for` / `while` / `map` / `forEach`. Use bulk operations
-(`createMany`, `updateMany`, `deleteMany`, `findMany` with `where: { id: { in: [...] } }`)
-or a single transaction. If a loop looks unavoidable, redesign the query.
+Never call a repository (or, inside a repository, Prisma) in `for` / `while` / `map` /
+`forEach`. Add a bulk repository method instead (`findByIds`, `deleteByIds`, …) implemented
+with one `createMany` / `updateMany` / `deleteMany` / `findMany` with `where: { id: { in } }`,
+or use a single transaction. If a loop looks unavoidable, redesign the query.
 
 ### 4. Function signatures
 Applies to exactly two kinds of functions — **service methods** (functions on a
@@ -68,7 +83,7 @@ Applies to exactly two kinds of functions — **service methods** (functions on 
 Everything else keeps its natural signature — do not touch it: Awilix factories
 (`createService`, `createHandler`, `create<Name>Repository`) take one param per dependency;
 `addDIResolverName(fn, "name")`; Fastify handlers `(request, reply)`, plugins `(fastify)`,
-route registrars `(fastify, handler)`, and `generateRepository(prisma, model)`.
+and route registrars `(fastify, handler)`.
 
 ### 5. Constants and types placement
 - Module constants → `src/modules/<name>/<name>.constant.ts`
@@ -81,8 +96,8 @@ route registrars `(fastify, handler)`, and `generateRepository(prisma, model)`.
   there. Everything else the module needs goes to `<name>.type.ts`.
 - Repository types → the `<Name>Repository` type stays in the same file as its factory;
   every other type the repository needs (method inputs, result shapes) goes to
-  `src/database/repositories/<name>/<name>.type.ts` (`BaseRepository` lives in
-  `repositories/repository.type.ts`).
+  `src/database/repositories/<name>/<name>.type.ts` and its helpers to
+  `<name>.util.ts` in the same folder. These are domain models, never Prisma types (Rule 2).
 - Lib types → `src/lib/<name>/<name>.type.ts`; global constants → `src/lib/constants/`;
   global types → `src/types/`.
 
@@ -116,6 +131,12 @@ configuration or lifecycle, it becomes a plugin. A plugin needs a name in `Fasti
 (`src/lib/constants/fastify.constant.ts`) only when another plugin's `dependencies`
 references it, or when it is foundational (`prisma`, `env`, `jwt`, `awilix`); plugins nothing
 depends on (`cors`, `error`, `zod`) stay anonymous.
+
+**BullMQ exception:** a module's queue logic lives in the module —
+`src/modules/<name>/mq/<name>.queue.ts` (producer) and `<name>.worker.ts` (consumer) may
+import `bullmq` and call `new Queue` / `new Worker` — but they are plugin bodies: only
+`src/plugins/mq/<name>/*.{queue,worker}.ts` imports and registers them. Nothing else in the
+module imports `bullmq` except with `import type`.
 
 ### 7. Validation only via Zod
 All application data — body, params, query, headers, external API responses — is validated
@@ -156,11 +177,28 @@ a custom index); if a generated migration would be destructive, stop and ask.
 - Scaffold modules/repositories only with the generators (Rule 0); create migrations only
   with `prisma:migrate:create` (Rule 9).
 - Use factory functions, not classes; register all DI with `addDIResolverName()`.
-- Keep handlers thin — delegate to services. Validate inputs with Zod.
+- In a `*.service.ts`, anything outside the returned service object (file-level helpers,
+  helpers inside the factory body) is a `function name() {}` declaration, never an
+  arrow/function-expression constant, placed **after** the factory's `return` (file-level
+  helpers after the factory itself) (`arch/service-helpers`). The factory returns the
+  service object literal directly — never `const service = { … }; return service;`
+  (`arch/service-return`). A helper stays inside the factory only if it uses a DI dependency;
+  a pure one goes to `<name>.util.ts` or a file-level function (`arch/no-dependency-free-factory-helper`).
+  No helper that only forwards its arguments to one dependency (`arch/no-pass-through-helper`);
+  a method used only by `return { name }` is written inline (`arch/inline-unshared-service-method`).
+- Keep handlers thin — delegate to services. Validate inputs with Zod. A handler has no
+  branching, loops or try/catch: it calls the service and returns `reply.status().send()`.
+- Every response schema is the envelope `z.object({ message, data })` (the health check is the
+  only exception).
+- Log errors under `err` — `log.error({ err: error }, "...")`; pino serializes an Error only
+  under that key.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).
 - Prisma only inside repositories; `$transaction` is the single exception (Rule 2). Never
   query the database in a loop (Rule 3).
+- Repositories take and return domain types (Rule 2). Every Prisma call that returns rows
+  passes a `select` matching the domain type (`arch/repository-select`), and a not-found check
+  lives in a `…OrFail` repository method, not in the service (`arch/prefer-repository-or-fail`).
 - Client-facing messages come from `RESPONSE_MESSAGES` (Rule 5a).
 - Route tag, route paths and `autoPrefix` stay with the routes, not in `*.constant.ts` (Rule 5).
 - A Prisma `Json` column is always both typed and Zod-validated (Rule 8).
@@ -168,5 +206,8 @@ a custom index); if a generated migration would be destructive, stop and ask.
 - Use the `@/` path alias for imports from `src`.
 - **No inline comments** after lines of code. JSDoc on functions is allowed when it adds
   meaningful context (security notes, non-obvious behavior).
+- **Keep comments short** — a comment longer than 5 lines (JSDoc with big `@example`s,
+  walkthroughs) belongs in the module `README.md` or `ARCHITECTURE.md`
+  (`arch/max-comment-lines` warns).
 - **No barrel files** — import directly from the source file (a module's `index.ts` is a
   Fastify plugin entry point, not a barrel).

@@ -10,11 +10,11 @@ export const extendCradle = (namePascal, nameCamel, nameKebab) => {
     let diContent = fs.readFileSync(diContainerPath, "utf8");
 
     if (!diContent.includes(`${namePascal}Service`)) {
-        const importMarker = 'import { EnvConfig } from "./env.type.js";';
+        const importMarker = 'import type { EnvConfig } from "./env.type.js";';
 
         const newImports = `
-import { ${namePascal}Service } from "@/modules/${nameKebab}/${nameKebab}.service.js";
-import { ${namePascal}Handler } from "@/modules/${nameKebab}/${nameKebab}.handler.js";`;
+import type { ${namePascal}Service } from "@/modules/${nameKebab}/${nameKebab}.service.js";
+import type { ${namePascal}Handler } from "@/modules/${nameKebab}/${nameKebab}.handler.js";`;
 
         diContent = diContent.replace(
             importMarker,

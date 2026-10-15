@@ -1,16 +1,16 @@
-import { FastifyBaseLogger } from "fastify";
-import { EnvConfig } from "@/types/env.type.js";
+import type { FastifyBaseLogger } from "fastify";
 import { describe, expect, it, vi } from "vitest";
-import { CacheService } from "@/lib/cache/cache.service.js";
+import type { EnvConfig } from "@/types/env.type.js";
+import type { CacheService } from "@/lib/cache/cache.service.js";
 import { createService } from "@/modules/message/message.service.js";
 import { MESSAGE_CACHE_NAMESPACE } from "@/modules/message/message.constant.js";
-import { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 
 const createFakeRepository = (): MessageRepository =>
     ({
         createIfAbsent: vi.fn(async () => undefined),
         updateIfNotNewer: vi.fn(async () => true),
-        deleteMany: vi.fn(async () => ({ count: 1 })),
+        deleteById: vi.fn(async () => undefined),
         findPage: vi.fn(async () => ({ messages: [], nextCursor: null })),
     }) as unknown as MessageRepository;
 
@@ -43,9 +43,11 @@ describe("message.service - createMessage", () => {
             meta: undefined,
             updatedAt: enqueuedAt,
         });
+
         expect(cache.invalidate).toHaveBeenCalledWith({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 });
@@ -68,17 +70,21 @@ describe("message.service - updateMessage", () => {
             meta: undefined,
             updatedAt: enqueuedAt,
         });
+
         expect(cache.invalidate).toHaveBeenCalledWith({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 
     it("should skip a stale write without invalidating the cache", async () => {
         const repository = createFakeRepository();
+
         (
             repository.updateIfNotNewer as ReturnType<typeof vi.fn>
         ).mockResolvedValueOnce(false);
+
         const cache = createFakeCache();
         const service = createService(repository, cache, log, config);
 
@@ -94,9 +100,11 @@ describe("message.service - updateMessage", () => {
 
     it("should propagate not-found when the message is gone", async () => {
         const repository = createFakeRepository();
+
         (
             repository.updateIfNotNewer as ReturnType<typeof vi.fn>
         ).mockRejectedValueOnce(new Error("Message not found."));
+
         const cache = createFakeCache();
         const service = createService(repository, cache, log, config);
 
@@ -120,12 +128,14 @@ describe("message.service - deleteMessage", () => {
 
         const result = await service.deleteMessage({ id: messageId });
 
-        expect(repository.deleteMany).toHaveBeenCalledWith({
-            where: { id: messageId },
+        expect(repository.deleteById).toHaveBeenCalledWith({
+            id: messageId,
         });
+
         expect(cache.invalidate).toHaveBeenCalledWith({
             namespace: MESSAGE_CACHE_NAMESPACE,
         });
+
         expect(result).toEqual({ id: messageId });
     });
 });
@@ -133,15 +143,18 @@ describe("message.service - deleteMessage", () => {
 describe("message.service - getMessages", () => {
     it("should return the repository page as data", async () => {
         const repository = createFakeRepository();
+
         const page = {
             messages: [
                 { id: messageId, createdAt: new Date(), text: "A", meta: null },
             ],
             nextCursor: messageId,
         };
+
         (repository.findPage as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
             page
         );
+
         const service = createService(
             repository,
             createFakeCache(),
@@ -155,11 +168,13 @@ describe("message.service - getMessages", () => {
             cursor: undefined,
             limit: 20,
         });
+
         expect(result.data).toBe(page);
     });
 
     it("should pass the cursor through to the repository", async () => {
         const repository = createFakeRepository();
+
         const service = createService(
             repository,
             createFakeCache(),

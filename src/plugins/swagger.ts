@@ -3,7 +3,7 @@ import fp from "fastify-plugin";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import fastifyBasicAuth from "@fastify/basic-auth";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { UnauthorizedError } from "@/lib/errors/errors.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {

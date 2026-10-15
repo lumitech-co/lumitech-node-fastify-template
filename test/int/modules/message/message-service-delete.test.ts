@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
 import { configureServer } from "@/server.js";
+import type { FastifyInstance } from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMessage } from "../../factories/message.factory.js";
 import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";

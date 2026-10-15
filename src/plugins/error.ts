@@ -1,5 +1,5 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import {
     INTERNAL_SERVER_ERROR_RESPONSE,
     INTERNAL_SERVER_ERROR_STATUS_CODE,

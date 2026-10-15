@@ -14,6 +14,8 @@ jobs:
 
         steps:
             - uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
 
             - name: Set up Node.js
               uses: actions/setup-node@v3
@@ -26,6 +28,30 @@ jobs:
 
             - name: Lint application
               run: npm run lint
+
+            - name: Type-check application and tests
+              run: npm run tsc-check
+
+            - name: Check formatting
+              run: npm run format:check
+
+            - name: Find unused files, exports and dependencies
+              run: npm run knip
+
+            - name: Validate Prisma schema
+              run: npx prisma validate && npm run prisma:format -- --check
+              env:
+                  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+            - name: Check migrations (CLAUDE.md Rule 9)
+              run: npm run check:migrations
+              env:
+                  MIGRATIONS_BASE_REF: origin/${{ github.base_ref }}
+
+            - name: Lint new migrations for locking and data loss
+              run: |
+                  git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'src/database/prisma/migrations/*/migration.sql' \
+                      | xargs --no-run-if-empty npm run lint:migrations --
 
             - name: Build application
               run: npm run build

@@ -1,5 +1,5 @@
-import { Redis } from "ioredis";
-import { FastifyBaseLogger } from "fastify";
+import type { Redis } from "ioredis";
+import type { FastifyBaseLogger } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import {
     CACHE_INVALIDATION_SCAN_COUNT,
@@ -9,7 +9,7 @@ import {
     CACHE_LOCK_PREFIX,
     CACHE_LOCK_TTL_MS,
 } from "./cache.constant.js";
-import {
+import type {
     GetCachePayload,
     SetCachePayload,
     SleepPayload,
@@ -33,32 +33,10 @@ export const createCacheService = (
     redis: Redis,
     log: FastifyBaseLogger
 ): CacheService => {
-    const service: CacheService = {
+    return {
         get: async (payload) => (await read(payload)).value,
-
-        set: async ({ key, value, ttl }) => {
-            try {
-                await redis.set(key, JSON.stringify(value), "EX", ttl);
-
-                return true;
-            } catch (error) {
-                log.warn({ error, key }, "Cache write failed");
-
-                return false;
-            }
-        },
-
-        remove: async ({ key }) => {
-            try {
-                await redis.unlink(key);
-
-                return true;
-            } catch (error) {
-                log.warn({ error, key }, "Cache removal failed");
-
-                return false;
-            }
-        },
+        set,
+        remove,
 
         invalidate: async ({ namespace }) => {
             const pattern = `${CACHE_KEY_PREFIX}:${namespace}:*`;
@@ -87,7 +65,7 @@ export const createCacheService = (
 
                 return removed;
             } catch (error) {
-                log.warn({ error, pattern }, "Cache invalidation failed");
+                log.warn({ err: error, pattern }, "Cache invalidation failed");
 
                 return 0;
             }
@@ -114,21 +92,21 @@ export const createCacheService = (
             try {
                 const value = await resolver();
 
-                await service.set({ key, value, ttl });
+                await set({ key, value, ttl });
 
                 return value;
             } finally {
                 if (lock === "acquired") {
-                    await service.remove({ key: lockKey });
+                    await remove({ key: lockKey });
                 }
             }
         },
     };
 
-    const read = async <T>({
+    async function read<T>({
         key,
         schema,
-    }: GetCachePayload<T>): Promise<CacheReadResult<T>> => {
+    }: GetCachePayload<T>): Promise<CacheReadResult<T>> {
         try {
             const raw = await redis.get(key);
 
@@ -136,19 +114,45 @@ export const createCacheService = (
                 return { hit: false, value: null };
             }
 
-            const value = JSON.parse(raw);
-
-            return { hit: true, value: schema ? schema.parse(value) : value };
+            return { hit: true, value: schema.parse(JSON.parse(raw)) };
         } catch (error) {
-            log.warn({ error, key }, "Cache read failed");
+            log.warn({ err: error, key }, "Cache read failed");
 
             return { hit: false, value: null };
         }
-    };
+    }
 
-    const acquireLock = async ({
+    async function set<T>({
+        key,
+        value,
+        ttl,
+    }: SetCachePayload<T>): Promise<boolean> {
+        try {
+            await redis.set(key, JSON.stringify(value), "EX", ttl);
+
+            return true;
+        } catch (error) {
+            log.warn({ err: error, key }, "Cache write failed");
+
+            return false;
+        }
+    }
+
+    async function remove({ key }: RemoveCachePayload): Promise<boolean> {
+        try {
+            await redis.unlink(key);
+
+            return true;
+        } catch (error) {
+            log.warn({ err: error, key }, "Cache removal failed");
+
+            return false;
+        }
+    }
+
+    async function acquireLock({
         lockKey,
-    }: AcquireLockPayload): Promise<CacheLockState> => {
+    }: AcquireLockPayload): Promise<CacheLockState> {
         try {
             const result = await redis.set(
                 lockKey,
@@ -160,16 +164,16 @@ export const createCacheService = (
 
             return result === "OK" ? "acquired" : "taken";
         } catch (error) {
-            log.warn({ error, lockKey }, "Cache lock acquisition failed");
+            log.warn({ err: error, lockKey }, "Cache lock acquisition failed");
 
             return "unavailable";
         }
-    };
+    }
 
-    const waitForCache = async <T>({
+    async function waitForCache<T>({
         key,
         schema,
-    }: GetCachePayload<T>): Promise<CacheReadResult<T>> => {
+    }: GetCachePayload<T>): Promise<CacheReadResult<T>> {
         const deadline = Date.now() + CACHE_LOCK_MAX_WAIT_MS;
 
         while (Date.now() < deadline) {
@@ -183,12 +187,11 @@ export const createCacheService = (
         }
 
         return { hit: false, value: null };
-    };
-
-    return service;
+    }
 };
 
-const sleep = ({ ms }: SleepPayload): Promise<void> =>
-    new Promise((resolve) => setTimeout(resolve, ms));
+function sleep({ ms }: SleepPayload): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 addDIResolverName(createCacheService, "cacheService");

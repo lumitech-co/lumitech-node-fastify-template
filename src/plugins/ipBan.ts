@@ -1,5 +1,5 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import { IpBannedError, NotFoundError } from "@/lib/errors/errors.js";
 import { extractPathname, isAllowedPath } from "@/lib/ipBan/ipBan.util.js";
@@ -42,6 +42,5 @@ const configureIpBan = async (fastify: FastifyInstance) => {
 };
 
 export default fp(configureIpBan, {
-    name: FastifyPlugin.IpBan,
     dependencies: [FastifyPlugin.Awilix, FastifyPlugin.Redis],
 });

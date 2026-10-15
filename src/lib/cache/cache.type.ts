@@ -1,9 +1,9 @@
-import { ZodType } from "zod";
-import { FastifyRequest } from "fastify";
+import type { ZodType } from "zod";
+import type { FastifyRequest } from "fastify";
 
 export type GetCachePayload<T> = {
     key: string;
-    schema?: ZodType<T>;
+    schema: ZodType<T>;
 };
 
 export type SetCachePayload<T> = {
@@ -38,7 +38,7 @@ export type WrapCachePayload<T> = {
     key: string;
     ttl: number;
     resolver: () => Promise<T>;
-    schema?: ZodType<T>;
+    schema: ZodType<T>;
 };
 
 export type CreateCacheKeyPayload = {

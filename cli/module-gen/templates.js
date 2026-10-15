@@ -1,53 +1,59 @@
 export const templates = {
     type: (nameKebab) => `// Types for the ${nameKebab} module\n`,
 
+    readme: (namePascal, nameKebab) =>
+        `
+# ${namePascal} Module
+
+TODO: what this module is responsible for.
+
+## Base Path
+
+\`\`\`
+/api/${nameKebab}
+\`\`\`
+
+## Endpoints
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+`.trim(),
+
     handler: (namePascal, nameCamel) =>
         `
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 
-export type ${namePascal}Handler = {};
+export type ${namePascal}Handler = Record<string, never>;
 
-export const createHandler = (): ${namePascal}Handler => {
-    return {};
-};
+export const createHandler = (): ${namePascal}Handler => ({});
 
 addDIResolverName(createHandler, "${nameCamel}Handler");
 `.trim(),
 
     route: (namePascal, nameCamel, nameKebab, nameUpper) =>
         `
-import { FastifyInstance } from "fastify";
-import { ${namePascal}Handler } from "./${nameKebab}.handler.js";
+import type { FastifyInstance } from "fastify";
+import type { ${namePascal}Handler } from "./${nameKebab}.handler.js";
 
-// The module tag and its route paths live here, next to the routes:
-//
+// Declare the module tag and route paths here, unexported:
 // const ${nameUpper}_TAG = "${nameKebab}";
-//
-// enum ${namePascal}Route {
-//     Root = "/",
-// }
-//
-// Rename the parameters once the first route is registered:
-// fastify.get(
-//     ${namePascal}Route.Root,
-//     { schema: { tags: [${nameUpper}_TAG] } },
-//     ${nameCamel}Handler.something
-// );
+// enum ${namePascal}Route { Root = "/" }
+// Drop the _ prefixes once the first route is registered.
 export const create${namePascal}Routes = (
     _fastify: FastifyInstance,
     _${nameCamel}Handler: ${namePascal}Handler
-) => {};
+): void => {};
 `.trim(),
 
     index: (namePascal, nameCamel, nameKebab) =>
         `
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { create${namePascal}Routes } from "./${nameKebab}.route.js";
 
 // Define the endpoint prefix by providing autoPrefix module property.
 export const autoPrefix = "/api/${nameKebab}";
 
-export default async function (fastify: FastifyInstance) {
+export default async function (fastify: FastifyInstance): Promise<void> {
     const ${nameCamel}Handler = fastify.di.resolve("${nameCamel}Handler");
     create${namePascal}Routes(fastify, ${nameCamel}Handler);
 }
@@ -57,7 +63,7 @@ export default async function (fastify: FastifyInstance) {
         `
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 
-export type ${namePascal}Service = {};
+export type ${namePascal}Service = Record<string, never>;
 
 export const createService = (): ${namePascal}Service => ({});
 

@@ -1,64 +1,27 @@
-import { DiffObjectsPayload, IsEqualPayload } from "./message.type.js";
+import { isDeepStrictEqual } from "node:util";
+import type { DiffObjectsPayload } from "./message.type.js";
 
 /**
- * Example function.
- *
- * Compare two flat objects and return an object containing
- * only the keys whose values differ, with values from the new object.
+ * Example util: keys whose values differ between two flat objects,
+ * with values from the new object.
  */
 export const diffObjects = <
     T extends Record<string, unknown>,
     K extends Record<string, unknown>,
 >({
-        oldObj,
-        newObj,
-    }: DiffObjectsPayload<T, K>): Partial<K> => {
+    oldObj,
+    newObj,
+}: DiffObjectsPayload<T, K>): Partial<K> => {
     const diff: Partial<K> = {};
 
     for (const key in newObj) {
         const oldValue = oldObj[key];
         const newValue = newObj[key];
 
-        if (!isEqual({ a: oldValue, b: newValue })) {
+        if (!isDeepStrictEqual(oldValue, newValue)) {
             diff[key] = newValue;
         }
     }
 
     return diff;
-};
-
-const isEqual = ({ a, b }: IsEqualPayload): boolean => {
-    if (a === b) {
-        return true;
-    }
-
-    if (a == null || b == null) {
-        return a === b;
-    }
-
-    if (a instanceof Date && b instanceof Date) {
-        return a.getTime() === b.getTime();
-    }
-
-    if (Array.isArray(a) && Array.isArray(b)) {
-        return (
-            a.length === b.length &&
-            a.every((val, index) => isEqual({ a: val, b: b[index] }))
-        );
-    }
-
-    if (typeof a === "object" && typeof b === "object") {
-        const aObj = a as Record<string, unknown>;
-        const bObj = b as Record<string, unknown>;
-
-        const aKeys = Object.keys(aObj);
-        const bKeys = Object.keys(bObj);
-
-        return (
-            aKeys.length === bKeys.length &&
-            aKeys.every((key) => isEqual({ a: aObj[key], b: bObj[key] }))
-        );
-    }
-
-    return false;
 };

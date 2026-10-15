@@ -1,39 +1,49 @@
 export const templates = {
-    repository: (nameCamel, namePascal) =>
+    type: (namePascal) =>
         `
-import { Prisma, PrismaClient } from "@prisma/client";
-import { NotFoundError } from "@/lib/errors/errors.js";
-import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { generateRepository } from "../generate.repository.js";
-import { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
-import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import { BaseRepository } from "@/database/repositories/repository.type.js";
+export type ${namePascal} = {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+};
 
-export type ${namePascal}Repository = BaseRepository<"${nameCamel}"> & {
-    findUniqueOrFail: FindUniqueOrFail<
-        Prisma.${namePascal}FindUniqueArgs,
-        Prisma.$${namePascal}Payload
-    >;
+export type ${namePascal}Id = Pick<${namePascal}, "id">;
+`.trim(),
+
+    repository: (nameCamel, namePascal, nameKebab) =>
+        `
+import { NotFoundError } from "@/lib/errors/errors.js";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { addDIResolverName } from "@/lib/awilix/awilix.js";
+import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
+import type { ${namePascal}, ${namePascal}Id } from "./${nameKebab}.type.js";
+
+const ${nameCamel}Select = {
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+} satisfies Prisma.${namePascal}Select;
+
+export type ${namePascal}Repository = {
+    findByIdOrFail: (${nameCamel}: ${namePascal}Id) => Promise<${namePascal}>;
 };
 
 export const create${namePascal}Repository = (
     prisma: PrismaClient
-): ${namePascal}Repository => {
-    const repository = generateRepository(prisma, "${namePascal}");
+): ${namePascal}Repository => ({
+    findByIdOrFail: async ({ id }) => {
+        const ${nameCamel} = await prisma.${nameCamel}.findUnique({
+            where: { id },
+            select: ${nameCamel}Select,
+        });
 
-    return {
-        ...repository,
-        findUniqueOrFail: async (args) => {
-            const ${nameCamel} = await prisma.${nameCamel}.findUnique(args);
+        if (!${nameCamel}) {
+            throw new NotFoundError(RESPONSE_MESSAGES.${nameCamel}.notFound);
+        }
 
-            if (!${nameCamel}) {
-                throw new NotFoundError(RESPONSE_MESSAGES.${nameCamel}.notFound);
-            }
-
-            return ${nameCamel};
-        },
-    };
-};
+        return ${nameCamel};
+    },
+});
 
 addDIResolverName(create${namePascal}Repository, "${nameCamel}Repository");
 `.trim(),

@@ -1,15 +1,14 @@
-import path from "path";
+import Fastify from "fastify";
 import autoload from "@fastify/autoload";
-import Fastify, { FastifyInstance } from "fastify";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import path, { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { FastifyInstance } from "fastify";
 import { resolveTrustProxy } from "@/lib/proxy/proxy.util.js";
 import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";
+import { QUEUE_WORKER_PLUGIN_PATTERN } from "@/lib/constants/bullmq.constant.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-const QUEUE_WORKER_PLUGIN_PATTERN = /\/mq\/.+\.worker\.(ts|js)$/;
 
 type ConfigureServerOptions = {
     registerRoutes?: boolean;
@@ -20,12 +19,13 @@ export const configureServer = async ({
     registerRoutes = true,
     runQueueWorker = true,
 }: ConfigureServerOptions = {}): Promise<FastifyInstance> => {
+    const nodeEnv = process.env.NODE_ENV as
+        | keyof typeof ENV_TO_LOGGER
+        | undefined;
+
     const fastify = Fastify({
         trustProxy: resolveTrustProxy(process.env.TRUSTED_PROXY_HOPS),
-        logger:
-            ENV_TO_LOGGER[
-                process.env.NODE_ENV as "development" | "production" | "test"
-            ] ?? GCP_LOGGER,
+        logger: (nodeEnv && ENV_TO_LOGGER[nodeEnv]) ?? GCP_LOGGER,
     });
 
     try {

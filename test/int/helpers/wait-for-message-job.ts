@@ -1,5 +1,5 @@
 import { QueueEvents } from "bullmq";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -62,6 +62,7 @@ export const waitForMessageJob = async ({
                 }
 
                 cleanup();
+
                 reject(
                     new Error(`Message job ${jobId} failed: ${failedReason}`)
                 );

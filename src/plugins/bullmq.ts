@@ -1,6 +1,7 @@
 import fp from "fastify-plugin";
-import { FastifyInstance } from "fastify";
-import { Redis, RedisOptions } from "ioredis";
+import { Redis } from "ioredis";
+import type { RedisOptions } from "ioredis";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {
     BULLMQ_CONNECT_TIMEOUT_MS,
@@ -26,7 +27,7 @@ const configureBullMq = async (fastify: FastifyInstance) => {
         });
 
         connection.on("error", (error) => {
-            fastify.log.error({ error }, "BullMQ connection error");
+            fastify.log.error({ err: error }, "BullMQ connection error");
         });
 
         connection.connect().catch(() => {});

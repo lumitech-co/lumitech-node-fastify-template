@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import { Redis } from "ioredis";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {
     REDIS_COMMAND_TIMEOUT_MS,
@@ -27,7 +27,7 @@ const configureRedis = async (fastify: FastifyInstance) => {
     });
 
     redis.on("error", (error) => {
-        fastify.log.error({ error }, "Redis connection error");
+        fastify.log.error({ err: error }, "Redis connection error");
     });
 
     redis.connect().catch(() => {});

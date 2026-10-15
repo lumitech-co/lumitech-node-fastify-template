@@ -26,6 +26,8 @@ export const CACHEABLE_METHODS = ["GET", "HEAD"];
 
 export const CACHE_DEFAULT_CONTENT_TYPE = "application/json; charset=utf-8";
 
+export const CACHE_KEY_SEGMENT_SEPARATOR = "|";
+
 export const CACHE_CONTENT_TYPE_HEADER = "content-type";
 
 export const CACHE_UNCACHEABLE_HEADERS = [
