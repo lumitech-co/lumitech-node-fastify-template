@@ -22,9 +22,17 @@ Welcome to the Lumitech Node.js Fastify Template. This template provides a well-
 ## 📌 Getting Started
 
 ### 🚀 Project Launch
+0. Make sure you use npm >= 11.10 (`npm install -g npm@11.19.1`) - enforced via `devEngines`, see [Supply-chain protection](#-supply-chain-protection);
 1. `npm install` - install the dependencies locally;
 2. Create a `.env` file from `.env.example`;
 3. Launch Docker Compose with the `docker compose up` command.
+
+### 🔒 Supply-chain protection
+`.npmrc` sets `min-release-age=7`: npm refuses to resolve any package version published less than 7 days ago, so freshly published (potentially compromised) releases never get into `package-lock.json`. Most malicious releases are detected and unpublished within this window.
+
+- The setting is only understood by npm >= 11.10 (older npm silently ignores it), so `package.json` declares `devEngines.packageManager` and older npm versions fail with `EBADDEVENGINES`. CI and the Dockerfile pin npm `11.19.1`.
+- If you get `notarget ... with a date before ...`, the version you asked for is too new - pick an older one or wait.
+- Do not bypass the check (`--min-release-age=0`, `--force`) without a review. For an urgent security fix, exempt the single package for that one install: `npm install <pkg>@<version> --min-release-age-exclude=<pkg>`.
 
 ### ⚙️ Running Prisma Migrations
 Since both the Node.js server and PostgreSQL database run inside Docker containers, the database connection uses the [docker compose network](https://docs.docker.com/compose/networking/).
