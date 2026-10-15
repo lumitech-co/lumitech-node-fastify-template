@@ -64,7 +64,7 @@ export const createService = (
     },
 
     deleteMessage: async ({ id }) => {
-        await messageRepository.deleteMany({ where: { id } });
+        await messageRepository.deleteById({ id });
 
         await cacheService.invalidate({
             namespace: MESSAGE_CACHE_NAMESPACE,

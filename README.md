@@ -189,23 +189,13 @@ fastify.post(
 ```
 
 ### ⚙️ Repository Generation
-The template provides an automatic repository generator based on the Prisma Schema data model.
-It includes a set of commonly used CRUD operations for any entity.
-
-The generator is located in `src/database/repositories/generate.repository.ts`.
+`npm run generate:repository <entityName>` scaffolds a repository for a Prisma model:
+`<name>.type.ts` with the domain type (`id`, `createdAt`, `updatedAt` — extend it with the
+model's fields) and `<name>.repository.ts` with `findByIdOrFail`. Repositories expose domain
+methods only: a service never passes Prisma arguments or receives Prisma types.
 
 ```typescript
-const userRepository = generateRepository(prismaClient, "User");
-
-const user = await userRepository.create({
-    data: {},
-    select: {},
-});
-
-// Methods available: create, update, delete, etc.
-await userRepository.delete({
-    where: {},
-});
+const user = await userRepository.findByIdOrFail({ id });
 ```
 
 ### ⚙️ ER Diagram Generation
@@ -255,7 +245,7 @@ The project is organized into several parts to promote a modular design and sepa
 #### `src/database`:  
 This directory manages everything related to data persistence and interaction with the database.  
 - The `prisma` subfolder houses the Prisma schema (`schema.prisma`) and migration files that define the application's data model to the database.  
-- The `repositories` subfolder contains repository modules for each entity. These repositories provide a unified API for CRUD operations (e.g., in `generate.repository.ts`) and custom logic for data access (e.g., `message.repository.ts` for the Message model).
+- The `repositories` subfolder contains repository modules for each entity. Each repository exposes domain methods with its own types in `<name>.type.ts` (e.g., `message.repository.ts` for the Message model); Prisma stays inside the repository.
 
 #### `src/modules`:  
 This directory contains feature-based modules which encapsulate business logic along with the HTTP layer.  
@@ -307,10 +297,8 @@ This directory contains all test files organized to mirror the structure of the 
 │   │   ├── prisma
 │   │   │   ├── migrations
 │   │   │   │   └── ...
-│   │   │   ├── prisma.type.ts
 │   │   │   └── schema.prisma
 │   │   └── repositories
-│   │       ├── generate.repository.ts
 │   │       └── ...
 │   ├── lib
 │   │   ├── ...

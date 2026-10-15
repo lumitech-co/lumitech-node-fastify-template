@@ -3,110 +3,104 @@ import { NotFoundError } from "@/lib/errors/errors.js";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import type { FindUniqueOrFail } from "@/database/prisma/prisma.type.js";
-import type { BaseRepository } from "@/database/repositories/repository.type.js";
-import { generateRepository } from "@/database/repositories/generate.repository.js";
 import type {
+    MessageId,
     MessagePage,
     MessageWrite,
     MessageUpdate,
     MessagePageResult,
 } from "./message.type.js";
 
-export const messageListSelect = {
+const messageSelect = {
     id: true,
     createdAt: true,
     text: true,
     meta: true,
 } satisfies Prisma.MessageSelect;
 
-export const messageIdSelect = {
+const messageIdSelect = {
     id: true,
 } satisfies Prisma.MessageSelect;
 
-export type MessageRepository = BaseRepository<"message"> & {
-    findUniqueOrFail: FindUniqueOrFail<
-        Prisma.MessageFindUniqueArgs,
-        Prisma.$MessagePayload
-    >;
+export type MessageRepository = {
     generateId: () => Promise<string>;
+    assertExists: (message: MessageId) => Promise<void>;
     createIfAbsent: (data: MessageWrite) => Promise<void>;
     updateIfNotNewer: (data: MessageUpdate) => Promise<boolean>;
+    deleteById: (message: MessageId) => Promise<void>;
     findPage: (page: MessagePage) => Promise<MessagePageResult>;
 };
 
 export const createMessageRepository = (
     prisma: PrismaClient
-): MessageRepository => {
-    const repository = generateRepository(prisma, "Message");
+): MessageRepository => ({
+    generateId: async () => {
+        const [{ id }] = await prisma.$queryRaw<
+            [{ id: string }]
+        >`SELECT uuidv7()::text AS id`;
 
-    return {
-        ...repository,
-        findUniqueOrFail: async (args) => {
-            const message = await prisma.message.findUnique(args);
+        return id;
+    },
 
-            if (!message) {
-                throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
-            }
+    assertExists: async ({ id }) => {
+        const message = await prisma.message.findUnique({
+            where: { id },
+            select: messageIdSelect,
+        });
 
-            return message;
-        },
+        if (!message) {
+            throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
+        }
+    },
 
-        generateId: async () => {
-            const [{ id }] = await prisma.$queryRaw<
-                [{ id: string }]
-            >`SELECT uuidv7()::text AS id`;
+    createIfAbsent: async ({ id, meta, ...data }) => {
+        await prisma.message.upsert({
+            where: { id },
+            create: { id, meta: toMetaInput(meta), ...data },
+            update: {},
+            select: messageIdSelect,
+        });
+    },
 
-            return id;
-        },
+    updateIfNotNewer: async ({ id, meta, ...data }) => {
+        const { count } = await prisma.message.updateMany({
+            where: { id, updatedAt: { lte: data.updatedAt } },
+            data: { meta: toMetaInput(meta), ...data },
+        });
 
-        createIfAbsent: async ({ id, meta, ...data }) => {
-            await prisma.message.upsert({
-                where: { id },
-                create: { id, meta: toMetaInput(meta), ...data },
-                update: {},
-                select: messageIdSelect,
-            });
-        },
+        if (count > 0) {
+            return true;
+        }
 
-        updateIfNotNewer: async ({ id, meta, ...data }) => {
-            const { count } = await prisma.message.updateMany({
-                where: { id, updatedAt: { lte: data.updatedAt } },
-                data: { meta: toMetaInput(meta), ...data },
-            });
+        const message = await prisma.message.findUnique({
+            where: { id },
+            select: messageIdSelect,
+        });
 
-            if (count > 0) {
-                return true;
-            }
+        if (!message) {
+            throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
+        }
 
-            const message = await prisma.message.findUnique({
-                where: { id },
-                select: messageIdSelect,
-            });
+        return false;
+    },
 
-            if (!message) {
-                throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
-            }
+    deleteById: async ({ id }) => {
+        await prisma.message.deleteMany({ where: { id } });
+    },
 
-            return false;
-        },
+    findPage: async ({ cursor, limit }) => {
+        const messages = await prisma.message.findMany({
+            take: limit,
+            orderBy: { id: "desc" },
+            ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+            select: messageSelect,
+        });
 
-        findPage: async ({ cursor, limit }) => {
-            const messages = await prisma.message.findMany({
-                take: limit,
-                orderBy: { id: "desc" },
-                ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-                select: messageListSelect,
-            });
+        const nextCursor =
+            messages.length === limit ? (messages.at(-1)?.id ?? null) : null;
 
-            const nextCursor =
-                messages.length === limit
-                    ? (messages.at(-1)?.id ?? null)
-                    : null;
-
-            return { messages, nextCursor };
-        },
-    };
-};
+        return { messages, nextCursor };
+    },
+});
 
 addDIResolverName(createMessageRepository, "messageRepository");

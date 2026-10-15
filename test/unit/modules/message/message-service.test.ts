@@ -10,7 +10,7 @@ const createFakeRepository = (): MessageRepository =>
     ({
         createIfAbsent: vi.fn(async () => undefined),
         updateIfNotNewer: vi.fn(async () => true),
-        deleteMany: vi.fn(async () => ({ count: 1 })),
+        deleteById: vi.fn(async () => undefined),
         findPage: vi.fn(async () => ({ messages: [], nextCursor: null })),
     }) as unknown as MessageRepository;
 
@@ -128,8 +128,8 @@ describe("message.service - deleteMessage", () => {
 
         const result = await service.deleteMessage({ id: messageId });
 
-        expect(repository.deleteMany).toHaveBeenCalledWith({
-            where: { id: messageId },
+        expect(repository.deleteById).toHaveBeenCalledWith({
+            id: messageId,
         });
 
         expect(cache.invalidate).toHaveBeenCalledWith({

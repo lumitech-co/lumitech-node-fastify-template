@@ -60,6 +60,11 @@ handler from the container and passes it to the registrar.
 - **The only business-logic exception:** transactions. A service may inject `prisma` solely
   to open `prisma.$transaction(...)` and pass the transaction client down to repository
   methods. Queries inside the transaction still go through repositories.
+- **Repositories speak the domain, not Prisma.** Method inputs and outputs are our own types
+  in `<name>.type.ts`; `Prisma.*` types, selects and where clauses never leave the factory
+  body, and a module imports from `@/database/**` only with `import type`
+  (`arch/domain-repository-types`, `arch/domain-repository-imports`). A small duplication
+  between the domain type and the Prisma model is deliberate.
 
 ### 3. No database calls in loops
 Never call a repository inside `for` / `while` / `map` / `forEach`. Use bulk operations
@@ -76,7 +81,7 @@ Applies to exactly two kinds of functions — **service methods** (functions on 
 Everything else keeps its natural signature — do not touch it: Awilix factories
 (`createService`, `createHandler`, `create<Name>Repository`) take one param per dependency;
 `addDIResolverName(fn, "name")`; Fastify handlers `(request, reply)`, plugins `(fastify)`,
-route registrars `(fastify, handler)`, and `generateRepository(prisma, model)`.
+and route registrars `(fastify, handler)`.
 
 ### 5. Constants and types placement
 - Module constants → `src/modules/<name>/<name>.constant.ts`
@@ -90,8 +95,7 @@ route registrars `(fastify, handler)`, and `generateRepository(prisma, model)`.
 - Repository types → the `<Name>Repository` type stays in the same file as its factory;
   every other type the repository needs (method inputs, result shapes) goes to
   `src/database/repositories/<name>/<name>.type.ts` and its helpers to
-  `<name>.util.ts` in the same folder (`BaseRepository` lives in
-  `repositories/repository.type.ts`).
+  `<name>.util.ts` in the same folder. These are domain models, never Prisma types (Rule 2).
 - Lib types → `src/lib/<name>/<name>.type.ts`; global constants → `src/lib/constants/`;
   global types → `src/types/`.
 

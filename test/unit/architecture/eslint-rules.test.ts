@@ -26,6 +26,7 @@ const SCHEMA = "src/lib/validation/demo/demo.schema.ts";
 const LIB_UTIL = "src/lib/demo/demo.util.ts";
 const REPOSITORY = "src/database/repositories/demo/demo.repository.ts";
 const PLUGIN = "src/plugins/demo.ts";
+const REPOSITORY_TYPE = "src/database/repositories/demo/demo.type.ts";
 
 const ROUTE_OPTIONS =
     '{ schema: { tags: [DEMO_TAG], summary: "s", response: {} } }';
@@ -83,25 +84,6 @@ const CASES: Case[] = [
         {
             file: REPOSITORY,
             code: "export type W = Prisma.MessageWhereInput;",
-        }
-    ),
-    ...pair(
-        "prefer-find-unique-or-fail",
-        {
-            file: SERVICE,
-            code: [
-                "async function load(id: string) {",
-                "    const row = await demoRepository.findUnique({ where: { id } });",
-                "    if (!row) {",
-                "        throw new NotFoundError(MESSAGE);",
-                "    }",
-                "    return row;",
-                "}",
-            ].join("\n"),
-        },
-        {
-            file: SERVICE,
-            code: "async function load(id: string) { return demoRepository.findUniqueOrFail({ where: { id } }); }",
         }
     ),
     ...pair(
@@ -648,7 +630,7 @@ const CASES: Case[] = [
         { file: REPOSITORY, code: "export type DemoInput = { id: string };" },
         {
             file: REPOSITORY,
-            code: 'export type DemoRepository = BaseRepository<"demo">;',
+            code: "export type DemoRepository = { findByIdOrFail: (demo: DemoId) => Promise<Demo> };",
         }
     ),
     ...pair(
@@ -657,6 +639,39 @@ const CASES: Case[] = [
         {
             file: REPOSITORY,
             code: "export const createDemoRepository = (prisma: PrismaClient): DemoRepository => ({});",
+        }
+    ),
+    ...pair(
+        "domain-repository-types",
+        {
+            file: REPOSITORY_TYPE,
+            code: 'import type { Demo } from "@prisma/client";',
+        },
+        {
+            file: REPOSITORY_TYPE,
+            code: "export type Demo = { id: string; createdAt: Date };",
+        }
+    ),
+    ...pair(
+        "domain-repository-types",
+        {
+            file: REPOSITORY,
+            code: "export type DemoRepository = { find: (args: Prisma.DemoFindUniqueArgs) => Promise<Demo> };",
+        },
+        {
+            file: REPOSITORY,
+            code: "export type DemoRepository = { findByIdOrFail: (demo: DemoId) => Promise<Demo> };",
+        }
+    ),
+    ...pair(
+        "domain-repository-imports",
+        {
+            file: SERVICE,
+            code: 'import { demoSelect } from "@/database/repositories/demo/demo.repository.js";',
+        },
+        {
+            file: SERVICE,
+            code: 'import type { DemoRepository } from "@/database/repositories/demo/demo.repository.js";',
         }
     ),
     ...pair(

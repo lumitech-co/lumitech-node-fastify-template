@@ -7,7 +7,6 @@ import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import type { MessageService } from "@/modules/message/message.service.js";
 import type { MessageJobData } from "@/modules/message/mq/message.type.js";
-import { messageIdSelect } from "@/database/repositories/message/message.repository.js";
 import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 
 type FakeMessageQueue = Queue<MessageJobData, unknown, MessageJobName>;
@@ -25,7 +24,7 @@ const createFakeMessageService = (): MessageService => ({
 
 const createFakeRepository = (): MessageRepository =>
     ({
-        findUniqueOrFail: vi.fn(async () => ({ id: messageId })),
+        assertExists: vi.fn(async () => undefined),
         generateId: vi.fn(async () => messageId),
     }) as unknown as MessageRepository;
 
@@ -215,9 +214,8 @@ describe("mq/message.service - enqueue*", () => {
             payload: { meta: null },
         });
 
-        expect(repository.findUniqueOrFail).toHaveBeenCalledWith({
-            where: { id: messageId },
-            select: messageIdSelect,
+        expect(repository.assertExists).toHaveBeenCalledWith({
+            id: messageId,
         });
 
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Update, {
@@ -235,9 +233,8 @@ describe("mq/message.service - enqueue*", () => {
 
         const result = await service.enqueueDeleteMessage({ id: messageId });
 
-        expect(repository.findUniqueOrFail).toHaveBeenCalledWith({
-            where: { id: messageId },
-            select: messageIdSelect,
+        expect(repository.assertExists).toHaveBeenCalledWith({
+            id: messageId,
         });
 
         expect(queue.add).toHaveBeenCalledWith(MessageJobName.Delete, {
@@ -251,9 +248,7 @@ describe("mq/message.service - enqueue*", () => {
         const queue = createFakeQueue();
         const repository = createFakeRepository();
 
-        (
-            repository.findUniqueOrFail as ReturnType<typeof vi.fn>
-        ).mockRejectedValue(
+        (repository.assertExists as ReturnType<typeof vi.fn>).mockRejectedValue(
             new NotFoundError(RESPONSE_MESSAGES.message.notFound)
         );
 

@@ -12,7 +12,6 @@ import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
 import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
 import routeParamsSchema from "./scripts/eslint-rules/route-params-schema.mjs";
 import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
-import preferFindUniqueOrFail from "./scripts/eslint-rules/prefer-find-unique-or-fail.mjs";
 import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
 import noDuplicateRepositoryRead from "./scripts/eslint-rules/no-duplicate-repository-read.mjs";
 import transactionViaRepositories from "./scripts/eslint-rules/transaction-via-repositories.mjs";
@@ -46,7 +45,6 @@ const architecture = {
         "file-naming": fileNaming,
         "transaction-via-repositories": transactionViaRepositories,
         "no-prisma-shape-outside-repository": noPrismaShapeOutsideRepository,
-        "prefer-find-unique-or-fail": preferFindUniqueOrFail,
         "no-single-repository-transaction": noSingleRepositoryTransaction,
         "no-relation-join-with-cursor": noRelationJoinWithCursor,
         "no-duplicate-repository-read": noDuplicateRepositoryRead,
@@ -108,6 +106,9 @@ const architecture = {
         "route-registrar": restrictedSyntax,
         "repository-select": restrictedSyntax,
         "repository-layout": restrictedSyntax,
+        "domain-repository-types": restrictedSyntax,
+        "domain-repository-imports":
+            typescriptEslint.rules["no-restricted-imports"],
     },
 };
 
@@ -542,11 +543,7 @@ export default [
     },
     {
         files: ["src/database/repositories/**/*.{ts,js}"],
-        ignores: [
-            "src/database/repositories/*/*.{repository,type,util}.ts",
-            "src/database/repositories/generate.repository.ts",
-            "src/database/repositories/repository.type.ts",
-        ],
+        ignores: ["src/database/repositories/*/*.{repository,type,util}.ts"],
 
         rules: {
             "arch/file-layout": [
@@ -664,7 +661,6 @@ export default [
     },
     {
         files: ["src/database/repositories/**/*.repository.ts"],
-        ignores: ["src/database/repositories/generate.repository.ts"],
 
         rules: {
             "arch/di-files": [
@@ -825,7 +821,6 @@ export default [
         files: ["src/modules/**/*.ts"],
 
         rules: {
-            "arch/prefer-find-unique-or-fail": "error",
             "arch/no-single-repository-transaction": "error",
         },
     },
@@ -1383,10 +1378,7 @@ export default [
         },
     },
     {
-        // generate.repository.ts narrows a generic Prisma delegate — casts
-        // are the only way to type it.
         files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
-        ignores: ["src/database/repositories/generate.repository.ts"],
 
         rules: {
             "@typescript-eslint/consistent-type-assertions": [
@@ -1699,8 +1691,8 @@ export default [
         },
     },
     {
-        // Calls that forward the caller's args (generated findUniqueOrFail)
-        // inherit the caller's select.
+        // A call that forwards an args variable instead of an object
+        // literal inherits that variable's select.
         files: ["src/database/repositories/**/*.ts"],
 
         rules: {
@@ -1736,6 +1728,64 @@ export default [
                     ].join(", "),
                     message:
                         "Repository helpers live in <name>.util.ts next to it (CLAUDE.md, Rule 5).",
+                },
+            ],
+        },
+    },
+    {
+        // A repository speaks the domain: its method inputs and outputs are
+        // our own types, so services never see Prisma. Selects, where
+        // clauses and other Prisma shapes stay inside the factory body.
+        files: ["src/database/repositories/*/*.type.ts"],
+
+        rules: {
+            "arch/domain-repository-types": [
+                "error",
+                {
+                    selector:
+                        "ImportDeclaration[source.value=/^@prisma.client/]",
+                    message:
+                        "Repository types are domain models — describe the shape yourself, don't import it from @prisma/client.",
+                },
+                {
+                    selector:
+                        ":matches(TSQualifiedName[left.name='Prisma'], TSTypeReference[typeName.name=/^Prisma(Client|Promise)?$/])",
+                    message:
+                        "Repository types are domain models — describe the shape yourself instead of Prisma.* types.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/database/repositories/*/*.repository.ts"],
+
+        rules: {
+            "arch/domain-repository-types": [
+                "error",
+                {
+                    selector:
+                        "TSTypeAliasDeclaration[id.name=/Repository$/] :matches(TSQualifiedName[left.name='Prisma'], TSTypeReference[typeName.name=/^Prisma(Client|Promise)?$/])",
+                    message:
+                        "<Name>Repository methods take and return domain types from <name>.type.ts — keep Prisma inside the factory.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts"],
+
+        rules: {
+            "arch/domain-repository-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: ["@/database/**"],
+                            allowTypeImports: true,
+                            message:
+                                "Modules use a repository only through its injected type — never import its selects or other values.",
+                        },
+                    ],
                 },
             ],
         },

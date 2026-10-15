@@ -103,45 +103,58 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Repository Pattern
-The repository type and its factory live in the same `<name>.repository.ts` file; other
-repository types go to `<name>.type.ts` and helpers to `<name>.util.ts` next to it. Every
-repository exposes `findUniqueOrFail`, which throws `NotFoundError` with the entity's
-message from `RESPONSE_MESSAGES`:
+A repository speaks the domain, not Prisma: its methods take and return our own types from
+`<name>.type.ts`, so a service never sees a Prisma type, select or where clause — Prisma stays
+inside the factory body. The repository type and its factory live in `<name>.repository.ts`;
+other types go to `<name>.type.ts`, helpers to `<name>.util.ts`.
+```typescript
+// src/database/repositories/message/message.type.ts
+export type Message = {
+    id: string;
+    text: string;
+    meta: PrismaJson.MessageMeta | null;
+    createdAt: Date;
+};
+
+export type MessageId = Pick<Message, "id">;
+```
 ```typescript
 // src/database/repositories/message/message.repository.ts
-export type MessageRepository = BaseRepository<"message"> & {
-    findUniqueOrFail: FindUniqueOrFail<
-        Prisma.MessageFindUniqueArgs,
-        Prisma.$MessagePayload
-    >;
+const messageIdSelect = {
+    id: true,
+} satisfies Prisma.MessageSelect;
+
+export type MessageRepository = {
+    assertExists: (message: MessageId) => Promise<void>;
+    deleteById: (message: MessageId) => Promise<void>;
 };
 
 export const createMessageRepository = (
     prisma: PrismaClient
-): MessageRepository => {
-    const repository = generateRepository(prisma, "Message");
+): MessageRepository => ({
+    assertExists: async ({ id }) => {
+        const message = await prisma.message.findUnique({
+            where: { id },
+            select: messageIdSelect,
+        });
 
-    return {
-        ...repository,
-        findUniqueOrFail: async (args) => {
-            const message = await prisma.message.findUnique(args);
+        if (!message) {
+            throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
+        }
+    },
 
-            if (!message) {
-                throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
-            }
-
-            return message;
-        },
-    };
-};
+    deleteById: async ({ id }) => {
+        await prisma.message.deleteMany({ where: { id } });
+    },
+});
 
 addDIResolverName(createMessageRepository, "messageRepository");
 ```
 
-`generateRepository(prisma, "Message")` returns every CRUD method of the model's Prisma
-delegate (`create`, `findMany`, `update`, `delete`, …), so a repository only adds its own
-methods on top. `FindUniqueOrFail` uses `Prisma.SelectSubset` + `GetFindResult`, so the
-return type follows the `select` passed in, exactly like `findUnique`.
+The domain type repeats part of the Prisma model on purpose. It cannot drift: when a
+`select` returns other fields than the domain type declares, `tsc` fails on the factory.
+`npm run generate:repository` creates `<name>.type.ts` with `id`, `createdAt` and
+`updatedAt` plus a `findByIdOrFail` method; add the model's fields and methods from there.
 
 ### Route Registration
 Routes use Zod schemas for validation and OpenAPI docs; the tag and the path enum are
