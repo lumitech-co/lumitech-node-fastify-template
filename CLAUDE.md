@@ -122,7 +122,9 @@ a `<name>.constant.ts` only for constants that are neither routing nor messages.
 ### 5a. Response and error messages
 Every message a **module** returns to the client — success and error alike — lives in the
 single `RESPONSE_MESSAGES` object in `src/lib/messages/messages.constant.ts`, grouped by
-module. Never inline such a string, never keep it in a module's `*.constant.ts`. Two things
+module. Never inline such a string, never keep it in a module's `*.constant.ts`. Texts are in
+the default locale; a new message also gets its translation in `RESPONSE_MESSAGE_TRANSLATIONS`
+(same file) — the i18n plugin (`src/plugins/i18n.ts`) picks it by `Accept-Language`. Two things
 do **not** belong there: **response payload values** (e.g. the health check's `"pong"` →
 `application.constant.ts`) and **plugin/infrastructure strings** (e.g. the Swagger
 basic-auth error → `src/lib/constants/swagger.constant.ts`).

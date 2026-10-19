@@ -78,6 +78,7 @@ export const createRouteCacheKey = ({
             request.method,
             pathname,
             serializeQuery(request.query),
+            request.locale,
             headers,
             options.varyBy?.(request) ?? "",
         ],

@@ -1,5 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
+import { translateMessage } from "@/lib/i18n/i18n.util.js";
 import {
     INTERNAL_SERVER_ERROR_RESPONSE,
     INTERNAL_SERVER_ERROR_STATUS_CODE,
@@ -18,6 +19,11 @@ const configureErrorHandler = async (fastify: FastifyInstance) => {
                 .status(INTERNAL_SERVER_ERROR_STATUS_CODE)
                 .send(INTERNAL_SERVER_ERROR_RESPONSE);
         }
+
+        error.message = translateMessage({
+            text: error.message,
+            locale: request.locale,
+        });
 
         // Use parent error handler with the predefined error.
         return reply.send(error);
