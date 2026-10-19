@@ -77,7 +77,10 @@ grep -rho 'addDIResolverName([^,]*, *"\([^"]*\)"' -r src | sed 's/.*"\(.*\)"/\1/
 grep -rn "prisma\." src/modules src/lib src/plugins | grep -v "\$transaction"
 
 # Prisma types leaking past a repository (only Prisma.TransactionClient may)
-grep -rn "Prisma\.\|@prisma/client" src/modules src/database/repositories/*/*.type.ts | grep -v TransactionClient
+grep -rn "Prisma\.\|@prisma/client" src/modules --include=*.ts | grep -v "\.repository\.ts:" | grep -v TransactionClient
+
+# Another module imported past its public API
+grep -rn "@/modules/" src/modules | grep -v "/public.js"
 
 # DB call inside a loop
 grep -rn -B3 "await .*Repository\." src/modules | grep -E "for |while |\.map\(|\.forEach\("

@@ -2,21 +2,25 @@ import { extendCradle } from "./extend-cradle.js";
 import { extendMessages } from "./extend-messages.js";
 import { generateRepository } from "./generate-repository.js";
 
-const entityName = process.argv[2];
+const toNames = (name) => ({
+    camel: name.charAt(0).toLowerCase() + name.slice(1),
+    pascal: name.charAt(0).toUpperCase() + name.slice(1),
+    kebab: name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(),
+});
 
-if (!entityName) {
-    console.error("❌ Please provide a repository name.");
+const [, , entityName, flag, moduleFlagValue] = process.argv;
+
+if (!entityName || (flag !== undefined && flag !== "--module")) {
+    console.error(
+        "❌ Usage: npm run generate:repository <entityName> [--module <moduleName>]"
+    );
 
     process.exit(1);
 }
 
-const nameCamel = entityName.charAt(0).toLowerCase() + entityName.slice(1);
-const namePascal = entityName.charAt(0).toUpperCase() + entityName.slice(1);
+const entity = toNames(entityName);
+const module = toNames(moduleFlagValue ?? entityName);
 
-const nameKebab = entityName
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .toLowerCase();
-
-generateRepository(nameCamel, namePascal, nameKebab);
-extendMessages(namePascal, nameCamel);
-extendCradle(namePascal, nameCamel, nameKebab);
+generateRepository({ entity, module });
+extendMessages(entity.pascal, entity.camel);
+extendCradle({ entity, module });

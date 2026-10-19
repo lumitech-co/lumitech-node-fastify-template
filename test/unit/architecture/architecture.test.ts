@@ -66,6 +66,28 @@ const findJsonFields = (schema: string): JsonField[] => {
     return fields;
 };
 
+type ModuleRepository = {
+    module: string;
+    entity: string;
+    pascal: string;
+};
+
+const moduleRepositories: ModuleRepository[] = listDirs("modules").flatMap(
+    (module) =>
+        fs
+            .readdirSync(path.join(SRC, "modules", module))
+            .filter((file) => file.endsWith(".repository.ts"))
+            .map((file) => {
+                const entity = kebabToCamel(file.replace(".repository.ts", ""));
+
+                return {
+                    module,
+                    entity,
+                    pascal: entity.replace(/^./, (char) => char.toUpperCase()),
+                };
+            })
+);
+
 describe("Rule 0: modules and repositories are wired by the generators", () => {
     describe.each(listDirs("modules"))("module %s", (name) => {
         const camel = kebabToCamel(name);
@@ -74,25 +96,17 @@ describe("Rule 0: modules and repositories are wired by the generators", () => {
             expect(cradle).toMatch(cradleEntry(`${camel}Service`));
             expect(cradle).toMatch(cradleEntry(`${camel}Handler`));
         });
-
-        it("has a validation folder in src/lib/validation", () => {
-            expect(fs.existsSync(path.join(SRC, "lib/validation", name))).toBe(
-                true
-            );
-        });
     });
 
-    describe.each(listDirs("database/repositories"))(
-        "repository %s",
-        (name) => {
-            const camel = kebabToCamel(name);
-
+    describe.each(moduleRepositories)(
+        "repository $entity in module $module",
+        ({ entity }) => {
             it("is registered in Cradle", () => {
-                expect(cradle).toMatch(cradleEntry(`${camel}Repository`));
+                expect(cradle).toMatch(cradleEntry(`${entity}Repository`));
             });
 
             it("has a RESPONSE_MESSAGES group", () => {
-                expect(RESPONSE_MESSAGES).toHaveProperty(camel);
+                expect(RESPONSE_MESSAGES).toHaveProperty(entity);
             });
         }
     );
@@ -316,7 +330,7 @@ const valueNames = [
 ].map(([, name]) => name!);
 
 const LOADED_BY_AWILIX =
-    /^(modules\/.+\.(service|handler)|database\/repositories\/.+\.repository|lib\/.+\.service)\.ts$/;
+    /^(modules\/.+\.(service|handler|repository)|lib\/.+\.service)\.ts$/;
 
 describe("Rule 1: Cradle matches what the container registers", () => {
     const registered = new Set([
@@ -390,6 +404,8 @@ describe("Rule 0: every module has the files the generator creates", () => {
             `${name}.route.ts`,
             `${name}.handler.ts`,
             `${name}.service.ts`,
+            `${name}.schema.ts`,
+            "public.ts",
             "README.md",
         ])("has %s", (file) => {
             expect(fs.existsSync(path.join(SRC, "modules", name, file))).toBe(
@@ -398,29 +414,12 @@ describe("Rule 0: every module has the files the generator creates", () => {
         });
     });
 
-    describe.each(listDirs("database/repositories"))(
-        "repository %s",
-        (name) => {
-            it.each([`${name}.repository.ts`, `${name}.type.ts`])(
-                "has %s",
-                (file) => {
-                    expect(
-                        fs.existsSync(
-                            path.join(SRC, "database/repositories", name, file)
-                        )
-                    ).toBe(true);
-                }
+    it.each(moduleRepositories)(
+        "$module.type.ts declares the $pascal domain model of $entity.repository.ts",
+        ({ module, pascal }) => {
+            expect(readSource(`modules/${module}/${module}.type.ts`)).toMatch(
+                new RegExp(`^(export )?type ${pascal} = \\{`, "m")
             );
-
-            it("declares its domain model in the type file", () => {
-                const pascal = kebabToCamel(name).replace(/^./, (char) =>
-                    char.toUpperCase()
-                );
-
-                expect(
-                    readSource(`database/repositories/${name}/${name}.type.ts`)
-                ).toMatch(new RegExp(`^(export )?type ${pascal} = \\{`, "m"));
-            });
         }
     );
 });

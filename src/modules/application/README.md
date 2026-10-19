@@ -63,12 +63,8 @@ The module has no repository: the health check does not touch the database.
 | `application.handler.ts`   | `ApplicationHandler` type, request/response handling |
 | `application.service.ts`   | `ApplicationService` type, business logic            |
 | `application.constant.ts`  | `HEALTH_CHECK_RESPONSE` payload value                |
-
-### Related Files
-
-| Path                                                   | Purpose                |
-|--------------------------------------------------------|------------------------|
-| `src/lib/validation/application/application.schema.ts` | Zod validation schemas |
+| `application.schema.ts`    | Zod validation schemas                               |
+| `public.ts`                | Public API for other modules (empty)                 |
 
 ---
 
@@ -84,7 +80,7 @@ curl http://localhost:3000/api/ping
 
 ## Validation Schemas
 
-Defined in `src/lib/validation/application/application.schema.ts`:
+Defined in `application.schema.ts`:
 
 ```typescript
 import { z } from "zod";

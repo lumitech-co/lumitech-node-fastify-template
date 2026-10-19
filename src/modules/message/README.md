@@ -243,7 +243,10 @@ a write request fails right away with `500` instead of hanging until Redis is ba
 | `message.handler.ts`    | `MessageHandler` type, request/response handling   |
 | `message.service.ts`    | `MessageService` type, DB writes and reads         |
 | `message.constant.ts`   | Cache/rate-limit constants                         |
-| `message.type.ts`       | Service payload types                              |
+| `message.type.ts`       | Domain model and service/repository payload types  |
+| `message.repository.ts` | `MessageRepository` — domain methods, Prisma inside |
+| `message.schema.ts`     | Zod validation & job-data schemas                  |
+| `public.ts`             | Public API for other modules (`MessageService`)    |
 | `mq/message.service.ts` | `MessageJobService` — enqueue + job dispatch       |
 | `mq/message.constant.ts`| Queue name, job names, default job options         |
 | `mq/message.type.ts`    | Job-data, job-result and enqueue payload types     |
@@ -255,8 +258,6 @@ a write request fails right away with `500` instead of hanging until Redis is ba
 
 | Path                                           | Purpose                          |
 |------------------------------------------------|----------------------------------|
-| `src/lib/validation/message/message.schema.ts` | Zod validation & job-data schemas |
-| `src/database/repositories/message/`           | Data access layer                |
 | `src/plugins/mq/message/message.queue.ts`     | Thin `fp` wrapper registering `configureMessageQueue` |
 | `src/plugins/mq/message/message.worker.ts`    | Thin `fp` wrapper registering `configureMessageWorker` |
 | `src/plugins/bullmq.ts`                        | ioredis connections for BullMQ: blocking (workers) and fail-fast (producers) |
@@ -273,7 +274,7 @@ From `RESPONSE_MESSAGES.message` in `src/lib/messages/messages.constant.ts`:
 ## Repository Methods
 
 `MessageRepository` exposes domain methods only; inputs and outputs are the types in
-`src/database/repositories/message/message.type.ts`:
+`message.type.ts`:
 
 | Method                                         | Description                                                                 |
 |------------------------------------------------|-----------------------------------------------------------------------------|

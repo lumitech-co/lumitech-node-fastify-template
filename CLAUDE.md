@@ -12,8 +12,8 @@ Consult those on demand; do not duplicate their content here.
 
 ```bash
 # Scaffolding (never create these files by hand — see Rule 0)
-npm run generate:module <moduleName>       # new module
-npm run generate:repository <entityName>   # new repository
+npm run generate:module <moduleName>                               # new module
+npm run generate:repository <entityName> [--module <moduleName>]   # new repository in a module
 
 # Migrations (never hand-write SQL — see Rule 9)
 npm run prisma:migrate:create              # create SQL migration (review before applying)
@@ -33,14 +33,17 @@ Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs`
 `scripts/eslint-rules/`), Rule 0, Rule 8a, BullMQ plugin wiring, Prisma schema conventions, env
 schema sync and unused `RESPONSE_MESSAGES` by `test/unit/architecture/`, Rule 9 by
 `npm run check:migrations`, `npm run check:drift` and squawk (`.squawk.toml`) on new migrations in
-CI, dead files/exports/dependencies by `npm run knip`. Every `arch/*` rule has a
+CI, dead files/exports/dependencies by `npm run knip`. Claude Code hooks (`.claude/settings.json`)
+refuse a hand-made module, repository or migration and lint every file Claude edits. Every `arch/*` rule has a
 firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
 When one fails, fix the code — never disable the check.
 
 ### 0. Modules and repositories are created only by the generators
-Never create `src/modules/<name>/**` or `src/database/repositories/<name>/**` by hand — the
-generators also wire `src/types/di-container.type.ts`, `src/lib/validation/<name>/` and
-`RESPONSE_MESSAGES`, and hand-written files silently skip that wiring. Run the generator
+Never create a module (`src/modules/<name>/`) or a repository (`src/modules/<name>/<entity>.repository.ts`)
+by hand — the generators also wire `src/types/di-container.type.ts`, the module's schema,
+`public.ts`, domain type and `RESPONSE_MESSAGES`, and hand-written files silently skip that
+wiring. A repository belongs to a module: `generate:repository <entity> --module <name>`
+(the module defaults to the entity). Run the generator
 first, then edit the files it produced. If the generator cannot produce what the task needs,
 stop and ask — fixing the generator is a valid answer; bypassing it is not.
 
@@ -51,18 +54,24 @@ manual `new`/import-and-call of another layer, no singletons outside the contain
 registrars (`create<Name>Routes`) are **not** container entries — `index.ts` resolves the
 handler from the container and passes it to the registrar.
 
+A module talks to another module only through that module's **public API**,
+`src/modules/<name>/public.ts`: it re-exports (`export type { … } from`) the types other
+modules may use, and other modules import only from it, only with `import type`; the
+implementation still arrives through the container (`arch/layer-direction`,
+`arch/public-api`).
+
 ### 2. Database access only through repositories
-- All Prisma calls and all SQL (`$queryRaw` / `$executeRaw`) live **only** in
-  `src/database/repositories/**`. Services, handlers, routes, plugins and utils never touch
+- All Prisma calls and all SQL (`$queryRaw` / `$executeRaw`) live **only** in a module's
+  `*.repository.ts`. Services, handlers, routes, plugins and utils never touch
   `prisma.*` directly.
 - `src/plugins/prisma.ts` is the exception for lifecycle only (`new PrismaClient()`,
   `$connect`, `$disconnect`, decorate Fastify). No other plugin may query the database.
 - **The only business-logic exception:** transactions. A service may inject `prisma` solely
   to open `prisma.$transaction(...)` and pass the transaction client down to repository
   methods. Queries inside the transaction still go through repositories.
-- **Repositories speak the domain, not Prisma.** Method inputs and outputs are our own types
-  in `<name>.type.ts`; `Prisma.*` types, selects and where clauses never leave the factory
-  body, and a module imports from `@/database/**` only with `import type`
+- **Repositories speak the domain, not Prisma.** Method inputs and outputs are the module's
+  domain types in `<name>.type.ts`, shared with its service — no duplicate models; `Prisma.*` types, selects and where clauses never leave the factory
+  body, and the rest of the module imports a repository only with `import type`
   (`arch/domain-repository-types`, `arch/domain-repository-imports`). The one Prisma type a
   method may take is `Prisma.TransactionClient`, for the transaction exception above. A small
   duplication between the domain type and the Prisma model is deliberate.
@@ -95,9 +104,9 @@ and route registrars `(fastify, handler)`.
   imported type — it moves to `<name>.type.ts` and the service/handler imports it from
   there. Everything else the module needs goes to `<name>.type.ts`.
 - Repository types → the `<Name>Repository` type stays in the same file as its factory;
-  every other type the repository needs (method inputs, result shapes) goes to
-  `src/database/repositories/<name>/<name>.type.ts` and its helpers to
-  `<name>.util.ts` in the same folder. These are domain models, never Prisma types (Rule 2).
+  every other type it needs (domain model, method inputs, result shapes) goes to the module's
+  `<name>.type.ts`. These are domain models, never Prisma types (Rule 2). Its Prisma-specific
+  helpers stay private in the repository file as `function name() {}` declarations.
 - Lib types → `src/lib/<name>/<name>.type.ts`; global constants → `src/lib/constants/`;
   global types → `src/types/`.
 
@@ -140,7 +149,8 @@ module imports `bullmq` except with `import type`.
 
 ### 7. Validation only via Zod
 All application data — body, params, query, headers, external API responses — is validated
-with Zod schemas in `src/lib/validation/<module>/<module>.schema.ts`. No manual
+with Zod schemas in the module's `src/modules/<name>/<name>.schema.ts` (lib code keeps its
+schemas in `src/lib/validation/<lib>/<lib>.schema.ts`). No manual
 `if (!x) throw`, no ad-hoc casts as a substitute for validation. Types are derived with
 `z.infer`, never hand-written in parallel. This includes the contents of a Prisma `Json`
 column (see Rule 8).
@@ -156,7 +166,7 @@ field with only one is incomplete:
 - **a) Type it** with `prisma-json-types-generator` (`/// [TypeName]` + a type in the
   `PrismaJson` namespace in `src/types/prisma-json.d.ts`), then `npm run prisma:generate`.
   Casting `Prisma.JsonValue` to a type inside a service/handler/repository is forbidden.
-- **b) Validate it** with a Zod schema in `src/lib/validation/<module>/<module>.schema.ts`,
+- **b) Validate it** with a Zod schema in the module's `<name>.schema.ts`,
   used in the route schema and mirrored in the response schema when returned.
 
 Keep the Zod schema and the `PrismaJson` type in sync. Never write a `Json` value that has
@@ -210,4 +220,4 @@ a custom index); if a generated migration would be destructive, stop and ask.
   walkthroughs) belongs in the module `README.md` or `ARCHITECTURE.md`
   (`arch/max-comment-lines` warns).
 - **No barrel files** — import directly from the source file (a module's `index.ts` is a
-  Fastify plugin entry point, not a barrel).
+  Fastify plugin entry point, not a barrel). The one exception is a module's `public.ts` (Rule 1).

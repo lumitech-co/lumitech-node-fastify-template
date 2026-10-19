@@ -2,16 +2,17 @@ import fs from "fs";
 import path from "path";
 
 export const generateSchema = (nameKebab) => {
-    const schemaPath = path.join(
+    const schemaFilePath = path.join(
         process.cwd(),
-        "src/lib/validation",
-        nameKebab
+        "src/modules",
+        nameKebab,
+        `${nameKebab}.schema.ts`
     );
 
-    fs.mkdirSync(schemaPath, { recursive: true });
-    console.log(`📁 Created schema folder: ${schemaPath}`);
+    fs.writeFileSync(
+        schemaFilePath,
+        `// Zod schemas for the ${nameKebab} module\n`
+    );
 
-    const schemaFilePath = path.join(schemaPath, `${nameKebab}.schema.ts`);
-    fs.writeFileSync(schemaFilePath, `// Schema for ${nameKebab}\n`);
-    console.log("✅ Schema created successfully!");
+    console.log(`📄 Created file: ${schemaFilePath}`);
 };

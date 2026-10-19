@@ -1,8 +1,10 @@
 name: Lint & Build
 
 on:
+    # Every pull request, whatever branch it targets, plus the merged result on main.
     pull_request:
-        branches: ["main"]
+    push:
+        branches: [main]
 
 jobs:
     build:
@@ -44,11 +46,13 @@ jobs:
                   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
             - name: Check migrations (CLAUDE.md Rule 9)
+              if: github.event_name == 'pull_request'
               run: npm run check:migrations
               env:
                   MIGRATIONS_BASE_REF: origin/${{ github.base_ref }}
 
             - name: Lint new migrations for locking and data loss
+              if: github.event_name == 'pull_request'
               run: |
                   git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'src/database/prisma/migrations/*/migration.sql' \
                       | xargs --no-run-if-empty npm run lint:migrations --

@@ -1,6 +1,9 @@
 export const templates = {
     type: (nameKebab) => `// Types for the ${nameKebab} module\n`,
 
+    public: (nameKebab) =>
+        `// Public API: the only file other modules may import from this module.\n// Re-export types with \`export type { … } from "./${nameKebab}.<kind>.js"\`.\n`,
+
     readme: (namePascal, nameKebab) =>
         `
 # ${namePascal} Module

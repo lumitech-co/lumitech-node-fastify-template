@@ -1,6 +1,6 @@
-import { toMetaInput } from "./message.util.js";
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type {
@@ -104,3 +104,9 @@ export const createMessageRepository = (
 });
 
 addDIResolverName(createMessageRepository, "messageRepository");
+
+function toMetaInput(
+    meta: MessageWrite["meta"]
+): PrismaJson.MessageMeta | typeof Prisma.DbNull | undefined {
+    return meta === null ? Prisma.DbNull : meta;
+}

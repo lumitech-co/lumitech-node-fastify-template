@@ -13,7 +13,7 @@ import {
     fetchMessagesQuerySchema,
     enqueueMessageResponseSchema,
     fetchMessagesResponseSchema,
-} from "@/lib/validation/message/message.schema.js";
+} from "./message.schema.js";
 
 const MESSAGE_TAG = "message";
 

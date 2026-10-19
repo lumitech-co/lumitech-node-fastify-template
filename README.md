@@ -189,9 +189,10 @@ fastify.post(
 ```
 
 ### ⚙️ Repository Generation
-`npm run generate:repository <entityName>` scaffolds a repository for a Prisma model:
-`<name>.type.ts` with the domain type (`id`, `createdAt`, `updatedAt` — extend it with the
-model's fields) and `<name>.repository.ts` with `findByIdOrFail`. Repositories expose domain
+`npm run generate:repository <entityName> [--module <moduleName>]` scaffolds a repository for
+a Prisma model inside a module (the module defaults to the entity name and must exist): it
+adds the domain type (`id`, `createdAt`, `updatedAt` — extend it with the model's fields) to
+the module's `<module>.type.ts` and creates `<entity>.repository.ts` with `findByIdOrFail`. Repositories expose domain
 methods only: a service never passes Prisma arguments or receives Prisma types.
 
 ```typescript

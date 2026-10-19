@@ -18,7 +18,7 @@ Routes → Handlers → Services → Repositories → Database
 - **Routes** — endpoint paths + Zod schemas + Swagger docs.
 - **Handlers** — thin request/response layer; delegate to services.
 - **Services** — business logic; coordinate repositories and libs.
-- **Repositories** — the only place Prisma/SQL runs.
+- **Repositories** — the only place Prisma/SQL runs; they live in their module and share its domain types.
 
 ## Module Structure
 Each module in `src/modules/<name>/`:
@@ -27,7 +27,10 @@ Each module in `src/modules/<name>/`:
 ├── <name>.route.ts      # Tag, route-path enum and route definitions with Zod schemas
 ├── <name>.handler.ts    # <Name>Handler type + request handlers (thin layer)
 ├── <name>.service.ts    # <Name>Service type + business logic
-├── <name>.type.ts       # Module types other than the service/handler types (optional)
+├── <entity>.repository.ts # <Entity>Repository: domain methods, Prisma inside (one per model)
+├── <name>.schema.ts     # Zod schemas for the module's routes, jobs and Json columns
+├── <name>.type.ts       # Domain models and module types other than the service/handler types
+├── public.ts            # Public API: `export type { … } from` what other modules may use
 ├── <name>.constant.ts   # Non-routing, non-message constants only (optional)
 ├── <name>.util.ts       # Module utilities (optional)
 └── README.md            # What the module does and its endpoints (optional)
@@ -84,7 +87,7 @@ export type Cradle = {
 ## Key Patterns
 
 ### Validation Schemas
-`src/lib/validation/<module>/<module>.schema.ts`:
+`src/modules/<name>/<name>.schema.ts`:
 ```typescript
 const createMessageBodySchema = z.object({
     text: z.string(),
@@ -103,12 +106,12 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Repository Pattern
-A repository speaks the domain, not Prisma: its methods take and return our own types from
-`<name>.type.ts`, so a service never sees a Prisma type, select or where clause — Prisma stays
-inside the factory body. The repository type and its factory live in `<name>.repository.ts`;
-other types go to `<name>.type.ts`, helpers to `<name>.util.ts`.
+A repository lives in its module and speaks the domain, not Prisma: its methods take and
+return the module's own types from `<name>.type.ts` — the same types the service uses — so a
+service never sees a Prisma type, select or where clause. The repository type, its factory
+and private Prisma helpers live in `<entity>.repository.ts`.
 ```typescript
-// src/database/repositories/message/message.type.ts
+// src/modules/message/message.type.ts
 export type Message = {
     id: string;
     text: string;
@@ -119,7 +122,7 @@ export type Message = {
 export type MessageId = Pick<Message, "id">;
 ```
 ```typescript
-// src/database/repositories/message/message.repository.ts
+// src/modules/message/message.repository.ts
 const messageIdSelect = {
     id: true,
 } satisfies Prisma.MessageSelect;
@@ -343,7 +346,7 @@ field then comes back as `PrismaJson.MessageMeta | null`, not `Prisma.JsonValue`
 
 Then validate it with Zod and keep the two in sync:
 ```typescript
-// src/lib/validation/message/message.schema.ts
+// src/modules/message/message.schema.ts
 const messageMetaSchema = z.object({
     source: z.enum(["web", "mobile", "api"]),
     tags: z.array(z.string()).optional(),
@@ -360,16 +363,15 @@ const createMessageBodySchema = z.object({
 src/
 ├── database/
 │   ├── dbml/            # Generated ER diagram (npm run prisma:diagram) - never edit by hand
-│   ├── prisma/          # Schema and migrations
-│   └── repositories/    # Data access layer: domain types in and out, all Prisma calls inside
+│   └── prisma/          # Schema and migrations
 ├── lib/
 │   ├── awilix/          # DI helpers
 │   ├── constants/       # Global constants
 │   ├── errors/          # Error classes
 │   ├── hashing/         # Password hashing
 │   ├── messages/        # RESPONSE_MESSAGES - all client-facing messages
-│   └── validation/      # Zod schemas by module
-├── modules/             # Feature modules
+│   └── validation/      # Zod schemas of lib code (module schemas live in the module)
+├── modules/             # Feature modules: routes, handlers, services, repositories, schemas
 ├── plugins/             # Fastify plugins
 └── types/               # Global TypeScript definitions
 ```
@@ -380,7 +382,7 @@ src/
 1. Run `npm run generate:module featureName`
 2. Define Prisma model in `src/database/prisma/schema.prisma`
 3. Run `npm run generate:repository featureName`, then add the model's fields to the domain
-   type in `<name>.type.ts` and the repository methods the service needs
+   type in the module's `<name>.type.ts` and the repository methods the service needs
 4. Implement service logic against those repository methods
 5. Define routes with Zod schemas
 
@@ -388,8 +390,8 @@ src/
 1. Edit `src/database/prisma/schema.prisma`
 2. Run `npm run prisma:migrate:create`
 3. Run `npm run prisma:migrate:apply`
-4. Run `npm run generate:repository modelName` and describe the model's fields in its
-   domain type (`<name>.type.ts`)
+4. Run `npm run generate:repository modelName --module owningModule` and describe the model's
+   fields in its domain type in that module's `<name>.type.ts`
 
 ### Run tests
 - Unit: `npm run test:unit`

@@ -5,7 +5,7 @@
  */
 import type { z } from "zod";
 import { describe, expectTypeOf, it } from "vitest";
-import type { messageMetaSchema } from "@/lib/validation/message/message.schema.js";
+import type { messageMetaSchema } from "@/modules/message/message.schema.js";
 
 describe("Rule 8: PrismaJson types match their Zod schemas", () => {
     it("PrismaJson.MessageMeta equals z.infer<typeof messageMetaSchema>", () => {

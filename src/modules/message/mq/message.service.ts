@@ -4,13 +4,13 @@ import { BadRequestError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type { MessageService } from "@/modules/message/message.service.js";
-import type { EnqueueMessageResponse } from "@/lib/validation/message/message.schema.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/modules/message/message.repository.js";
+import type { EnqueueMessageResponse } from "@/modules/message/message.schema.js";
 import {
     createMessageJobSchema,
     updateMessageJobSchema,
     deleteMessageJobSchema,
-} from "@/lib/validation/message/message.schema.js";
+} from "@/modules/message/message.schema.js";
 import type {
     ProcessMessageJobPayload,
     MessageJobResult,
