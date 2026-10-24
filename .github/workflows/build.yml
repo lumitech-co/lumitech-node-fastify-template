@@ -57,5 +57,8 @@ jobs:
                   git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'src/database/prisma/migrations/*/migration.sql' \
                       | xargs --no-run-if-empty npm run lint:migrations --
 
+            - name: Check generated code against the rules (CLAUDE.md Rule 0)
+              run: npm run check:generators
+
             - name: Build application
               run: npm run build

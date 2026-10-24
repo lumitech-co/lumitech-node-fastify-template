@@ -36,8 +36,9 @@ matching their routes by `test/unit/architecture/`, Rule 9 by
 `npm run check:migrations`, `npm run check:drift` and squawk (`.squawk.toml`) on new migrations in
 CI, dead files/exports/dependencies by `npm run knip`. Claude Code hooks (`.claude/settings.json`)
 refuse a hand-made module, repository or migration and lint every file Claude edits. CI also
-checks formatting of code and docs (`npm run format:check`) and lints the workflows (actionlint)
-and the `Dockerfile` (hadolint). Every `arch/*` rule has a
+checks formatting of code and docs (`npm run format:check`), runs the generators against all of the above
+(`npm run check:generators`) and enforces unit-test coverage of services and utils
+(`npm run test:unit:coverage`); every commit is type-checked (`npm run tsc-check` in the pre-commit hook). Every `arch/*` rule has a
 firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
 When one fails, fix the code — never disable the check.
 

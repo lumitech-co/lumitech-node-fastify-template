@@ -1,4 +1,5 @@
 import { extendCradle } from "./extend-cradle.js";
+import { lintGenerated } from "../lint-generated.js";
 import { extendMessages } from "./extend-messages.js";
 import { generateRepository } from "./generate-repository.js";
 
@@ -24,3 +25,9 @@ const module = toNames(moduleFlagValue ?? entityName);
 generateRepository({ entity, module });
 extendMessages(entity.pascal, entity.camel);
 extendCradle({ entity, module });
+
+lintGenerated([
+    `src/modules/${module.kebab}`,
+    "src/types/di-container.type.ts",
+    "src/lib/messages/messages.constant.ts",
+]);

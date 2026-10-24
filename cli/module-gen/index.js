@@ -1,4 +1,5 @@
 import { extendCradle } from "./extend-cradle.js";
+import { lintGenerated } from "../lint-generated.js";
 import { generateSchema } from "./shema-generator.js";
 import { generateModule } from "./module-generator.js";
 
@@ -27,3 +28,5 @@ generateSchema(nameKebab);
 
 // EXTEND Cradle TYPE
 extendCradle(namePascal, nameCamel, nameKebab);
+
+lintGenerated([`src/modules/${nameKebab}`, "src/types/di-container.type.ts"]);
