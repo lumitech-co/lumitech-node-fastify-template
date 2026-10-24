@@ -26,6 +26,8 @@ const SCHEMA = "src/modules/demo/demo.schema.ts";
 const LIB_UTIL = "src/lib/demo/demo.util.ts";
 const REPOSITORY = "src/modules/demo/demo.repository.ts";
 const PLUGIN = "src/plugins/demo.ts";
+const UNIT_TEST = "test/unit/demo.test.ts";
+const INT_TEST = "test/int/demo.test.ts";
 
 const ROUTE_OPTIONS =
     '{ schema: { tags: [DEMO_TAG], summary: "s", response: {} } }';
@@ -883,6 +885,112 @@ const CASES: Case[] = [
         {
             file: PLUGIN,
             code: "export default fp(configure, { name: FastifyPlugin.Demo });",
+        }
+    ),
+    ...pair(
+        "no-raw-fetch",
+        { file: LIB_UTIL, code: "const response = fetch(url);" },
+        { file: LIB_UTIL, code: "const response = fetchWithRetry(url);" }
+    ),
+    {
+        rule: "no-raw-fetch",
+        file: LIB_UTIL,
+        code: 'import axios from "axios";',
+        reports: true,
+    },
+    {
+        rule: "no-raw-fetch",
+        file: "src/lib/http/fetchWithRetry.ts",
+        code: "const response = globalThis.fetch(url);",
+        reports: false,
+    },
+    ...pair(
+        "constant-time-secret-compare",
+        { file: LIB_UTIL, code: "const valid = password === docsPassword;" },
+        {
+            file: LIB_UTIL,
+            code: "const valid = hashing.compareSecret({ secret: password, expected: docsPassword });",
+        }
+    ),
+    {
+        rule: "constant-time-secret-compare",
+        file: LIB_UTIL,
+        code: 'const unset = config.CRON_SECRET === undefined || typeof token !== "string";',
+        reports: false,
+    },
+    ...pair(
+        "no-sensitive-log-fields",
+        {
+            file: LIB_UTIL,
+            code: 'log.error({ err: error, data: job.data }, "Job failed");',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'log.error({ err: error, data: summarizeJobData(job.data) }, "Job failed");',
+        }
+    ),
+    {
+        rule: "no-sensitive-log-fields",
+        file: LIB_UTIL,
+        code: 'request.log.info({ token }, "Signed in");',
+        reports: true,
+    },
+    ...pair(
+        "worker-stall-defaults",
+        {
+            file: WORKER,
+            code: "const worker = new Worker(DEMO_QUEUE_NAME, run, { connection });",
+        },
+        {
+            file: WORKER,
+            code: "const worker = new Worker(DEMO_QUEUE_NAME, run, { connection, ...WORKER_STALL_DEFAULTS });",
+        }
+    ),
+    ...pair(
+        "seed-via-factories",
+        {
+            file: INT_TEST,
+            code: 'const seeded = server.prisma.message.create({ data: { text: "a" } });',
+        },
+        {
+            file: INT_TEST,
+            code: "const seeded = createMessage({ prisma: server.prisma });",
+        }
+    ),
+    ...pair(
+        "no-cross-test-state",
+        {
+            file: INT_TEST,
+            code: [
+                'let id = "";',
+                'it("creates", () => { id = "a"; });',
+                'it("reads", () => { expect(id).toBe("a"); });',
+            ].join("\n"),
+        },
+        {
+            file: INT_TEST,
+            code: [
+                'let id = "";',
+                'beforeEach(() => { id = "a"; });',
+                'it("reads", () => { expect(id).toBe("a"); });',
+            ].join("\n"),
+        }
+    ),
+    {
+        rule: "no-cross-test-state",
+        file: INT_TEST,
+        code: 'it.each([1])("keeps %s local", () => { let id = ""; id = "a"; expect(id).toBe("a"); });',
+        reports: false,
+    },
+    ...pair(
+        "unit-no-io",
+        {
+            file: UNIT_TEST,
+            code: 'import { configureServer } from "@/server.js";',
+        },
+        {
+            file: UNIT_TEST,
+            code: 'import type { PrismaClient } from "@prisma/client";',
         }
     ),
 ];

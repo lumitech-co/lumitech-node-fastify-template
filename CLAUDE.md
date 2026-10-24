@@ -31,8 +31,8 @@ instead of working around it. Code examples for each live in
 
 Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs` (custom ones in
 `scripts/eslint-rules/`), Rule 0, Rule 8a, BullMQ plugin wiring, Prisma schema conventions, env
-schema sync, unused `RESPONSE_MESSAGES`, factory parameters matching `Cradle` and module READMEs
-matching their routes by `test/unit/architecture/`, Rule 9 by
+schema sync, unused `RESPONSE_MESSAGES`, factory parameters matching `Cradle`, plugin `dependencies` matching the decorators they read
+and module READMEs matching their routes by `test/unit/architecture/`, Rule 9 by
 `npm run check:migrations`, `npm run check:drift` and squawk (`.squawk.toml`) on new migrations in
 CI, dead files/exports/dependencies by `npm run knip`. Claude Code hooks (`.claude/settings.json`)
 refuse a hand-made module, repository or migration and lint every file Claude edits. CI also
@@ -235,7 +235,14 @@ a custom index); if a generated migration would be destructive, stop and ask.
   (`arch/prefer-dayjs`); branching on a value uses `match()` from `ts-pattern`, never `switch`
   or an `if/else-if` chain over literals (`arch/prefer-ts-pattern`).
 - Outbound HTTP to a user-supplied URL goes through `safeFetchJson` (SSRF guard); other
-  outbound calls use `fetchWithRetry`. See ARCHITECTURE.md, Security Defaults.
+  outbound calls use `fetchWithRetry` (`arch/no-raw-fetch`). Secrets are compared with
+  `hashing.compareSecret`, never `===` (`arch/constant-time-secret-compare`). Logs never carry a
+  credential, `request.body`, `request.headers` or `job.data` (`arch/no-sensitive-log-fields`);
+  every BullMQ `Worker` spreads `WORKER_STALL_DEFAULTS` (`arch/worker-stall-defaults`). See
+  ARCHITECTURE.md, Security Defaults.
+- Tests: integration tests seed with `test/int/factories/` (`arch/seed-via-factories`), no
+  `let` is assigned in one `it` and used in another (`arch/no-cross-test-state`), and unit
+  tests touch no database, Redis or booted app (`arch/unit-no-io`).
 - Repositories take and return domain types (Rule 2). Every Prisma call that returns rows
   passes a `select` matching the domain type (`arch/repository-select`), and a not-found check
   lives in a `…OrFail` repository method, not in the service (`arch/prefer-repository-or-fail`).

@@ -398,6 +398,86 @@ describe("Rule 6: plugin names are declared only when needed", () => {
     );
 });
 
+describe("Rule 6: a plugin depends on the plugins whose decorators it reads", () => {
+    const LIBRARY_DECORATORS = new Map([
+        ["config", "Env"],
+        ["jwt", "Jwt"],
+    ]);
+
+    const plugins = srcFiles
+        .filter((file) => file.startsWith("plugins/"))
+        .map((file) => {
+            const wrapper = readSource(file);
+
+            const body = wrapper.match(
+                /from "@\/modules\/(.+\/mq\/[^"]+)\.js"/
+            )?.[1];
+
+            const source = body
+                ? `${wrapper}\n${readSource(`modules/${body}.ts`)}`
+                : wrapper;
+
+            const options =
+                wrapper.match(/export default fp\([\s\S]*$/)?.[0] ?? "";
+
+            return {
+                file,
+                source,
+                name: options.match(/name:\s*FastifyPlugin\.(\w+)/)?.[1],
+                dependencies: new Set(
+                    [
+                        ...(
+                            options.match(
+                                /dependencies:\s*\[([^\]]*)\]/
+                            )?.[1] ?? ""
+                        ).matchAll(/FastifyPlugin\.(\w+)/g),
+                    ].map(([, name]) => name!)
+                ),
+            };
+        });
+
+    const owners = new Map<string, { file: string; name: string | undefined }>([
+        ...[...LIBRARY_DECORATORS].map(
+            ([decorator, name]) => [decorator, { file: "", name }] as const
+        ),
+        ...plugins.flatMap(({ file, source, name }) =>
+            [...source.matchAll(/\.decorate\(\s*"(\w+)"/g)].map(
+                ([, decorator]) => [decorator!, { file, name }] as const
+            )
+        ),
+    ]);
+
+    const reads = plugins.flatMap(({ file, source, name, dependencies }) =>
+        [
+            ...new Set(
+                [...source.matchAll(/\bfastify\.(\w+)/g)].map(([, key]) => key!)
+            ),
+        ]
+            .map((decorator) => ({ decorator, owner: owners.get(decorator) }))
+            .filter(
+                ({ owner }) =>
+                    owner && owner.file !== file && owner.name !== name
+            )
+            .map(({ decorator, owner }) => ({
+                file,
+                decorator,
+                owner: owner!.name ?? `(unnamed plugin in ${owner!.file})`,
+                dependencies,
+            }))
+    );
+
+    it("finds plugins reading another plugin's decorator, so an empty scan cannot pass", () => {
+        expect(reads.length).toBeGreaterThan(0);
+    });
+
+    it.each(reads)(
+        "$file lists $owner in dependencies for fastify.$decorator",
+        ({ owner, dependencies }) => {
+            expect([...dependencies]).toContain(owner);
+        }
+    );
+});
+
 describe("Rule 0: every module has the files the generator creates", () => {
     describe.each(listDirs("modules"))("module %s", (name) => {
         it.each([

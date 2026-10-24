@@ -12,6 +12,7 @@ import importX, { createNodeResolver } from "eslint-plugin-import-x";
 import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
 import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
 import preferTsPattern from "./scripts/eslint-rules/prefer-ts-pattern.mjs";
+import noCrossTestState from "./scripts/eslint-rules/no-cross-test-state.mjs";
 import routeParamsSchema from "./scripts/eslint-rules/route-params-schema.mjs";
 import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
 import handlerTypedResponse from "./scripts/eslint-rules/handler-typed-response.mjs";
@@ -124,6 +125,13 @@ const architecture = {
         "no-prisma-in-modules": restrictedSyntax,
         "public-api": restrictedSyntax,
         "plugin-imports": typescriptEslint.rules["no-restricted-imports"],
+        "no-raw-fetch": restrictedSyntax,
+        "constant-time-secret-compare": restrictedSyntax,
+        "no-sensitive-log-fields": restrictedSyntax,
+        "worker-stall-defaults": restrictedSyntax,
+        "seed-via-factories": restrictedSyntax,
+        "no-cross-test-state": noCrossTestState,
+        "unit-no-io": typescriptEslint.rules["no-restricted-imports"],
     },
 };
 
@@ -1943,6 +1951,140 @@ export default [
 
         rules: {
             "arch/prefer-dayjs": "error",
+        },
+    },
+    {
+        // Outbound HTTP: safeFetchJson for a user-supplied URL, fetchWithRetry
+        // for the rest (ARCHITECTURE.md, Security Defaults).
+        files: ["src/**/*.ts"],
+        ignores: ["src/lib/http/**", "src/lib/safeFetch/**"],
+
+        rules: {
+            "arch/no-raw-fetch": [
+                "error",
+                {
+                    selector:
+                        "CallExpression:matches([callee.name='fetch'], [callee.object.name='globalThis'][callee.property.name='fetch'])",
+                    message:
+                        "Fetch a user-supplied URL with safeFetchJson (@/lib/safeFetch/safeFetch.js) and anything else with fetchWithRetry (@/lib/http/fetchWithRetry.js) — never the raw fetch.",
+                },
+                {
+                    selector:
+                        "ImportDeclaration[importKind!='type'][source.value=/^((node:)?(http|https|http2)|axios|got|undici|node-fetch|ky|superagent)$/]",
+                    message:
+                        "Outbound HTTP goes through safeFetchJson (user-supplied URL) or fetchWithRetry — not a raw HTTP client.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/constant-time-secret-compare": [
+                "error",
+                {
+                    selector: `BinaryExpression[operator=/^[!=]==?$/]:has(> :matches(Identifier[name=/([Pp]assword|[Ss]ecret|[Tt]oken|[Ss]ignature|[Aa]pi[Kk]ey)/], MemberExpression[property.name=/([Pp]assword|[Ss]ecret|[Tt]oken|[Ss]ignature|[Aa]pi[Kk]ey)/])):not(:has(> :matches(Literal, TemplateLiteral, UnaryExpression, Identifier[name='undefined'])))`,
+                    message:
+                        "Compare secrets with hashing.compareSecret (@/lib/hashing/hashing.js): === returns as soon as a character differs, which leaks the secret through timing.",
+                },
+            ],
+            "arch/no-sensitive-log-fields": [
+                "error",
+                {
+                    selector: `${LOG_CALL} ObjectExpression > Property[key.name=/^(password|secret|token|accessToken|refreshToken|apiKey|authorization|cookie|cookies)$/]`,
+                    message:
+                        "Never log a credential — log the id of what it belongs to.",
+                },
+                ...[
+                    `${LOG_CALL} > MemberExpression[object.name=/^(job|request|req)$/][property.name=/^(body|headers|data)$/]`,
+                    `${LOG_CALL} > ObjectExpression > :matches(Property, SpreadElement) > MemberExpression[object.name=/^(job|request|req)$/][property.name=/^(body|headers|data)$/]`,
+                    `${LOG_CALL} > ObjectExpression > Property > ChainExpression > MemberExpression[object.name=/^(job|request|req)$/][property.name=/^(body|headers|data)$/]`,
+                ].map((selector) => ({
+                    selector,
+                    message:
+                        "Never log request.body, request.headers or job.data: they carry user content and credentials. Log ids, or summarizeJobData(job.data) (@/lib/bullmq/bullmq.util.js).",
+                })),
+            ],
+            "arch/worker-stall-defaults": [
+                "error",
+                {
+                    selector:
+                        "NewExpression[callee.name='Worker']:not(:has(SpreadElement > Identifier[name='WORKER_STALL_DEFAULTS']))",
+                    message:
+                        "Spread WORKER_STALL_DEFAULTS (@/lib/constants/bullmq.constant.js) into the Worker options: with BullMQ's default a deploy that kills a running job fails it for good, skipping its attempts.",
+                },
+            ],
+        },
+    },
+    {
+        files: ["test/**/*.test.ts"],
+
+        rules: {
+            "arch/no-cross-test-state": "error",
+        },
+    },
+    {
+        files: ["test/int/**/*.test.ts"],
+
+        rules: {
+            "arch/seed-via-factories": [
+                "error",
+                {
+                    selector:
+                        "CallExpression[callee.property.name=/^(create|createMany|createManyAndReturn|upsert)$/]:matches([callee.object.object.name='prisma'], [callee.object.object.property.name='prisma'])",
+                    message:
+                        "Seed preconditions with a factory from test/int/factories/ (ARCHITECTURE.md, Arrange with factories, not with other tests).",
+                },
+            ],
+        },
+    },
+    {
+        files: ["test/unit/**/*.ts"],
+
+        rules: {
+            "arch/unit-no-io": [
+                "error",
+                {
+                    paths: [
+                        {
+                            name: "@/server.js",
+                            message:
+                                "Unit tests run without infrastructure — a database, Redis or the booted app belong in test/int/ (vitest-int.config.ts).",
+                        },
+                        {
+                            name: "testcontainers",
+                            message:
+                                "Unit tests run without infrastructure — a database, Redis or the booted app belong in test/int/ (vitest-int.config.ts).",
+                        },
+                        {
+                            name: "@testcontainers/postgresql",
+                            message:
+                                "Unit tests run without infrastructure — a database, Redis or the booted app belong in test/int/ (vitest-int.config.ts).",
+                        },
+                        {
+                            name: "ioredis",
+                            allowTypeImports: true,
+                            message:
+                                "Unit tests run without infrastructure — a database, Redis or the booted app belong in test/int/ (vitest-int.config.ts).",
+                        },
+                        {
+                            name: "@prisma/client",
+                            importNames: ["PrismaClient"],
+                            allowTypeImports: true,
+                            message:
+                                "Unit tests run without infrastructure — a database, Redis or the booted app belong in test/int/ (vitest-int.config.ts).",
+                        },
+                        {
+                            name: "bullmq",
+                            importNames: ["Queue", "Worker", "QueueEvents"],
+                            allowTypeImports: true,
+                            message:
+                                "Unit tests run without infrastructure — a database, Redis or the booted app belong in test/int/ (vitest-int.config.ts).",
+                        },
+                    ],
+                },
+            ],
         },
     },
     {
