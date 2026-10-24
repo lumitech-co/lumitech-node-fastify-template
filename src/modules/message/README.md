@@ -15,12 +15,12 @@ database write and invalidates the list cache. Reads (`GET`) stay synchronous.
 
 ## Endpoints
 
-| Method | Path                | Description                  | Auth |
-|--------|---------------------|------------------------------|------|
-| POST   | /api/messages/      | Enqueue message creation     | No   |
-| PUT    | /api/messages/:id   | Enqueue message update       | No   |
-| DELETE | /api/messages/:id   | Enqueue message deletion     | No   |
-| GET    | /api/messages/      | Fetch messages (paginated)   | No   |
+| Method | Path              | Description                | Auth |
+| ------ | ----------------- | -------------------------- | ---- |
+| POST   | /api/messages/    | Enqueue message creation   | No   |
+| PUT    | /api/messages/:id | Enqueue message update     | No   |
+| DELETE | /api/messages/:id | Enqueue message deletion   | No   |
+| GET    | /api/messages/    | Fetch messages (paginated) | No   |
 
 Every write returns the same envelope:
 
@@ -71,8 +71,9 @@ type CreateMessageInput = {
 ### Errors
 
 | Status | Error       | Description                     |
-|--------|-------------|---------------------------------|
+| ------ | ----------- | ------------------------------- |
 | 400    | Bad Request | Invalid or missing `text` field |
+
 ---
 
 ## PUT /api/messages/:id
@@ -140,9 +141,9 @@ millisecond have no defined order among themselves.
 
 **Query:**
 
-| Param  | Type   | Default | Description                        |
-|--------|--------|---------|------------------------------------|
-| limit  | number | 20      | Page size (max 100)                |
+| Param  | Type   | Default | Description                         |
+| ------ | ------ | ------- | ----------------------------------- |
+| limit  | number | 20      | Page size (max 100)                 |
 | cursor | uuid   | —       | Last seen id from the previous page |
 
 ### Response
@@ -178,11 +179,11 @@ type ErrorResponse = {
 };
 ```
 
-| Status | Error               | When                                       |
-|--------|---------------------|--------------------------------------------|
-| 400    | Bad Request         | Validation failed (missing/invalid fields) |
-| 404    | Not Found           | Message not found (assertExists)           |
-| 500    | Internal Server Error | Database or server errors                |
+| Status | Error                 | When                                       |
+| ------ | --------------------- | ------------------------------------------ |
+| 400    | Bad Request           | Validation failed (missing/invalid fields) |
+| 404    | Not Found             | Message not found (assertExists)           |
+| 500    | Internal Server Error | Database or server errors                  |
 
 ---
 
@@ -236,30 +237,31 @@ a write request fails right away with `500` instead of hanging until Redis is ba
 
 ### Files
 
-| File                    | Purpose                                            |
-|-------------------------|----------------------------------------------------|
-| `index.ts`              | Module entry, exports `autoPrefix`                 |
-| `message.route.ts`      | Tag, route enum and route definitions with Zod     |
-| `message.handler.ts`    | `MessageHandler` type, request/response handling   |
-| `message.service.ts`    | `MessageService` type, DB writes and reads         |
-| `message.constant.ts`   | Cache/rate-limit constants                         |
-| `message.type.ts`       | Service payload types                              |
-| `mq/message.service.ts` | `MessageJobService` — enqueue + job dispatch       |
-| `mq/message.constant.ts`| Queue name, job names, default job options         |
-| `mq/message.type.ts`    | Job-data, job-result and enqueue payload types     |
-| `mq/message.queue.ts`   | `configureMessageQueue` — BullMQ `Queue` lifecycle |
-| `mq/message.worker.ts`  | `configureMessageWorker` — BullMQ `Worker` lifecycle |
-| `message.util.ts`       | Module utilities (`diffObjects` example)           |
+| File                     | Purpose                                              |
+| ------------------------ | ---------------------------------------------------- |
+| `index.ts`               | Module entry, exports `autoPrefix`                   |
+| `message.route.ts`       | Tag, route enum and route definitions with Zod       |
+| `message.handler.ts`     | `MessageHandler` type, request/response handling     |
+| `message.service.ts`     | `MessageService` type, DB writes and reads           |
+| `message.constant.ts`    | Cache/rate-limit constants                           |
+| `message.type.ts`        | Domain model and service/repository payload types    |
+| `message.repository.ts`  | `MessageRepository` — domain methods, Prisma inside  |
+| `message.schema.ts`      | Zod validation & job-data schemas                    |
+| `public.ts`              | Public API for other modules (`MessageService`)      |
+| `mq/message.service.ts`  | `MessageJobService` — enqueue + job dispatch         |
+| `mq/message.constant.ts` | Queue name, job names, default job options           |
+| `mq/message.type.ts`     | Job-data, job-result and enqueue payload types       |
+| `mq/message.queue.ts`    | `configureMessageQueue` — BullMQ `Queue` lifecycle   |
+| `mq/message.worker.ts`   | `configureMessageWorker` — BullMQ `Worker` lifecycle |
+| `message.util.ts`        | Module utilities (`diffObjects` example)             |
 
 ### Related Files
 
-| Path                                           | Purpose                          |
-|------------------------------------------------|----------------------------------|
-| `src/lib/validation/message/message.schema.ts` | Zod validation & job-data schemas |
-| `src/database/repositories/message/`           | Data access layer                |
-| `src/plugins/mq/message/message.queue.ts`     | Thin `fp` wrapper registering `configureMessageQueue` |
-| `src/plugins/mq/message/message.worker.ts`    | Thin `fp` wrapper registering `configureMessageWorker` |
-| `src/plugins/bullmq.ts`                        | ioredis connections for BullMQ: blocking (workers) and fail-fast (producers) |
+| Path                                       | Purpose                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| `src/plugins/mq/message/message.queue.ts`  | Thin `fp` wrapper registering `configureMessageQueue`                        |
+| `src/plugins/mq/message/message.worker.ts` | Thin `fp` wrapper registering `configureMessageWorker`                       |
+| `src/plugins/bullmq.ts`                    | ioredis connections for BullMQ: blocking (workers) and fail-fast (producers) |
 
 ---
 
@@ -273,16 +275,16 @@ From `RESPONSE_MESSAGES.message` in `src/lib/messages/messages.constant.ts`:
 ## Repository Methods
 
 `MessageRepository` exposes domain methods only; inputs and outputs are the types in
-`src/database/repositories/message/message.type.ts`:
+`message.type.ts`:
 
-| Method                                         | Description                                                                 |
-|------------------------------------------------|-----------------------------------------------------------------------------|
-| `generateId`                                   | New uuidv7 id from the database                                             |
-| `assertExists`                                 | Throw `NotFoundError` with `notFound` if the message is gone                |
-| `createIfAbsent`                               | Idempotent create; a retried job leaves the existing row untouched          |
-| `updateIfNotNewer`                             | `false` for a stale write, `NotFoundError` if gone; `meta: null` clears     |
-| `deleteById`                                   | Idempotent delete; a missing message is not an error                        |
-| `findPage`                                     | Cursor page `{ messages, nextCursor }`                                      |
+| Method             | Description                                                             |
+| ------------------ | ----------------------------------------------------------------------- |
+| `generateId`       | New uuidv7 id from the database                                         |
+| `assertExists`     | Throw `NotFoundError` with `notFound` if the message is gone            |
+| `createIfAbsent`   | Idempotent create; a retried job leaves the existing row untouched      |
+| `updateIfNotNewer` | `false` for a stale write, `NotFoundError` if gone; `meta: null` clears |
+| `deleteById`       | Idempotent delete; a missing message is not an error                    |
+| `findPage`         | Cursor page `{ messages, nextCursor }`                                  |
 
 The worker uses `createIfAbsent`, `updateIfNotNewer` and `deleteById`; the enqueue existence
 check uses `assertExists`; reads use `findPage`.
@@ -293,12 +295,12 @@ check uses `assertExists`; reads use `findPage`.
 
 Injected via Awilix DI container:
 
-| Dependency          | Type                | Used In         |
-|---------------------|---------------------|-----------------|
-| `messageRepository` | `MessageRepository` | Service, JobService |
+| Dependency          | Type                | Used In               |
+| ------------------- | ------------------- | --------------------- |
+| `messageRepository` | `MessageRepository` | Service, JobService   |
 | `messageQueue`      | `Queue`             | JobService (producer) |
-| `cacheService`      | `CacheService`      | Service         |
-| `log`               | `FastifyBaseLogger` | Service         |
-| `config`            | `EnvConfig`         | Service         |
-| `messageService`    | `MessageService`    | Handler, JobService |
-| `messageJobService` | `MessageJobService` | Handler, Worker |
+| `cacheService`      | `CacheService`      | Service               |
+| `log`               | `FastifyBaseLogger` | Service               |
+| `config`            | `EnvConfig`         | Service               |
+| `messageService`    | `MessageService`    | Handler, JobService   |
+| `messageJobService` | `MessageJobService` | Handler, Worker       |

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { ApplicationHandler } from "./application.handler.js";
-import { healthCheckResponseSchema } from "@/lib/validation/application/application.schema.js";
+import { healthCheckResponseSchema } from "./application.schema.js";
 
 const APPLICATION_TAG = "application";
 

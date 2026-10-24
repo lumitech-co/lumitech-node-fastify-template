@@ -49,9 +49,7 @@ const configureSwagger = async (fastify: FastifyInstance) => {
 
     await fastify.register(fastifySwaggerUi, {
         routePrefix: SWAGGER_ROUTE_PREFIX,
-        uiHooks: {
-            onRequest: docsPassword ? fastify.basicAuth : undefined,
-        },
+        ...(docsPassword && { uiHooks: { onRequest: fastify.basicAuth } }),
     });
 };
 

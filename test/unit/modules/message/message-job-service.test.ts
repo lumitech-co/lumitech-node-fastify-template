@@ -7,7 +7,7 @@ import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import type { MessageService } from "@/modules/message/message.service.js";
 import type { MessageJobData } from "@/modules/message/mq/message.type.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/modules/message/message.repository.js";
 
 type FakeMessageQueue = Queue<MessageJobData, unknown, MessageJobName>;
 

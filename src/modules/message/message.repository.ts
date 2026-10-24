@@ -1,6 +1,6 @@
-import { toMetaInput } from "./message.util.js";
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { NotFoundError } from "@/lib/errors/errors.js";
-import type { Prisma, PrismaClient } from "@prisma/client";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type {
@@ -53,19 +53,28 @@ export const createMessageRepository = (
         }
     },
 
-    createIfAbsent: async ({ id, meta, ...data }) => {
+    createIfAbsent: async ({ id, text, meta, updatedAt }) => {
         await prisma.message.upsert({
             where: { id },
-            create: { id, meta: toMetaInput(meta), ...data },
+            create: {
+                id,
+                text,
+                updatedAt,
+                ...(meta !== undefined && { meta: toMetaInput(meta) }),
+            },
             update: {},
             select: messageIdSelect,
         });
     },
 
-    updateIfNotNewer: async ({ id, meta, ...data }) => {
+    updateIfNotNewer: async ({ id, text, meta, updatedAt }) => {
         const { count } = await prisma.message.updateMany({
-            where: { id, updatedAt: { lte: data.updatedAt } },
-            data: { meta: toMetaInput(meta), ...data },
+            where: { id, updatedAt: { lte: updatedAt } },
+            data: {
+                updatedAt,
+                ...(text !== undefined && { text }),
+                ...(meta !== undefined && { meta: toMetaInput(meta) }),
+            },
         });
 
         if (count > 0) {
@@ -104,3 +113,9 @@ export const createMessageRepository = (
 });
 
 addDIResolverName(createMessageRepository, "messageRepository");
+
+function toMetaInput(
+    meta: PrismaJson.MessageMeta | null
+): PrismaJson.MessageMeta | typeof Prisma.DbNull {
+    return meta ?? Prisma.DbNull;
+}

@@ -1,7 +1,9 @@
 name: Integration Tests
 on:
+    # Every pull request, whatever branch it targets, plus the merged result on main.
     pull_request:
-        branches: [main, master]
+    push:
+        branches: [main]
 jobs:
     integration-test:
         runs-on: ubuntu-latest

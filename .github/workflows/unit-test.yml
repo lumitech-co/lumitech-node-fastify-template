@@ -1,8 +1,10 @@
 name: Unit Tests
 
 on:
+    # Every pull request, whatever branch it targets, plus the merged result on main.
     pull_request:
-        branches: [main, master]
+    push:
+        branches: [main]
 
 jobs:
     test:
@@ -26,4 +28,4 @@ jobs:
               run: npm i
 
             - name: Run unit tests
-              run: npm run test:unit:ci
+              run: npm run test:unit:ci -- --coverage

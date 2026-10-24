@@ -2,13 +2,16 @@
  <img width="524" src="https://github.com/user-attachments/assets/d460817f-058a-4d3f-b75c-b897c954ecdc" />
 </div>
 
-# [Lumitech](https://lumitech.co/) Node.js Fastify Template 
+# [Lumitech](https://lumitech.co/) Node.js Fastify Template
+
 Welcome to the Lumitech Node.js Fastify Template. This template provides a well-organized starting point for building back-end applications in Node.js, featuring Swagger-based API documentation, ready-to-use Docker configuration, and Awilix for dependency injection. With well-defined architectural patterns, it helps ensure the code remains maintainable, scalable, and testable, especially as the application grows.
 
 ### About Lumitech
+
 [Lumitech](https://lumitech.co/) is a custom software development company providing professional services worldwide. We partner with technology businesses globally helping them to build successful engineering teams and create innovative software products. We’re a global team of software engineers, AI and ML specialists, product managers, and technology experts who have achieved a 600% growth rate since 2022. When a rocket launches toward the moon, it doesn’t stop halfway. Neither do we.
 
 ## 🛠️ Technology Stack:
+
 - [TypeScript](https://www.typescriptlang.org/) - programming language;
 - [Node.js](https://nodejs.org/en) - JavaScript runtime;
 - [Fastify](https://fastify.dev/docs/latest/Guides/Getting-Started/) - HTTP framework;
@@ -22,30 +25,36 @@ Welcome to the Lumitech Node.js Fastify Template. This template provides a well-
 ## 📌 Getting Started
 
 ### 🚀 Project Launch
+
 1. `npm install` - install the dependencies locally;
 2. Create a `.env` file from `.env.example`;
 3. Launch Docker Compose with the `docker compose up` command.
 
 ### ⚙️ Running Prisma Migrations
+
 Since both the Node.js server and PostgreSQL database run inside Docker containers, the database connection uses the [docker compose network](https://docs.docker.com/compose/networking/).
 Inside the Node.js container, use `postgresdb` as the database host.
 
 To run migrations from a host machine:
+
 1. Launch docker containers - `docker compose up`;
 2. Update the `.env` file, changing `DATABASE_URL` host from `postgresdb` to `localhost`;
 3. Run `npm run prisma:migrate:create` - create SQL migration file;
 4. Name the new migration and verify the SQL code generated;
 5. Run `npm run prisma:migrate:apply` - apply the migration to the database;
-6. Revert the `DATABASE_URL` in `.env`  back to `postgresdb` so that the Node.js container can connect to the database after a rebuild.
+6. Revert the `DATABASE_URL` in `.env` back to `postgresdb` so that the Node.js container can connect to the database after a rebuild.
 
 ### 🧪 Running Tests
+
 The template uses a Vitest testing framework for test coverage.
 
 #### Unit Tests
+
 1. `npm run test:unit` - run all unit tests with detailed output in the terminal;
 2. `npm run test:unit:ui` - launch the interactive UI test runner.
 
 #### Integration Tests
+
 `npm run test:int` - launch integration tests.
 
 A throwaway Postgres container is started automatically by Testcontainers and the
@@ -64,6 +73,7 @@ Only if a test needs the storage emulators (fake GCS / LocalStack S3):
 This template utilizes **Awilix** for Dependency Injection (DI), which helps in managing application dependencies efficiently.
 
 #### Why Use Dependency Injection?
+
 - **Encapsulation & Maintainability**: Keeps the code modular and easier to maintain.
 - **Testability**: Improves unit testing by allowing easy mocking of dependencies.
 - **Cleaner Architecture**: Enhances readability and organization.
@@ -78,6 +88,7 @@ Awilix is configured as a Fastify plugin, allowing services, handlers, repositor
 Define an email service abstraction layer in the lib directory.
 
 `src/lib/emails/index.ts`
+
 ```typescript
 export type EmailService = {
     sendEmail: (emailRecipient: string, p: EmailOptions) => Promise<void>;
@@ -98,9 +109,11 @@ export const createEmailService = (
     };
 };
 ```
+
 Register the email service in the DI container.
 
 `src/plugins/awilix.ts`
+
 ```typescript
 // Register dependencies from plugins and libraries
 fastify.di.register({
@@ -109,9 +122,11 @@ fastify.di.register({
     emailService: asFunction(createEmailService),
 });
 ```
+
 Use the email service by specifying its name in the function parameters.
 
 `src/modules/user/user.service.ts`
+
 ```typescript
 export type UserService = {
     sendWelcomeEmail: (
@@ -133,12 +148,13 @@ addDIResolverName(createService, "userService"); // Define a unique DI container
 ```
 
 ### 🐳 Docker
+
 This template provides a `Dockerfile` for building a production-ready Node.js image and a `docker-compose.yml` file for local development. By default, Docker Compose starts two services:
 
 1. **Node.js** – Runs the application inside a container using the provided Dockerfile.
 2. **PostgreSQL** – Spins up a PostgreSQL database.
 
-Is is possible can add more services (for example, Redis) by including them in `docker-compose.yml` and configuring their networking and environment variables. 
+Is is possible can add more services (for example, Redis) by including them in `docker-compose.yml` and configuring their networking and environment variables.
 This setup allows to quickly bootstrap a fully containerized development environment without installing any dependencies locally other than Docker itself.
 
 ### ⚙️ Background Worker (BullMQ)
@@ -170,6 +186,7 @@ This template includes **Swagger** for automatic API documentation generation, m
 - **Authorization**: Secure the documentation with a password.
 
 Example route with Swagger options:
+
 ```typescript
 fastify.post(
     "/sign-up",
@@ -189,9 +206,11 @@ fastify.post(
 ```
 
 ### ⚙️ Repository Generation
-`npm run generate:repository <entityName>` scaffolds a repository for a Prisma model:
-`<name>.type.ts` with the domain type (`id`, `createdAt`, `updatedAt` — extend it with the
-model's fields) and `<name>.repository.ts` with `findByIdOrFail`. Repositories expose domain
+
+`npm run generate:repository <entityName> [--module <moduleName>]` scaffolds a repository for
+a Prisma model inside a module (the module defaults to the entity name and must exist): it
+adds the domain type (`id`, `createdAt`, `updatedAt` — extend it with the model's fields) to
+the module's `<module>.type.ts` and creates `<entity>.repository.ts` with `findByIdOrFail`. Repositories expose domain
 methods only: a service never passes Prisma arguments or receives Prisma types.
 
 ```typescript
@@ -199,6 +218,7 @@ const user = await userRepository.findByIdOrFail({ id });
 ```
 
 ### ⚙️ ER Diagram Generation
+
 This project automatically generates an **Entity Relationship (ER) diagram** based on your **Prisma schema**.
 
 The generator is located in `src/database/prisma/schema.prisma`.
@@ -219,6 +239,7 @@ To generate ER diagram run command: `npm run prisma:diagram`
 After that you'll find `src/database/dbml/schema.dbml`.
 
 To visualize your ER diagram:
+
 1. Open [dbdiagram.io](https://dbdiagram.io/)
 2. Paste the contents of schema.dbml into the editor
 3. The diagram will be rendered automatically
@@ -228,11 +249,13 @@ To visualize your ER diagram:
 We use Commitlint to ensure that commit messages adhere to the conventional commit format. This standardizes the commit history and simplifies changelog generation.
 
 The basic format is:
+
 ```sh
 type(scope?): subject
 ```
 
 Examples:
+
 - `chore: update dependencies`
 - `fix(message): correct API response error`
 - `feat(auth): add JWT authentication`
@@ -240,48 +263,60 @@ Examples:
 A more detailed description you can see in [Conventional Commits documentation](https://www.conventionalcommits.org/en/v1.0.0/#examples).
 
 ## 📁 Project Structure
+
 The project is organized into several parts to promote a modular design and separation of concerns:
 
-#### `src/database`:  
-This directory manages everything related to data persistence and interaction with the database.  
-- The `prisma` subfolder houses the Prisma schema (`schema.prisma`) and migration files that define the application's data model to the database.  
+#### `src/database`:
+
+This directory manages everything related to data persistence and interaction with the database.
+
+- The `prisma` subfolder houses the Prisma schema (`schema.prisma`) and migration files that define the application's data model to the database.
 - The `repositories` subfolder contains repository modules for each entity. Each repository exposes domain methods with its own types in `<name>.type.ts` (e.g., `message.repository.ts` for the Message model); Prisma stays inside the repository.
 
-#### `src/modules`:  
+#### `src/modules`:
+
 This directory contains feature-based modules which encapsulate business logic along with the HTTP layer.  
-Each module includes:  
-- **Routes**: Define endpoint paths and attach them to the appropriate handlers (e.g., `message.route.ts` for message-related endpoints).  
-- **Handlers**: Manage request processing and response formatting by invoking corresponding services (e.g., `message.handler.ts`).  
+Each module includes:
+
+- **Routes**: Define endpoint paths and attach them to the appropriate handlers (e.g., `message.route.ts` for message-related endpoints).
+- **Handlers**: Manage request processing and response formatting by invoking corresponding services (e.g., `message.handler.ts`).
 - **Services**: Implement business logic, coordinate with repositories, and use the necessary third-party libraries from `src/lib` (e.g., `message.service.ts`).
 
-#### `src/plugins`:  
+#### `src/plugins`:
+
 The directory is dedicated to Fastify plugins which extend the server capabilities. Each file registers a plugin that adds functionality to the Fastify instance.  
-Plugins included:  
-- **Environment Configuration** (`env.ts`): Loads and validates environment variables.  
-- **Database Management** (`prisma.ts`): Sets up a `PrismaClient` and manages database connection.  
-- **Authentication** (`jwt.ts`): Configures JSON Web Token handling for security.  
-- **API Documentation** (`swagger.ts` and `zod.ts`): Integrates Swagger for API documentation and Zod for schema validation.  
-- **Dependency Injection** (`awilix.ts`): Registers and manages service dependencies using Awilix.  
+Plugins included:
+
+- **Environment Configuration** (`env.ts`): Loads and validates environment variables.
+- **Database Management** (`prisma.ts`): Sets up a `PrismaClient` and manages database connection.
+- **Authentication** (`jwt.ts`): Configures JSON Web Token handling for security.
+- **API Documentation** (`swagger.ts` and `zod.ts`): Integrates Swagger for API documentation and Zod for schema validation.
+- **Dependency Injection** (`awilix.ts`): Registers and manages service dependencies using Awilix.
 - **Error Handling** (`error.ts`): Provides a centralized mechanism for managing application errors.
 
-#### `src/lib`:  
-  This directory serves as an abstraction layer for third-party services and integrations. It is designed to encapsulate interactions with external services such as BullMQ for job processing, Stripe for payment processing, email sending services, file storage providers (e.g. AWS S3, GCP Cloud Storage), and more.  
-  These abstraction layers are registered in the Awilix container and imported by services as needed. Additionally, this folder includes validation schemas using Zod for different modules, as well as utility functions and helpers that support the overall application infrastructure.
+#### `src/lib`:
 
-#### `src/types`:  
-  Global TypeScript types and declarations used across the project.
+This directory serves as an abstraction layer for third-party services and integrations. It is designed to encapsulate interactions with external services such as BullMQ for job processing, Stripe for payment processing, email sending services, file storage providers (e.g. AWS S3, GCP Cloud Storage), and more.  
+ These abstraction layers are registered in the Awilix container and imported by services as needed. Additionally, this folder includes validation schemas using Zod for different modules, as well as utility functions and helpers that support the overall application infrastructure.
+
+#### `src/types`:
+
+Global TypeScript types and declarations used across the project.
 
 #### `test`:
+
 This directory contains all test files organized to mirror the structure of the source code.
+
 - The `unit` subdirectory contains unit tests that verify the functionality of individual components in isolation.
-  - Tests for library components are in the `lib` subdirectory, ensuring third-party integrations work as expected.
-  - Tests for application modules are in the `modules` subdirectory, organized by feature to test services.
+    - Tests for library components are in the `lib` subdirectory, ensuring third-party integrations work as expected.
+    - Tests for application modules are in the `modules` subdirectory, organized by feature to test services.
 - The `int` subdirectory contains integration tests that verify the behavior of multiple components working together within a runtime environment (e.g., service logic interacting with the database or external APIs).
-  - Tests are organized by module to mirror the application structure.
-  - The `setup` folder provides shared utilities like database migrations initialization and teardown logic.
+    - Tests are organized by module to mirror the application structure.
+    - The `setup` folder provides shared utilities like database migrations initialization and teardown logic.
 - Each test file follows the naming convention of `[component-name].test.ts` to clearly identify what's being tested.
 
 #### Project Tree:
+
 ```
 .
 ├── commitlint.config.js
@@ -343,5 +378,6 @@ This directory contains all test files organized to mirror the structure of the 
 ```
 
 ## ✨ Inspired by
+
 - [Fastify example](https://github.com/delvedor/fastify-example) - a brief example of core Fastify features;
 - [Guide to plugins](https://fastify.dev/docs/latest/Guides/Plugins-Guide/) - encapsulation and decorators in Fastify.

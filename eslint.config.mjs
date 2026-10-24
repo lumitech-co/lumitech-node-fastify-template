@@ -112,6 +112,8 @@ const architecture = {
             typescriptEslint.rules["no-restricted-imports"],
         "prefer-repository-or-fail": preferRepositoryOrFail,
         "no-prisma-in-modules": restrictedSyntax,
+        "public-api": restrictedSyntax,
+        "plugin-imports": typescriptEslint.rules["no-restricted-imports"],
     },
 };
 
@@ -134,7 +136,7 @@ const ROUTE_CONSTANTS_MESSAGE =
     "The module tag and route-path enum are declared (not exported) at the top of <name>.route.ts; autoPrefix stays in index.ts (CLAUDE.md, Rule 5).";
 
 const PRISMA_CALLS_MESSAGE =
-    "Prisma calls live only in src/database/repositories/**; a service may only open prisma.$transaction (CLAUDE.md, Rule 2).";
+    "Prisma calls live only in a module's *.repository.ts; a service may only open prisma.$transaction (CLAUDE.md, Rule 2).";
 
 const PRISMA_CALLS = [
     "MemberExpression[object.name='prisma'][property.name!='$transaction']",
@@ -447,7 +449,12 @@ export default [
     },
     {
         files: ["src/**/*.ts"],
-        ignores: ["src/database/**", "src/plugins/prisma.ts", "src/types/**"],
+        ignores: [
+            "src/database/**",
+            "src/plugins/prisma.ts",
+            "src/types/**",
+            "src/modules/**/*.repository.ts",
+        ],
 
         rules: {
             "arch/prisma-imports": [
@@ -473,6 +480,7 @@ export default [
             "src/plugins/prisma.ts",
             "src/types/**",
             "src/**/*.service.ts",
+            "src/modules/**/*.repository.ts",
         ],
 
         rules: {
@@ -490,7 +498,7 @@ export default [
     {
         // mq/*.queue.ts and mq/*.worker.ts are plugin bodies, loaded only
         // by src/plugins/mq/**.
-        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+        files: ["src/modules/**/*.ts"],
         ignores: ["src/modules/**/mq/*.{queue,worker}.ts"],
 
         rules: {
@@ -528,8 +536,8 @@ export default [
     {
         files: ["src/modules/**/*.{ts,js}"],
         ignores: [
-            "src/modules/*/index.ts",
-            "src/modules/*/*.{route,handler,service,constant,type,util}.ts",
+            "src/modules/*/{index,public}.ts",
+            "src/modules/*/*.{route,handler,service,repository,schema,constant,type,util}.ts",
             "src/modules/*/mq/*.{queue,worker,service,constant,type}.ts",
         ],
 
@@ -539,14 +547,14 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "A module holds only index.ts, <name>.{route,handler,service,constant,type,util}.ts and mq/<name>.{queue,worker,service,constant,type}.ts (ARCHITECTURE.md, Directory layout).",
+                        "A module holds only index.ts, public.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts (ARCHITECTURE.md, Directory layout).",
                 },
             ],
         },
     },
     {
-        files: ["src/database/repositories/**/*.{ts,js}"],
-        ignores: ["src/database/repositories/*/*.{repository,type,util}.ts"],
+        // Repositories live in their module (src/modules/<name>/*.repository.ts).
+        files: ["src/database/**/*.{ts,js}"],
 
         rules: {
             "arch/file-layout": [
@@ -554,7 +562,7 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "A repository folder holds only <name>.{repository,type,util}.ts (CLAUDE.md, Rules 0 and 5).",
+                        "src/database/ holds only the Prisma schema and migrations — repositories live in their module (CLAUDE.md, Rule 2).",
                 },
             ],
         },
@@ -569,7 +577,7 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "src/lib/validation/<module>/ holds only <module>.schema.ts (CLAUDE.md, Rule 7).",
+                        "src/lib/validation/<lib>/ holds only <lib>.schema.ts — module schemas live in the module (CLAUDE.md, Rule 7).",
                 },
             ],
         },
@@ -593,7 +601,7 @@ export default [
         // CLASSIC injection resolves dependencies by parameter name.
         files: [
             "src/**/*.{service,handler}.ts",
-            "src/database/repositories/**/*.repository.ts",
+            "src/modules/**/*.repository.ts",
         ],
 
         rules: {
@@ -663,7 +671,7 @@ export default [
         },
     },
     {
-        files: ["src/database/repositories/**/*.repository.ts"],
+        files: ["src/modules/**/*.repository.ts"],
 
         rules: {
             "arch/di-files": [
@@ -691,7 +699,7 @@ export default [
     },
     {
         files: ["src/**/*.ts"],
-        ignores: ["src/lib/validation/**"],
+        ignores: ["src/lib/validation/**", "src/modules/*/*.schema.ts"],
 
         rules: {
             "arch/zod-placement": [
@@ -703,7 +711,7 @@ export default [
                             allowTypeImports: true,
                             allowImportNames: ["ZodError"],
                             message:
-                                "Zod schemas live only in src/lib/validation/<module>/<module>.schema.ts — import them from there; elsewhere only `import type` / ZodError (CLAUDE.md, Rule 7).",
+                                "Zod schemas live only in src/modules/<name>/<name>.schema.ts (or src/lib/validation/<lib>/ for lib code) — import them from there; elsewhere only `import type` / ZodError (CLAUDE.md, Rule 7).",
                         },
                     ],
                 },
@@ -800,7 +808,11 @@ export default [
     },
     {
         files: ["src/**/*.ts"],
-        ignores: ["src/database/**", "src/**/*.d.ts"],
+        ignores: [
+            "src/database/**",
+            "src/**/*.d.ts",
+            "src/modules/**/*.repository.ts",
+        ],
 
         rules: {
             "arch/no-prisma-shape-outside-repository": "error",
@@ -809,10 +821,7 @@ export default [
     {
         // The shape of a DI factory body: helpers inside it close over its
         // dependencies, pure ones live outside, and nothing is a bare hop.
-        files: [
-            "src/**/*.service.ts",
-            "src/database/repositories/**/*.repository.ts",
-        ],
+        files: ["src/**/*.service.ts", "src/modules/**/*.repository.ts"],
 
         rules: {
             "arch/no-dependency-free-factory-helper": "error",
@@ -842,6 +851,7 @@ export default [
                             group: [
                                 "@prisma/client",
                                 "@/database/**",
+                                "@/modules/**/*.repository.js",
                                 "@google-cloud/*",
                                 "@aws-sdk/*",
                                 "ioredis",
@@ -912,7 +922,10 @@ export default [
         },
     },
     {
-        files: ["src/lib/validation/**/*.schema.ts"],
+        files: [
+            "src/lib/validation/**/*.schema.ts",
+            "src/modules/*/*.schema.ts",
+        ],
 
         rules: {
             "arch/schema-types": [
@@ -946,12 +959,16 @@ export default [
                 {
                     patterns: [
                         {
-                            group: ["@/database/**"],
+                            group: [
+                                "@/database/**",
+                                "./*.repository.js",
+                                "@/modules/**/*.repository.js",
+                            ],
                             message:
                                 "Handlers never touch repositories — call the module service (CLAUDE.md, Conventions: keep handlers thin).",
                         },
                         {
-                            group: ["@/lib/validation/**"],
+                            group: ["@/lib/validation/**", "./*.schema.js"],
                             importNamePattern: "Schema$",
                             message:
                                 "Handlers don't use Zod schemas — validation is declared in the route schema; import only the inferred types.",
@@ -1298,7 +1315,7 @@ export default [
         },
     },
     {
-        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+        files: ["src/modules/**/*.ts"],
 
         rules: {
             "arch/layer-imports": [
@@ -1320,7 +1337,7 @@ export default [
     {
         // mq/*.queue.ts and mq/*.worker.ts are plugin bodies, loaded only
         // by src/plugins/mq/**.
-        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+        files: ["src/modules/**/*.ts"],
         ignores: ["src/modules/**/mq/*.{queue,worker}.ts"],
 
         rules: {
@@ -1382,7 +1399,7 @@ export default [
         },
     },
     {
-        files: ["src/modules/**/*.ts", "src/database/repositories/**/*.ts"],
+        files: ["src/modules/**/*.ts"],
 
         rules: {
             "@typescript-eslint/consistent-type-assertions": [
@@ -1412,7 +1429,7 @@ export default [
         // plain data, so they also run from workers and tests.
         files: [
             "src/**/*.service.ts",
-            "src/database/repositories/**/*.ts",
+            "src/modules/**/*.repository.ts",
             "src/modules/**/mq/*.ts",
         ],
 
@@ -1537,7 +1554,10 @@ export default [
         },
     },
     {
-        files: ["src/lib/validation/**/*.schema.ts"],
+        files: [
+            "src/lib/validation/**/*.schema.ts",
+            "src/modules/*/*.schema.ts",
+        ],
 
         rules: {
             "arch/bounded-pagination": [
@@ -1650,7 +1670,10 @@ export default [
     {
         // healthCheck answers probes with a bare string; cached is the cache
         // plugin's storage shape, not an HTTP response.
-        files: ["src/lib/validation/**/*.schema.ts"],
+        files: [
+            "src/lib/validation/**/*.schema.ts",
+            "src/modules/*/*.schema.ts",
+        ],
 
         rules: {
             "arch/response-envelope": [
@@ -1697,7 +1720,7 @@ export default [
     {
         // A call that forwards an args variable instead of an object
         // literal inherits that variable's select.
-        files: ["src/database/repositories/**/*.ts"],
+        files: ["src/modules/**/*.repository.ts"],
 
         rules: {
             "arch/repository-select": [
@@ -1713,8 +1736,9 @@ export default [
     },
     {
         // Rule 5: a repository file holds its <Name>Repository type, the
-        // factory and select constants; other types and helpers move out.
-        files: ["src/database/repositories/*/*.repository.ts"],
+        // factory, select constants and private Prisma helpers declared as
+        // `function name() {}`; domain types go to the module's type file.
+        files: ["src/modules/*/*.repository.ts"],
 
         rules: {
             "arch/repository-layout": [
@@ -1723,15 +1747,15 @@ export default [
                     selector:
                         "TSTypeAliasDeclaration:not([id.name=/Repository$/])",
                     message:
-                        "Only the <Name>Repository type stays in the repository file — move other types to <name>.type.ts (CLAUDE.md, Rule 5).",
+                        "Only the <Name>Repository type stays in the repository file — domain types go to the module's <name>.type.ts (CLAUDE.md, Rule 5).",
                 },
                 {
                     selector: [
-                        ":matches(Program, Program > ExportNamedDeclaration) > FunctionDeclaration",
+                        "Program > ExportNamedDeclaration > FunctionDeclaration",
                         ":matches(Program, Program > ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator[id.name!=/^create\\w+Repository$/] > :function",
                     ].join(", "),
                     message:
-                        "Repository helpers live in <name>.util.ts next to it (CLAUDE.md, Rule 5).",
+                        "A repository's Prisma helpers stay private in its file as `function name() {}` — never exported, never in the module's util.ts (CLAUDE.md, Rule 5).",
                 },
             ],
         },
@@ -1740,7 +1764,7 @@ export default [
         // A repository speaks the domain: its method inputs and outputs are
         // our own types, so services never see Prisma. Selects, where
         // clauses and other Prisma shapes stay inside the factory body.
-        files: ["src/database/repositories/*/*.type.ts"],
+        files: ["src/modules/**/*.type.ts"],
 
         rules: {
             "arch/domain-repository-types": [
@@ -1749,19 +1773,19 @@ export default [
                     selector:
                         "ImportDeclaration[source.value=/^@prisma.client/]",
                     message:
-                        "Repository types are domain models — describe the shape yourself, don't import it from @prisma/client.",
+                        "Module types are domain models — describe the shape yourself, don't import it from @prisma/client.",
                 },
                 {
                     selector:
                         ":matches(TSQualifiedName[left.name='Prisma'], TSTypeReference[typeName.name=/^Prisma(Client|Promise)?$/])",
                     message:
-                        "Repository types are domain models — describe the shape yourself instead of Prisma.* types.",
+                        "Module types are domain models — describe the shape yourself instead of Prisma.* types.",
                 },
             ],
         },
     },
     {
-        files: ["src/database/repositories/*/*.repository.ts"],
+        files: ["src/modules/*/*.repository.ts"],
 
         rules: {
             "arch/domain-repository-types": [
@@ -1770,13 +1794,14 @@ export default [
                     selector:
                         "TSTypeAliasDeclaration[id.name=/Repository$/] :matches(TSQualifiedName[left.name='Prisma'][right.name!='TransactionClient'], TSTypeReference[typeName.name=/^Prisma(Client|Promise)?$/])",
                     message:
-                        "<Name>Repository methods take and return domain types from <name>.type.ts — keep Prisma inside the factory (Prisma.TransactionClient is the one exception, Rule 2).",
+                        "<Name>Repository methods take and return the module's domain types — keep Prisma inside the factory (Prisma.TransactionClient is the one exception, Rule 2).",
                 },
             ],
         },
     },
     {
-        files: ["src/modules/**/*.ts", "src/lib/**/*.ts"],
+        files: ["src/modules/**/*.ts"],
+        ignores: ["src/modules/**/*.repository.ts"],
 
         rules: {
             "arch/domain-repository-imports": [
@@ -1784,7 +1809,10 @@ export default [
                 {
                     patterns: [
                         {
-                            group: ["@/database/**"],
+                            group: [
+                                "./*.repository.js",
+                                "@/modules/**/*.repository.js",
+                            ],
                             allowTypeImports: true,
                             message:
                                 "Modules use a repository only through its injected type — never import its selects or other values.",
@@ -1799,6 +1827,7 @@ export default [
         // prisma.$transaction (Rule 2) is the one place that names
         // PrismaClient and Prisma.TransactionClient.
         files: ["src/modules/**/*.ts"],
+        ignores: ["src/modules/**/*.repository.ts"],
 
         rules: {
             "arch/no-prisma-in-modules": [
@@ -1814,7 +1843,10 @@ export default [
     },
     {
         files: ["src/modules/**/*.ts"],
-        ignores: ["src/modules/**/*.service.ts"],
+        ignores: [
+            "src/modules/**/*.service.ts",
+            "src/modules/**/*.repository.ts",
+        ],
 
         rules: {
             "arch/no-prisma-in-modules": [
@@ -1823,7 +1855,51 @@ export default [
                     selector:
                         "TSQualifiedName[left.name='Prisma'][right.name!='TransactionClient'], ImportDeclaration[source.value=/^@prisma.client/]",
                     message:
-                        "Only a service opening prisma.$transaction imports from @prisma/client — everything else in a module uses domain types (CLAUDE.md, Rule 2).",
+                        "Only a repository, or a service opening prisma.$transaction, imports from @prisma/client — everything else in a module uses domain types (CLAUDE.md, Rule 2).",
+                },
+            ],
+        },
+    },
+    {
+        // A module's public.ts is its one sanctioned barrel: the types other
+        // modules may depend on, re-exported with `export type { … } from`.
+        files: ["src/modules/*/public.ts"],
+
+        rules: {
+            "arch/no-barrel-files": "off",
+            "arch/public-api": [
+                "error",
+                {
+                    selector:
+                        "Program > :not(ExportNamedDeclaration[exportKind='type'][source])",
+                    message:
+                        'public.ts only re-exports types: `export type { … } from "./<name>.<kind>.js"` — other modules get services through the container (CLAUDE.md, Rule 1).',
+                },
+                {
+                    selector:
+                        "ExportNamedDeclaration[source.value=/\\.repository\\.js$/]",
+                    message:
+                        "A module never exposes its repository — other modules go through its service, so the data access stays encapsulated (CLAUDE.md, Rule 1).",
+                },
+            ],
+        },
+    },
+    {
+        // src/plugins/mq/** registers a module's queue/worker bodies; any
+        // other module code reaches plugins only through its public API.
+        files: ["src/plugins/**/*.ts"],
+
+        rules: {
+            "arch/plugin-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            regex: "^@/modules/(?!.*/(mq/[^/]+\\.(queue|worker)|public)\\.js$)",
+                            message:
+                                "A plugin imports from a module only its mq/<name>.{queue,worker}.js body or its public.js API (CLAUDE.md, Rules 1 and 6).",
+                        },
+                    ],
                 },
             ],
         },

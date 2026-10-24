@@ -4,7 +4,7 @@ import type { EnvConfig } from "@/types/env.type.js";
 import type { CacheService } from "@/lib/cache/cache.service.js";
 import { createService } from "@/modules/message/message.service.js";
 import { MESSAGE_CACHE_NAMESPACE } from "@/modules/message/message.constant.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/modules/message/message.repository.js";
 
 const createFakeRepository = (): MessageRepository =>
     ({

@@ -1,0 +1,30 @@
+{
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/guard-generated-paths.mjs\"",
+                        "timeout": 10,
+                        "statusMessage": "Checking Rule 0 / Rule 9 paths"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/lint-edited-file.mjs\"",
+                        "timeout": 90,
+                        "statusMessage": "Linting the edited file"
+                    }
+                ]
+            }
+        ]
+    }
+}

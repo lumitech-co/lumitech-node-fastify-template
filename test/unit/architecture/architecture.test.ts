@@ -4,6 +4,7 @@
  * schema sync, unused RESPONSE_MESSAGES and blanket eslint-disable directives.
  */
 import fs from "node:fs";
+import ts from "typescript";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
@@ -66,6 +67,28 @@ const findJsonFields = (schema: string): JsonField[] => {
     return fields;
 };
 
+type ModuleRepository = {
+    module: string;
+    entity: string;
+    pascal: string;
+};
+
+const moduleRepositories: ModuleRepository[] = listDirs("modules").flatMap(
+    (module) =>
+        fs
+            .readdirSync(path.join(SRC, "modules", module))
+            .filter((file) => file.endsWith(".repository.ts"))
+            .map((file) => {
+                const entity = kebabToCamel(file.replace(".repository.ts", ""));
+
+                return {
+                    module,
+                    entity,
+                    pascal: entity.replace(/^./, (char) => char.toUpperCase()),
+                };
+            })
+);
+
 describe("Rule 0: modules and repositories are wired by the generators", () => {
     describe.each(listDirs("modules"))("module %s", (name) => {
         const camel = kebabToCamel(name);
@@ -74,25 +97,17 @@ describe("Rule 0: modules and repositories are wired by the generators", () => {
             expect(cradle).toMatch(cradleEntry(`${camel}Service`));
             expect(cradle).toMatch(cradleEntry(`${camel}Handler`));
         });
-
-        it("has a validation folder in src/lib/validation", () => {
-            expect(fs.existsSync(path.join(SRC, "lib/validation", name))).toBe(
-                true
-            );
-        });
     });
 
-    describe.each(listDirs("database/repositories"))(
-        "repository %s",
-        (name) => {
-            const camel = kebabToCamel(name);
-
+    describe.each(moduleRepositories)(
+        "repository $entity in module $module",
+        ({ entity }) => {
             it("is registered in Cradle", () => {
-                expect(cradle).toMatch(cradleEntry(`${camel}Repository`));
+                expect(cradle).toMatch(cradleEntry(`${entity}Repository`));
             });
 
             it("has a RESPONSE_MESSAGES group", () => {
-                expect(RESPONSE_MESSAGES).toHaveProperty(camel);
+                expect(RESPONSE_MESSAGES).toHaveProperty(entity);
             });
         }
     );
@@ -316,7 +331,7 @@ const valueNames = [
 ].map(([, name]) => name!);
 
 const LOADED_BY_AWILIX =
-    /^(modules\/.+\.(service|handler)|database\/repositories\/.+\.repository|lib\/.+\.service)\.ts$/;
+    /^(modules\/.+\.(service|handler|repository)|lib\/.+\.service)\.ts$/;
 
 describe("Rule 1: Cradle matches what the container registers", () => {
     const registered = new Set([
@@ -390,6 +405,8 @@ describe("Rule 0: every module has the files the generator creates", () => {
             `${name}.route.ts`,
             `${name}.handler.ts`,
             `${name}.service.ts`,
+            `${name}.schema.ts`,
+            "public.ts",
             "README.md",
         ])("has %s", (file) => {
             expect(fs.existsSync(path.join(SRC, "modules", name, file))).toBe(
@@ -398,29 +415,12 @@ describe("Rule 0: every module has the files the generator creates", () => {
         });
     });
 
-    describe.each(listDirs("database/repositories"))(
-        "repository %s",
-        (name) => {
-            it.each([`${name}.repository.ts`, `${name}.type.ts`])(
-                "has %s",
-                (file) => {
-                    expect(
-                        fs.existsSync(
-                            path.join(SRC, "database/repositories", name, file)
-                        )
-                    ).toBe(true);
-                }
+    it.each(moduleRepositories)(
+        "$module.type.ts declares the $pascal domain model of $entity.repository.ts",
+        ({ module, pascal }) => {
+            expect(readSource(`modules/${module}/${module}.type.ts`)).toMatch(
+                new RegExp(`^(export )?type ${pascal} = \\{`, "m")
             );
-
-            it("declares its domain model in the type file", () => {
-                const pascal = kebabToCamel(name).replace(/^./, (char) =>
-                    char.toUpperCase()
-                );
-
-                expect(
-                    readSource(`database/repositories/${name}/${name}.type.ts`)
-                ).toMatch(new RegExp(`^(export )?type ${pascal} = \\{`, "m"));
-            });
         }
     );
 });
@@ -554,6 +554,118 @@ describe("Rule 7: every request part a handler reads is validated by its route",
                     /\b(Body|Params|Querystring|Headers):/g
                 )
             ).toEqual(routeKeys);
+        }
+    );
+});
+
+type FactoryParam = {
+    file: string;
+    name: string;
+    type: string;
+};
+
+const parseSource = (file: string): ts.SourceFile =>
+    ts.createSourceFile(file, readSource(file), ts.ScriptTarget.Latest, true);
+
+const normalizeType = (type: string): string => type.replace(/\s+/g, "");
+
+const cradleTypes = new Map(
+    parseSource("types/di-container.type.ts")
+        .statements.filter(ts.isTypeAliasDeclaration)
+        .filter((alias) => alias.name.text === "Cradle")
+        .flatMap((alias) =>
+            ts.isTypeLiteralNode(alias.type) ? [...alias.type.members] : []
+        )
+        .filter(ts.isPropertySignature)
+        .map((member) => [
+            member.name.getText(),
+            normalizeType(member.type?.getText() ?? ""),
+        ])
+);
+
+const factoryParams: FactoryParam[] = srcFiles
+    .filter((file) => LOADED_BY_AWILIX.test(file))
+    .flatMap((file) =>
+        parseSource(file)
+            .statements.filter(ts.isVariableStatement)
+            .flatMap((statement) => [...statement.declarationList.declarations])
+            .filter(
+                (declaration) =>
+                    declaration.name.getText().startsWith("create") &&
+                    declaration.initializer !== undefined &&
+                    ts.isArrowFunction(declaration.initializer)
+            )
+            .flatMap((declaration) =>
+                ts.isArrowFunction(declaration.initializer!)
+                    ? [...declaration.initializer.parameters]
+                    : []
+            )
+            .map((parameter) => ({
+                file,
+                name: parameter.name.getText(),
+                type: normalizeType(parameter.type?.getText() ?? ""),
+            }))
+    );
+
+describe("Rule 1: every factory parameter is a Cradle entry of the same type", () => {
+    it("finds factory parameters, so an empty scan cannot pass", () => {
+        expect(factoryParams.length).toBeGreaterThan(0);
+    });
+
+    it.each(factoryParams)(
+        "$file: $name is resolved by Awilix as typed",
+        ({ name, type }) => {
+            expect(
+                cradleTypes.has(name),
+                `Awilix resolves "${name}" by name — it is not a Cradle key`
+            ).toBe(true);
+
+            expect(type).toBe(cradleTypes.get(name));
+        }
+    );
+});
+
+const routeEndpoints = (module: string): string[] => {
+    const route = readSource(`modules/${module}/${module}.route.ts`);
+
+    const prefix =
+        readSource(`modules/${module}/index.ts`).match(
+            /export const autoPrefix = "([^"]*)"/
+        )?.[1] ?? "";
+
+    const paths = new Map(
+        [...route.matchAll(/^\s+(\w+) = "([^"]*)"/gm)].map(([, key, value]) => [
+            key!,
+            value!,
+        ])
+    );
+
+    return [
+        ...route.matchAll(
+            /fastify\.(get|post|put|patch|delete)\(\s*\w+\.(\w+)/g
+        ),
+    ]
+        .map(
+            ([, method, key]) =>
+                `${method!.toUpperCase()} ${`${prefix}${paths.get(key!) ?? ""}`.replace(/\/{2,}/g, "/")}`
+        )
+        .sort();
+};
+
+const readmeEndpoints = (module: string): string[] =>
+    [
+        ...readSource(`modules/${module}/README.md`).matchAll(
+            /^\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*(\S+)\s*\|/gm
+        ),
+    ]
+        .map(([, method, endpoint]) => `${method} ${endpoint}`)
+        .sort();
+
+describe("module README lists exactly the module's endpoints", () => {
+    it.each(listDirs("modules"))(
+        "%s: README Endpoints table matches the route file",
+        (module) => {
+            expect(readmeEndpoints(module)).toEqual(routeEndpoints(module));
         }
     );
 });

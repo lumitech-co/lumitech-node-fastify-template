@@ -7,7 +7,7 @@ import type {
     UpdateMessageInput,
     MessageIdParam,
     FetchMessagesQuery,
-} from "@/lib/validation/message/message.schema.js";
+} from "./message.schema.js";
 
 export type MessageHandler = {
     createMessage: (

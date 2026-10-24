@@ -13,6 +13,7 @@ that, in parallel. Your job is to give them a complete, identical picture of the
 merge what they return into a single review and publish it once.
 
 Two subagents, both read-only:
+
 - **`pr-architecture-reviewer`** — checks the change against the project's own rules, which it
   reads from `CLAUDE.md` at runtime.
 - **`pr-functional-reviewer`** — checks the change against its ticket, and hunts for logic bugs
@@ -41,6 +42,7 @@ Use the **GitHub MCP server first** — it is authenticated and authoritative. F
 `gh` CLI only if the MCP is unavailable or lacks the tool, and say which one you used.
 
 Collect:
+
 1. PR metadata — title, description, author, state, base ← head, branch name.
 2. The full diff and the per-file patches. **Keep the patches** — you need them in Step 5 to know
    which lines can legally carry an inline comment.
@@ -149,6 +151,7 @@ echo "CI=${CI:-} GITHUB_ACTIONS=${GITHUB_ACTIONS:-}"
 ```
 
 Skip the question and publish straight away when:
+
 - `CI` or `GITHUB_ACTIONS` is set — you are headless. There is nobody to answer, and a review
   that stops to ask is a review that never gets posted; or
 - `--post` was passed.
@@ -203,6 +206,7 @@ Review complete: 🔴 <n> Blockers, 🟡 <n> Suggestions, ⚪ <n> Nits — see t
 **Functional** (behavior vs ticket): <the agent's summary>
 
 ### Notes
+
 <only what the inline comments cannot carry: findings whose line is not in the diff (with a
 `path:line` reference), failing checks, a reviewer that errored, a ticket that could not be
 fetched — anything that limits how much this review actually covers>
