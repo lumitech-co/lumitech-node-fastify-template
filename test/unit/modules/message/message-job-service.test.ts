@@ -1,5 +1,6 @@
 import { ZodError } from "zod";
 import type { Queue } from "bullmq";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { describe, expect, it, vi } from "vitest";
 import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
 import { createService } from "@/modules/message/mq/message.service.js";
@@ -7,11 +8,11 @@ import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import type { MessageService } from "@/modules/message/message.service.js";
 import type { MessageJobData } from "@/modules/message/mq/message.type.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/modules/message/message.repository.js";
 
 type FakeMessageQueue = Queue<MessageJobData, unknown, MessageJobName>;
 
-const enqueuedAt = new Date("2026-01-01T00:00:00.000Z");
+const enqueuedAt = dayjs("2026-01-01T00:00:00.000Z").toDate();
 const messageId = "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b";
 const missingId = "0190a1b2-c3d4-7e5f-9a6b-000000000000";
 

@@ -4,17 +4,17 @@ import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import type { MessageJobResult } from "./mq/message.type.js";
 import { MESSAGE_CACHE_NAMESPACE } from "./message.constant.js";
 import type { CacheService } from "@/lib/cache/cache.service.js";
+import type { MessageRepository } from "./message.repository.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type {
     CreateMessagePayload,
     UpdateMessagePayload,
 } from "./message.type.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 import type {
     FetchMessagesQuery,
     FetchMessagesResponse,
     DeleteMessageJobData,
-} from "@/lib/validation/message/message.schema.js";
+} from "./message.schema.js";
 
 export type MessageService = {
     createMessage: (payload: CreateMessagePayload) => Promise<MessageJobResult>;

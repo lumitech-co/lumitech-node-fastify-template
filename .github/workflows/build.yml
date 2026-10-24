@@ -1,11 +1,23 @@
 name: Lint & Build
 
 on:
+    # Every pull request, whatever branch it targets, plus the merged result on main.
+    # A draft runs nothing; marking it ready for review starts the checks.
     pull_request:
-        branches: ["main"]
+        types: [opened, synchronize, reopened, ready_for_review]
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
     build:
+        if: ${{ !github.event.pull_request.draft }}
         runs-on: ubuntu-latest
 
         strategy:
@@ -13,12 +25,30 @@ jobs:
                 node-version: [22.x]
 
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
               with:
                   fetch-depth: 0
 
+            # Known advisories in package-lock.json (dev dependencies included)
+            # against OSV.dev: the GitHub advisory database plus malicious-package
+            # reports. Pinned by version and checksum. An accepted finding goes in
+            # osv-scanner.toml with a reason and an expiry date.
+            - name: Scan dependencies for known vulnerabilities (OSV)
+              env:
+                  OSV_VERSION: "2.7.0"
+                  OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+              run: |
+                  curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
+                      "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+                  echo "${OSV_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum --check --quiet
+                  chmod +x "$RUNNER_TEMP/osv-scanner"
+                  "$RUNNER_TEMP/osv-scanner" scan source \
+                      --lockfile package-lock.json \
+                      --config osv-scanner.toml \
+                      --verbosity error
+
             - name: Set up Node.js
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
               with:
                   node-version: ${{ matrix.node-version }}
                   cache: "npm"
@@ -44,14 +74,19 @@ jobs:
                   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
             - name: Check migrations (CLAUDE.md Rule 9)
+              if: github.event_name == 'pull_request'
               run: npm run check:migrations
               env:
                   MIGRATIONS_BASE_REF: origin/${{ github.base_ref }}
 
             - name: Lint new migrations for locking and data loss
+              if: github.event_name == 'pull_request'
               run: |
                   git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'src/database/prisma/migrations/*/migration.sql' \
                       | xargs --no-run-if-empty npm run lint:migrations --
+
+            - name: Check generated code against the rules (CLAUDE.md Rule 0)
+              run: npm run check:generators
 
             - name: Build application
               run: npm run build

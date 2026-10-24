@@ -33,10 +33,9 @@ const configureAwilix = async (fastify: FastifyInstance) => {
     // Register dependencies from the application: repositories, services, route handlers
     await container.loadModules(
         [
-            path.join(__dirname, "../modules/**/*.{service,handler}.{js,ts}"),
             path.join(
                 __dirname,
-                "../database/repositories/{*,**/*}.repository.{js,ts}"
+                "../modules/**/*.{service,handler,repository}.{js,ts}"
             ),
             path.join(__dirname, "../lib/**/*.service.{js,ts}"),
         ],

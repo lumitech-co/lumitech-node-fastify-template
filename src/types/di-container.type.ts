@@ -14,9 +14,9 @@ import type { MessageJobData } from "@/modules/message/mq/message.type.js";
 import type { GcpBucketService } from "@/lib/gcpBucket/gcpBucket.service.js";
 import type { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import type { MessageJobService } from "@/modules/message/mq/message.service.js";
+import type { MessageRepository } from "@/modules/message/message.repository.js";
 import type { ApplicationService } from "@/modules/application/application.service.js";
 import type { ApplicationHandler } from "@/modules/application/application.handler.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
 
 export type Cradle = {
     log: FastifyBaseLogger;

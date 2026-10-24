@@ -7,7 +7,9 @@ import type {
     UpdateMessageInput,
     MessageIdParam,
     FetchMessagesQuery,
-} from "@/lib/validation/message/message.schema.js";
+    EnqueueMessageResponse,
+    FetchMessagesResponse,
+} from "./message.schema.js";
 
 export type MessageHandler = {
     createMessage: (
@@ -45,32 +47,37 @@ export const createHandler = (
     messageService: MessageService
 ): MessageHandler => ({
     createMessage: async (request, reply) => {
-        const data = await messageJobService.enqueueCreateMessage({
-            payload: request.body,
-        });
+        const data: EnqueueMessageResponse =
+            await messageJobService.enqueueCreateMessage({
+                payload: request.body,
+            });
 
         return reply.status(202).send(data);
     },
 
     updateMessage: async (request, reply) => {
-        const data = await messageJobService.enqueueUpdateMessage({
-            id: request.params.id,
-            payload: request.body,
-        });
+        const data: EnqueueMessageResponse =
+            await messageJobService.enqueueUpdateMessage({
+                id: request.params.id,
+                payload: request.body,
+            });
 
         return reply.status(200).send(data);
     },
 
     deleteMessage: async (request, reply) => {
-        const data = await messageJobService.enqueueDeleteMessage({
-            id: request.params.id,
-        });
+        const data: EnqueueMessageResponse =
+            await messageJobService.enqueueDeleteMessage({
+                id: request.params.id,
+            });
 
         return reply.status(200).send(data);
     },
 
     getMessages: async (request, reply) => {
-        const data = await messageService.getMessages(request.query);
+        const data: FetchMessagesResponse = await messageService.getMessages(
+            request.query
+        );
 
         return reply.status(200).send(data);
     },

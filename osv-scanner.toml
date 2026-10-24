@@ -1,0 +1,106 @@
+# Accepted findings for the OSV scan in .github/workflows/build.yml.
+#
+# Every entry needs a reason a reviewer can check and an `ignoreUntil` no more
+# than ~3 months out: on that date the finding fails CI again and has to be
+# looked at afresh (a fix released, the risk changed, or a new date with a new
+# reason). Never add an entry without a date.
+
+[[IgnoredVulns]]
+id = "GHSA-5gmw-xhrv-c9v3"
+ignoreUntil = 2027-01-24
+reason = """
+tinypool 1.1.1 (vitest 3): prototype pollution in worker options. Dev only: \
+vitest runs this repository's own tests, never request input. The fix needs \
+vitest 5, a major upgrade of the test stack.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-85c8-ppgw-ccpr"
+ignoreUntil = 2027-01-24
+reason = """
+tinypool 1.1.1 (vitest 3): prototype pollution in run() options. Same as \
+GHSA-5gmw-xhrv-c9v3: test runner only, fixed in vitest 5.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-82fw-gwwq-j7x9"
+ignoreUntil = 2027-01-24
+reason = """
+vitest 3: file read via a redirect mock. Dev only, the mocks are written in \
+this repository. Fixed in vitest 4.1.11, a major upgrade.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-qxg6-89mg-rqv8"
+ignoreUntil = 2027-01-24
+reason = """
+@vitest/mocker 3: unauthenticated mock registration. It needs a vitest \
+server to be listening (`vitest --ui` on a developer machine); CI and the \
+app never run one. Fixed in vitest 4.1.12, a major upgrade.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-ggr8-5vv4-36mx"
+ignoreUntil = 2027-01-24
+reason = """
+deepmerge-ts 7 in @prisma/config (prisma CLI 6, dev dependency): stack \
+exhaustion on recursive objects. It merges the repository's own Prisma \
+config, never request input. Fixed in prisma 7, a major upgrade.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-3xgq-45jj-v275"
+ignoreUntil = 2027-01-24
+reason = """
+cross-spawn 7.0.3 in @prisma/generator-helper 5 (prisma-dbml-generator, dev \
+dependency): ReDoS on spawn arguments, which are the generator's own command \
+line. Fixed in prisma-dbml-generator 0.6+ only on another Prisma major.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-ph9p-34f9-6g65"
+ignoreUntil = 2027-01-24
+reason = """
+tmp 0.2.1 (@prisma/internals via prisma-dbml-generator) and 0.2.7 \
+(testcontainers): path traversal through the prefix/postfix options. Dev \
+only, the options are fixed strings in those tools.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-52f5-9888-hmc6"
+ignoreUntil = 2027-01-24
+reason = """
+tmp 0.2.1 (@prisma/internals via prisma-dbml-generator): symlinked `dir` \
+option. Dev only, the generator passes no `dir`.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-w5hq-g745-h8pq"
+ignoreUntil = 2027-01-24
+reason = """
+uuid < 11.1.1: missing bounds check in v3/v5/v6 when a buffer is passed. It \
+reaches production through @google-cloud/storage (gaxios, teeny-request), \
+which calls only v4; testcontainers and the Prisma generators are dev only. \
+Our own code does not import uuid. The fix needs @google-cloud/storage 8.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-4mjr-xmp4-gh2g"
+ignoreUntil = 2027-01-24
+reason = """
+qs 6.15.1, pinned exactly by typed-rest-client in @stryker-mutator/core (dev dependency). Stryker uses it only in `stryker init` to query the npm registry; `npm run test:mutation` never loads it and the app does not depend on qs.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-q8mj-m7cp-5q26"
+ignoreUntil = 2027-01-24
+reason = """
+qs 6.15.1, pinned exactly by typed-rest-client in @stryker-mutator/core (dev dependency). Stryker uses it only in `stryker init` to query the npm registry; `npm run test:mutation` never loads it and the app does not depend on qs.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-x5fp-wj9c-mxmx"
+ignoreUntil = 2027-01-24
+reason = """
+qs 6.15.1, pinned exactly by typed-rest-client in @stryker-mutator/core (dev dependency). Stryker uses it only in `stryker init` to query the npm registry; `npm run test:mutation` never loads it and the app does not depend on qs.
+"""

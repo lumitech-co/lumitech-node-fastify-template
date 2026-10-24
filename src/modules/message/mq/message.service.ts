@@ -1,16 +1,17 @@
+import { match } from "ts-pattern";
 import type { Queue } from "bullmq";
 import { MessageJobName } from "./message.constant.js";
 import { BadRequestError } from "@/lib/errors/errors.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 import type { MessageService } from "@/modules/message/message.service.js";
-import type { EnqueueMessageResponse } from "@/lib/validation/message/message.schema.js";
-import type { MessageRepository } from "@/database/repositories/message/message.repository.js";
+import type { MessageRepository } from "@/modules/message/message.repository.js";
+import type { EnqueueMessageResponse } from "@/modules/message/message.schema.js";
 import {
     createMessageJobSchema,
     updateMessageJobSchema,
     deleteMessageJobSchema,
-} from "@/lib/validation/message/message.schema.js";
+} from "@/modules/message/message.schema.js";
 import type {
     ProcessMessageJobPayload,
     MessageJobResult,
@@ -40,28 +41,28 @@ export const createService = (
     messageRepository: MessageRepository,
     messageQueue: Queue<MessageJobData, unknown, MessageJobName>
 ): MessageJobService => ({
-    processMessageJob: async ({ name, data, enqueuedAt }) => {
-        switch (name) {
-            case MessageJobName.Create:
-                return messageService.createMessage({
+    processMessageJob: async ({ name, data, enqueuedAt }) =>
+        match(name)
+            .with(MessageJobName.Create, () =>
+                messageService.createMessage({
                     ...createMessageJobSchema.parse(data),
                     enqueuedAt,
-                });
-            case MessageJobName.Update:
-                return messageService.updateMessage({
+                })
+            )
+            .with(MessageJobName.Update, () =>
+                messageService.updateMessage({
                     ...updateMessageJobSchema.parse(data),
                     enqueuedAt,
-                });
-            case MessageJobName.Delete:
-                return messageService.deleteMessage(
-                    deleteMessageJobSchema.parse(data)
-                );
-            default:
+                })
+            )
+            .with(MessageJobName.Delete, () =>
+                messageService.deleteMessage(deleteMessageJobSchema.parse(data))
+            )
+            .otherwise(() => {
                 throw new BadRequestError(
                     `${RESPONSE_MESSAGES.message.unknownJobName}: ${String(name)}`
                 );
-        }
-    },
+            }),
 
     enqueueCreateMessage: async ({ payload }) => {
         const id = payload.id ?? (await messageRepository.generateId());

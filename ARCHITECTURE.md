@@ -5,6 +5,7 @@ rules; this file holds the "how" — the layered design, the patterns, and the c
 examples the rules point to. Read the relevant section here when a rule references it.
 
 ## Stack
+
 - **Fastify** — HTTP framework
 - **Awilix** — Dependency Injection container
 - **Prisma** — Database ORM (PostgreSQL)
@@ -12,26 +13,34 @@ examples the rules point to. Read the relevant section here when a rule referenc
 - **Swagger** — API documentation
 
 ## Layered Architecture
+
 ```
 Routes → Handlers → Services → Repositories → Database
 ```
+
 - **Routes** — endpoint paths + Zod schemas + Swagger docs.
 - **Handlers** — thin request/response layer; delegate to services.
 - **Services** — business logic; coordinate repositories and libs.
-- **Repositories** — the only place Prisma/SQL runs.
+- **Repositories** — the only place Prisma/SQL runs; they live in their module and share its domain types.
 
 ## Module Structure
+
 Each module in `src/modules/<name>/`:
+
 ```
 ├── index.ts             # Entry point: autoPrefix literal + route registration (always present)
 ├── <name>.route.ts      # Tag, route-path enum and route definitions with Zod schemas
 ├── <name>.handler.ts    # <Name>Handler type + request handlers (thin layer)
 ├── <name>.service.ts    # <Name>Service type + business logic
-├── <name>.type.ts       # Module types other than the service/handler types (optional)
+├── <entity>.repository.ts # <Entity>Repository: domain methods, Prisma inside (one per model)
+├── <name>.schema.ts     # Zod schemas for the module's routes, jobs and Json columns
+├── <name>.type.ts       # Domain models and module types other than the service/handler types
+├── public.ts            # Public API: `export type { … } from` what other modules may use
 ├── <name>.constant.ts   # Non-routing, non-message constants only (optional)
 ├── <name>.util.ts       # Module utilities (optional)
 └── README.md            # What the module does and its endpoints (optional)
 ```
+
 `index.ts` is a Fastify plugin entry point (autoload + `autoPrefix`), **not** a barrel file —
 it is required in every module.
 
@@ -41,6 +50,7 @@ not the function name. See `src/modules/message/` as the reference module.
 
 `index.ts` resolves the handler from the container and passes it to the registrar (the
 registrar is not a container entry):
+
 ```typescript
 // src/modules/message/index.ts
 export const autoPrefix = "/api/messages";
@@ -52,18 +62,20 @@ export default async function (fastify: FastifyInstance) {
 ```
 
 ## Dependency Injection Pattern
+
 Factory functions (not classes) wired by Awilix. Dependencies are injected by parameter
 name matching a registered name in the container.
+
 ```typescript
 export const createService = (
-    messageRepository: MessageRepository,  // Injected by name match
+    messageRepository: MessageRepository, // Injected by name match
     log: FastifyBaseLogger,
     config: EnvConfig
 ): MessageService => ({
     // implementation
 });
 
-addDIResolverName(createService, "messageService");  // Register with DI
+addDIResolverName(createService, "messageService"); // Register with DI
 ```
 
 `addDIResolverName` sets the Awilix `RESOLVER` symbol on the factory, which is how the
@@ -71,7 +83,9 @@ container learns the registration name — see Awilix
 [inlining resolver options](https://github.com/jeffijoe/awilix?tab=readme-ov-file#inlining-resolver-options).
 
 ### DI Container Type
+
 All dependencies are declared in `src/types/di-container.type.ts`:
+
 ```typescript
 export type Cradle = {
     log: FastifyBaseLogger;
@@ -84,17 +98,34 @@ export type Cradle = {
 ## Key Patterns
 
 ### Validation Schemas
-`src/lib/validation/<module>/<module>.schema.ts`:
+
+`src/modules/<name>/<name>.schema.ts`:
+
 ```typescript
+const MESSAGE_TEXT_MAX_LENGTH = 5000;
+
 const createMessageBodySchema = z.object({
-    text: z.string(),
+    text: z.string().max(MESSAGE_TEXT_MAX_LENGTH),
 });
 type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 ```
 
+Every string and array a request schema accepts has a `.max()` (`arch/bounded-request-strings`):
+`bodyLimit` caps the whole payload, not one field. The limit lives in Zod only — the column
+stays `text`, so there is one place to change it — and reaches the OpenAPI docs as
+`maxLength` / `maxItems`.
+
+A schema shared with a response or a job (`messageMetaSchema` is used by the request, the
+`GET` response and the queued job) applies the limit there too. In a project with live data,
+check existing rows before tightening a limit: a longer stored value fails the response
+serializer (500), and a job queued before the deploy fails its parse in the worker, which is
+unrecoverable.
+
 ### Error Handling
+
 Error classes from `src/lib/errors/errors.ts` with a message from `RESPONSE_MESSAGES`.
 Always instantiate with `new`:
+
 ```typescript
 import { NotFoundError } from "@/lib/errors/errors.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
@@ -103,12 +134,14 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Repository Pattern
-A repository speaks the domain, not Prisma: its methods take and return our own types from
-`<name>.type.ts`, so a service never sees a Prisma type, select or where clause — Prisma stays
-inside the factory body. The repository type and its factory live in `<name>.repository.ts`;
-other types go to `<name>.type.ts`, helpers to `<name>.util.ts`.
+
+A repository lives in its module and speaks the domain, not Prisma: its methods take and
+return the module's own types from `<name>.type.ts` — the same types the service uses — so a
+service never sees a Prisma type, select or where clause. The repository type, its factory
+and private Prisma helpers live in `<entity>.repository.ts`.
+
 ```typescript
-// src/database/repositories/message/message.type.ts
+// src/modules/message/message.type.ts
 export type Message = {
     id: string;
     text: string;
@@ -118,8 +151,9 @@ export type Message = {
 
 export type MessageId = Pick<Message, "id">;
 ```
+
 ```typescript
-// src/database/repositories/message/message.repository.ts
+// src/modules/message/message.repository.ts
 const messageIdSelect = {
     id: true,
 } satisfies Prisma.MessageSelect;
@@ -157,8 +191,10 @@ The domain type repeats part of the Prisma model on purpose. It cannot drift: wh
 `updatedAt` plus a `findByIdOrFail` method; add the model's fields and methods from there.
 
 ### Route Registration
+
 Routes use Zod schemas for validation and OpenAPI docs; the tag and the path enum are
 declared (not exported) in the same `*.route.ts` file:
+
 ```typescript
 const MESSAGE_TAG = "message";
 
@@ -166,18 +202,24 @@ enum MessageRoute {
     Root = "/",
 }
 
-fastify.post(MessageRoute.Root, {
-    schema: {
-        tags: [MESSAGE_TAG],
-        summary: "Enqueue message creation",
-        body: createMessageBodySchema,
-        response: { 202: enqueueMessageResponseSchema },
+fastify.post(
+    MessageRoute.Root,
+    {
+        schema: {
+            tags: [MESSAGE_TAG],
+            summary: "Enqueue message creation",
+            body: createMessageBodySchema,
+            response: { 202: enqueueMessageResponseSchema },
+        },
     },
-}, messageHandler.createMessage);
+    messageHandler.createMessage
+);
 ```
 
 ### Plugin Dependencies
+
 Plugins declare dependencies via fastify-plugin:
+
 ```typescript
 export default fp(configurePlugin, {
     name: FastifyPlugin.PluginName,
@@ -186,8 +228,10 @@ export default fp(configurePlugin, {
 ```
 
 ### Response Messages
+
 Every client-facing message lives in the single `RESPONSE_MESSAGES` object in
 `src/lib/messages/messages.constant.ts`, grouped by module:
+
 ```typescript
 export const RESPONSE_MESSAGES = {
     message: {
@@ -200,9 +244,11 @@ throw new NotFoundError(RESPONSE_MESSAGES.message.notFound);
 ```
 
 ### Response Caching
+
 Any route caches its response by declaring a `cache` config — no handler or service
 change is needed. The `cache` plugin looks the entry up in `preHandler` and stores the
 serialized body in `onSend`:
+
 ```typescript
 fastify.get(
     MessageRoute.Root,
@@ -218,8 +264,10 @@ fastify.get(
     messageHandler.getMessages
 );
 ```
+
 Every field is optional — `config: { cache: {} }` caches with the default TTL under a
 namespace derived from the route method and path. The rest of the options tune the key:
+
 - `ttl` — per-route lifetime in seconds (`CACHE_DEFAULT_TTL_SECONDS` otherwise);
 - `namespace` — the group `cacheService.invalidate()` drops at once;
 - `varyByHeaders` — headers the response depends on (`accept-language`, …);
@@ -238,9 +286,11 @@ entry. Responses answer with an `x-cache: HIT | MISS` header. Only `GET`/`HEAD` 
 > that carries identity — before caching anything that isn't identical for every caller.
 
 Writes drop the namespace they invalidate, from the service that owns them:
+
 ```typescript
 await cacheService.invalidate({ namespace: MESSAGE_CACHE_NAMESPACE });
 ```
+
 `cacheService` is also usable directly for anything narrower than a whole response —
 `get` / `set` / `remove` / `invalidate`, plus `wrap` for read-through around an
 expensive call. `wrap` is **single-flight**: on a miss it takes a short-lived Redis lock
@@ -253,10 +303,12 @@ still see concurrent misses; reach for `cacheService.wrap` inside the service wh
 matters.
 
 ### Rate Limiting
+
 `@fastify/rate-limit` is registered globally in `src/plugins/rateLimit.ts` using the same
 Redis client as caching (`fastify.redis`), so limits are shared across instances. Every
 route gets `RATE_LIMIT_DEFAULT_MAX` requests per `RATE_LIMIT_DEFAULT_TIME_WINDOW` unless it
 overrides or disables this via `config.rateLimit`:
+
 ```typescript
 fastify.get(
     MessageRoute.Root,
@@ -272,10 +324,12 @@ fastify.get(
     messageHandler.getMessages
 );
 ```
+
 Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /api/ping` so
 health checks from the load balancer never trip the limit. Clients are identified by
 `request.ip`; Fastify's `trustProxy` is set in `src/server.ts` from the **required**
-`TRUSTED_PROXY_HOPS` env var so this resolves the real client IP behind a proxy/load balancer
+`TRUSTED_PROXY_HOPS` env var (as a trust function, `hop < TRUSTED_PROXY_HOPS`: Fastify 5.12+
+trusts no proxy for a plain number) so this resolves the real client IP behind a proxy/load balancer
 instead of the proxy's own IP. Set it to the actual number of trusted hops for your topology
 (e.g. `1` behind a single load balancer), or `0` when the app is exposed directly with no
 proxy — a mismatch lets clients spoof `X-Forwarded-For` and bypass the limiter, so it has no
@@ -285,14 +339,17 @@ Exceeding the limit returns `429` with a body shaped like the rest of the app's 
 (`skipOnError: true`) — a Redis outage disables rate limiting rather than failing requests.
 
 ### Banning Route Scanners
+
 `src/plugins/ipBan.ts` blocks IPs that probe for routes the app does not serve
 (`/wp-admin`, `/.env`, `/main.ts`). It owns the Fastify `notFoundHandler`: a 404 under a
 known prefix is an honest mistake and is ignored, a 404 anywhere else counts as a probe.
+
 ```typescript
 export const IP_BAN_ALLOWED_PREFIXES = ["/api/", "/.well-known/"];
 
 export const IP_BAN_ALLOWED_PATHS = ["/", "/api", "/favicon.ico"];
 ```
+
 The lists are deliberately minimal — this is a JSON API, so almost nothing legitimately
 lives outside `/api/`, and that prefix already covers Swagger UI and its assets (its HTML
 links its own favicon relatively, so the docs page never asks for the root one).
@@ -329,21 +386,60 @@ drop the key: `redis-cli DEL ipban:<ip>`.
 Like caching and rate limiting, the guard is **fail-open** — if Redis is unreachable the
 lookup is logged and treated as "not banned" rather than failing the request.
 
+### Security Defaults
+
+- **Response headers** — `src/plugins/helmet.ts`: a no-load CSP (`default-src 'none'`) for
+  the JSON API, a looser one only under the Swagger prefix, HSTS, `nosniff`, frame deny,
+  `no-referrer` and a deny-all `Permissions-Policy`.
+- **Request timeout** — `src/plugins/requestTimeout.ts` answers `503` after
+  `REQUEST_TIMEOUT_MS`. A long-running route (a stream, an upload) goes in `UNTIMED_ROUTES`.
+- **Logs** — the request serializer (`serializeRequestForLog`) blanks credential query
+  parameters (`token`, `code`, `signature`, …). A failed BullMQ job logs
+  `summarizeJobData(job.data)`: top-level ids and flags, never the nested user payload.
+- **Outbound HTTP** — a URL the user supplies is fetched only with `safeFetchJson`
+  (`src/lib/safeFetch`): HTTPS only, DNS resolved once and every answer checked against
+  private ranges, socket pinned to the checked address, no redirects, size and time capped,
+  body parsed with a Zod schema. It never throws; it returns `{ ok: false, reason }`.
+  Calls to known APIs use `fetchWithRetry` (`src/lib/http/fetchWithRetry.ts`): it retries
+  rate limits for any method but 5xx and network errors only for idempotent methods, so a
+  write is never sent twice.
+- **Secrets** — a third-party secret stored in the database is encrypted with
+  `encryptSecret` / `decryptSecret` (`src/lib/secretCipher`, AES-256-GCM keyed by a
+  high-entropy app secret). An API key or invite token is generated with
+  `generateOpaqueToken` / `generateOpaqueSecret`; only `tokenHash` is stored. A secret from a
+  request is compared with `hashing.compareSecret` (constant time), never `===`.
+- **Workers** — every BullMQ `Worker` spreads `WORKER_STALL_DEFAULTS`: a deploy that kills an
+  in-flight job counts as a stall, and BullMQ's default of one stall fails the job for good,
+  skipping its `attempts`.
+
+#### Cron jobs
+
+A scheduler (Cloud Scheduler, a CI cron) calls a route guarded by
+`onRequest: [fastify.authenticateCron]`, which expects `Authorization: Bearer <CRON_SECRET>`
+and refuses everything while `CRON_SECRET` is unset. The handler only enqueues a BullMQ job
+and answers `202` at once (fast ack); the worker does the work with BullMQ's retries. The
+scheduler's own timeout and retry then never overlap a long run, and a deploy cannot cut a
+job off halfway with nobody retrying it.
+
 ### Typed JSON in Prisma
+
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
+
 ```prisma
 model Message {
   /// [MessageMeta]
   meta Json?
 }
 ```
+
 The referenced type is declared in the global `PrismaJson` namespace in
 `src/types/prisma-json.d.ts`. After editing the schema run `npm run prisma:generate` — the
 field then comes back as `PrismaJson.MessageMeta | null`, not `Prisma.JsonValue`.
 
 Then validate it with Zod and keep the two in sync:
+
 ```typescript
-// src/lib/validation/message/message.schema.ts
+// src/modules/message/message.schema.ts
 const messageMetaSchema = z.object({
     source: z.enum(["web", "mobile", "api"]),
     tags: z.array(z.string()).optional(),
@@ -356,20 +452,25 @@ const createMessageBodySchema = z.object({
 ```
 
 ## Directory Structure
+
 ```
 src/
 ├── database/
 │   ├── dbml/            # Generated ER diagram (npm run prisma:diagram) - never edit by hand
-│   ├── prisma/          # Schema and migrations
-│   └── repositories/    # Data access layer: domain types in and out, all Prisma calls inside
+│   └── prisma/          # Schema and migrations
 ├── lib/
 │   ├── awilix/          # DI helpers
+│   ├── bullmq/          # Job helpers (summarizeJobData)
 │   ├── constants/       # Global constants
+│   ├── dayjs/           # The only date library entry point
 │   ├── errors/          # Error classes
-│   ├── hashing/         # Password hashing
+│   ├── hashing/         # Password and token hashing, opaque tokens
+│   ├── http/            # fetchWithRetry, request log serializer
 │   ├── messages/        # RESPONSE_MESSAGES - all client-facing messages
-│   └── validation/      # Zod schemas by module
-├── modules/             # Feature modules
+│   ├── safeFetch/       # SSRF-safe fetch of user-supplied URLs
+│   ├── secretCipher/    # AES-GCM encryption of stored secrets
+│   └── validation/      # Zod schemas of lib code (module schemas live in the module)
+├── modules/             # Feature modules: routes, handlers, services, repositories, schemas
 ├── plugins/             # Fastify plugins
 └── types/               # Global TypeScript definitions
 ```
@@ -377,22 +478,34 @@ src/
 ## Common Tasks
 
 ### Add a new feature module
+
 1. Run `npm run generate:module featureName`
 2. Define Prisma model in `src/database/prisma/schema.prisma`
 3. Run `npm run generate:repository featureName`, then add the model's fields to the domain
-   type in `<name>.type.ts` and the repository methods the service needs
+   type in the module's `<name>.type.ts` and the repository methods the service needs
 4. Implement service logic against those repository methods
 5. Define routes with Zod schemas
 
 ### Add a database model
+
 1. Edit `src/database/prisma/schema.prisma`
 2. Run `npm run prisma:migrate:create`
 3. Run `npm run prisma:migrate:apply`
-4. Run `npm run generate:repository modelName` and describe the model's fields in its
-   domain type (`<name>.type.ts`)
+4. Run `npm run generate:repository modelName --module owningModule` and describe the model's
+   fields in its domain type in that module's `<name>.type.ts`
 
 ### Run tests
+
 - Unit: `npm run test:unit`
+- Only what a change reaches: `npm run test:unit:changed` / `npm run test:int:changed` (against
+  `origin/main`; CI does the same on pull requests). Unit tests follow the import graph
+  (`vitest --changed`). Integration tests boot the app, which loads modules at runtime where the
+  graph cannot see them, so `scripts/int-test-selection.mjs` maps paths instead: a change in
+  `src/modules/<name>/` runs `test/int/modules/<name>/` plus the journeys, a shared path (`src/lib`,
+  `src/plugins`, the schema, the test harness, dependencies) or an unclassified one runs everything.
+  A break in another module that the map misses is caught by the full run on main.
+- Mutation (local only): `npm run test:mutation -- --mutate src/lib/http/http.util.ts` shows
+  whether the tests covering a file can fail; the HTML report lands in `reports/mutation/`.
 - Integration: `npm run test:int` (Testcontainers starts Postgres itself; just needs Docker running). Add `docker compose -f docker-compose.test.yml up` only when a test needs the storage emulators.
 
 ## Writing integration tests
@@ -417,7 +530,10 @@ A factory in `test/int/factories/*.factory.ts` seeds a precondition directly thr
 so a test starts from a known state on its own. Keep them small, typed and override-friendly:
 
 ```typescript
-export const createMessage = async ({ prisma, overrides = {} }: CreateMessageArgs) => {
+export const createMessage = async ({
+    prisma,
+    overrides = {},
+}: CreateMessageArgs) => {
     return prisma.message.create({
         data: { text: `message-${randomUUID()}`, ...overrides },
     });

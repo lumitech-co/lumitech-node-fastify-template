@@ -4,6 +4,7 @@ import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import { resolveTrustProxy } from "@/lib/proxy/proxy.util.js";
+import { serializeRequestForLog } from "@/lib/http/http.util.js";
 import { ENV_TO_LOGGER, GCP_LOGGER } from "@/lib/constants/logger.constant.js";
 import { QUEUE_WORKER_PLUGIN_PATTERN } from "@/lib/constants/bullmq.constant.js";
 
@@ -23,9 +24,14 @@ export const configureServer = async ({
         | keyof typeof ENV_TO_LOGGER
         | undefined;
 
+    const trustedProxyHops = resolveTrustProxy(process.env.TRUSTED_PROXY_HOPS);
+
     const fastify = Fastify({
-        trustProxy: resolveTrustProxy(process.env.TRUSTED_PROXY_HOPS),
-        logger: (nodeEnv && ENV_TO_LOGGER[nodeEnv]) ?? GCP_LOGGER,
+        trustProxy: (_address, hop) => hop < trustedProxyHops,
+        logger: {
+            ...((nodeEnv && ENV_TO_LOGGER[nodeEnv]) ?? GCP_LOGGER),
+            serializers: { req: serializeRequestForLog },
+        },
     });
 
     try {

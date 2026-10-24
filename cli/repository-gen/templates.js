@@ -10,13 +10,13 @@ export type ${namePascal} = {
 export type ${namePascal}Id = Pick<${namePascal}, "id">;
 `.trim(),
 
-    repository: (nameCamel, namePascal, nameKebab) =>
+    repository: (nameCamel, namePascal, moduleKebab) =>
         `
 import { NotFoundError } from "@/lib/errors/errors.js";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
-import type { ${namePascal}, ${namePascal}Id } from "./${nameKebab}.type.js";
+import type { ${namePascal}, ${namePascal}Id } from "./${moduleKebab}.type.js";
 
 const ${nameCamel}Select = {
     id: true,

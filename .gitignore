@@ -5,3 +5,9 @@ dist
 tsconfig.tsbuildinfo
 .volumes
 dbml
+
+coverage
+
+# StrykerJS sandbox and reports (npm run test:mutation)
+.stryker-tmp
+reports

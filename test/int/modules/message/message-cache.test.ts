@@ -39,9 +39,7 @@ describe("Response cache for /api/messages", () => {
     it("should keep serving the cached response while data changes behind it", async () => {
         await server.inject({ method: "GET", url: "/api/messages" });
 
-        await server.prisma.message.create({
-            data: { text: "Written straight to the DB" },
-        });
+        await createMessage({ prisma: server.prisma });
 
         const cached = await server.inject({
             method: "GET",
