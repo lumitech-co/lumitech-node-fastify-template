@@ -983,6 +983,39 @@ const CASES: Case[] = [
         reports: false,
     },
     ...pair(
+        "crypto-via-lib",
+        {
+            file: LIB_UTIL,
+            code: 'const digest = createHash("md5").update(value).digest("hex");',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'const digest = createHash("sha256").update(value).digest("hex");',
+        }
+    ),
+    ...[
+        {
+            file: LIB_UTIL,
+            code: "const equal = crypto.timingSafeEqual(a, b);",
+            reports: true,
+        },
+        {
+            file: "src/lib/hashing/hashing.ts",
+            code: "const equal = timingSafeEqual(a, b);",
+            reports: false,
+        },
+        {
+            file: LIB_UTIL,
+            code: 'const cipher = createCipheriv("aes-256-gcm", key, iv);',
+            reports: true,
+        },
+        {
+            file: "src/lib/secretCipher/secretCipher.util.ts",
+            code: 'const cipher = createCipheriv("aes-256-gcm", key, iv);',
+            reports: false,
+        },
+    ].map((testCase) => ({ rule: "crypto-via-lib", ...testCase })),
+    ...pair(
         "unit-no-io",
         {
             file: UNIT_TEST,
@@ -1032,13 +1065,18 @@ describe("arch/* ESLint rules", () => {
         .calculateConfigForFile(path.join(process.cwd(), SERVICE))
         .then((config) => Object.keys(config.plugins.arch.rules));
 
-    it("has a case for every registered arch rule", async () => {
-        const covered = new Set(CASES.map(({ rule }) => rule));
+    // The first test pays for loading the whole ESLint config.
+    it(
+        "has a case for every registered arch rule",
+        { timeout: 30_000 },
+        async () => {
+            const covered = new Set(CASES.map(({ rule }) => rule));
 
-        expect((await configured).filter((rule) => !covered.has(rule))).toEqual(
-            []
-        );
-    });
+            expect(
+                (await configured).filter((rule) => !covered.has(rule))
+            ).toEqual([]);
+        }
+    );
 
     it.each(CASES)("arch/$rule reports=$reports in $file", async (testCase) => {
         const rules = await reportedRules(testCase);

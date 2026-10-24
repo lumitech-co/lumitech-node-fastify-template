@@ -132,6 +132,7 @@ const architecture = {
         "seed-via-factories": restrictedSyntax,
         "no-cross-test-state": noCrossTestState,
         "unit-no-io": typescriptEslint.rules["no-restricted-imports"],
+        "crypto-via-lib": restrictedSyntax,
     },
 };
 
@@ -179,6 +180,26 @@ const MESSAGE_LITERAL =
 // Zod checks whose first argument may be the error message.
 const ZOD_MESSAGE_FIRST =
     "^(string|number|boolean|bigint|date|email|url|httpUrl|uuid|uuidv4|uuidv6|uuidv7|guid|cuid|cuid2|ulid|nanoid|xid|ksuid|ipv4|ipv6|cidrv4|cidrv6|base64|base64url|e164|jwt|emoji|datetime|time|duration|int|int32|positive|negative|nonnegative|nonpositive|finite|safe|nonempty)$";
+
+const cryptoCall = (name) =>
+    `CallExpression:matches([callee.name=${name}], [callee.property.name=${name}])`;
+
+const WEAK_HASH = {
+    selector: `${cryptoCall("'createHash'")}[arguments.0.value=/^([Mm][Dd]5|[Ss][Hh][Aa]-?1)$/]`,
+    message: "MD5 and SHA-1 are broken — use sha256 or stronger.",
+};
+
+const RAW_CIPHER = {
+    selector: cryptoCall("/^create(Cipheriv|Decipheriv)$/"),
+    message:
+        "Encrypt stored secrets with encryptSecret / decryptSecret (@/lib/secretCipher/secretCipher.util.js), which fix the algorithm, IV and format.",
+};
+
+const RAW_TIMING_SAFE_EQUAL = {
+    selector: cryptoCall("'timingSafeEqual'"),
+    message:
+        "Use hashing.compareSecret (@/lib/hashing/hashing.js): a bare timingSafeEqual throws on unequal lengths, which leaks the secret's length.",
+};
 
 const PARSE_CALL =
     "CallExpression[callee.property.name=/^(safe)?[pP]arse(Async)?$/]";
@@ -2085,6 +2106,43 @@ export default [
                     ],
                 },
             ],
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/crypto-via-lib": [
+                "error",
+                WEAK_HASH,
+                RAW_CIPHER,
+                RAW_TIMING_SAFE_EQUAL,
+            ],
+        },
+    },
+    {
+        files: ["src/lib/secretCipher/**/*.ts"],
+
+        rules: {
+            "arch/crypto-via-lib": ["error", WEAK_HASH, RAW_TIMING_SAFE_EQUAL],
+        },
+    },
+    {
+        files: ["src/lib/hashing/**/*.ts"],
+
+        rules: {
+            "arch/crypto-via-lib": ["error", WEAK_HASH, RAW_CIPHER],
+        },
+    },
+    {
+        files: ["test/**/*.test.ts"],
+
+        rules: {
+            "vitest/consistent-test-it": ["error", { fn: "it" }],
+            "vitest/prefer-hooks-on-top": "error",
+            "vitest/no-duplicate-hooks": "error",
+            "vitest/no-conditional-in-test": "error",
+            "vitest/require-top-level-describe": "error",
         },
     },
     {

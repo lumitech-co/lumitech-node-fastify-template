@@ -585,6 +585,7 @@ type RouteBinding = {
     module: string;
     method: string;
     routeKeys: string[];
+    responseCodes: number[];
 };
 
 const sortedKeys = (source: string, pattern: RegExp): string[] =>
@@ -601,6 +602,9 @@ const routeBindings: RouteBinding[] = listDirs("modules").flatMap((module) =>
         routeKeys: sortedKeys(
             options!,
             /\b(body|params|querystring|headers):/g
+        ),
+        responseCodes: [...options!.matchAll(/\b([1-5]\d{2})\s*:/g)].map(
+            ([, code]) => Number(code)
         ),
     }))
 );
@@ -634,6 +638,69 @@ describe("Rule 7: every request part a handler reads is validated by its route",
                     /\b(Body|Params|Querystring|Headers):/g
                 )
             ).toEqual(routeKeys);
+        }
+    );
+});
+
+/**
+ * Status codes a handler method replies with: the literal in reply.status(N) /
+ * reply.code(N), or 200 when it only calls reply.send. NaN marks a non-literal.
+ */
+const handlerStatuses = ({
+    module,
+    method,
+}: Pick<RouteBinding, "module" | "method">): number[] => {
+    const statuses: number[] = [];
+
+    const visit = (node: ts.Node, inMethod: boolean): void => {
+        const isMethod =
+            ts.isPropertyAssignment(node) &&
+            node.name.getText() === method &&
+            (ts.isArrowFunction(node.initializer) ||
+                ts.isFunctionExpression(node.initializer));
+
+        const inside = inMethod || isMethod;
+
+        if (
+            inside &&
+            ts.isCallExpression(node) &&
+            ts.isPropertyAccessExpression(node.expression) &&
+            ["status", "code"].includes(node.expression.name.text)
+        ) {
+            const [status] = node.arguments;
+
+            statuses.push(
+                status && ts.isNumericLiteral(status)
+                    ? Number(status.text)
+                    : NaN
+            );
+        }
+
+        ts.forEachChild(node, (child) => {
+            visit(child, inside);
+        });
+    };
+
+    visit(parseSource(`modules/${module}/${module}.handler.ts`), false);
+
+    return statuses.length > 0 ? statuses : [200];
+};
+
+describe("every status a handler replies with has a response schema on its route", () => {
+    it.each(routeBindings)(
+        "$module: $method replies only with codes in its route's response",
+        ({ module, method, responseCodes }) => {
+            const statuses = handlerStatuses({ module, method });
+
+            expect(
+                statuses.every(Number.isInteger),
+                `${method} must pass a literal status to reply.status()`
+            ).toBe(true);
+
+            expect(
+                responseCodes,
+                "without a schema for the code, Fastify sends the payload unfiltered"
+            ).toEqual(expect.arrayContaining(statuses));
         }
     );
 });
