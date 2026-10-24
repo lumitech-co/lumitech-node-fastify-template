@@ -24,6 +24,7 @@ declare module "fastify" {
         bullmqConnection: Redis;
         bullmqProducerConnection: Redis;
         messageQueue: Queue<MessageJobData, unknown, MessageJobName>;
+        authenticateCron: (request: FastifyRequest) => Promise<void>;
     }
 
     export interface FastifyContextConfig {

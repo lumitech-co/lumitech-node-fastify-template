@@ -15,6 +15,10 @@
         "scripts/*.mjs",
         // Run by Claude Code hooks (.claude/settings.json).
         "scripts/claude-hooks/*.mjs",
+        // Building blocks the template ships for new projects, before a module
+        // calls them (ARCHITECTURE.md, Security Defaults).
+        "src/lib/safeFetch/safeFetch.ts",
+        "src/lib/http/fetchWithRetry.ts",
     ],
     "project": [
         "src/**/*.{ts,prisma}",
@@ -22,11 +26,7 @@
         "scripts/**/*.mjs",
         "test/**/*.ts",
     ],
-    // A dependency-free building block the template ships for new projects
-    // (CLAUDE.md, Rule 6).
-    "ignore": ["src/lib/hashing/**"],
     "ignoreDependencies": [
-        "argon2",
         // Referenced as a pino transport target string.
         "pino-pretty",
     ],

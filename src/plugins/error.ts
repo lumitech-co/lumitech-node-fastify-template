@@ -8,8 +8,8 @@ import {
 const configureErrorHandler = async (fastify: FastifyInstance) => {
     fastify.setErrorHandler((error, request, reply) => {
         // Hide not predefined errors from the client and just log them.
-        if (!("statusCode" in error)) {
-            request.log.error(error, error.message);
+        if (!(error instanceof Error) || !("statusCode" in error)) {
+            request.log.error({ err: error }, "Unhandled error");
 
             // Returning a generic error message instead.
             // Do not use an Error instance reply value because it creates

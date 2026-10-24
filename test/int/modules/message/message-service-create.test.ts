@@ -1,5 +1,6 @@
 import { configureServer } from "@/server.js";
 import type { FastifyInstance } from "fastify";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";
 
@@ -71,7 +72,7 @@ describe("POST /api/messages", () => {
         const payload = {
             id: await server.di.resolve("messageRepository").generateId(),
             text: "Hello once",
-            enqueuedAt: new Date(),
+            enqueuedAt: dayjs().toDate(),
         };
 
         const first = await messageService.createMessage(payload);

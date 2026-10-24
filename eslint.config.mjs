@@ -7,11 +7,15 @@ import stylistic from "@stylistic/eslint-plugin";
 import prettyImports from "eslint-plugin-pretty-imports";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import fileNaming from "./scripts/eslint-rules/file-naming.mjs";
+import preferDayjs from "./scripts/eslint-rules/prefer-dayjs.mjs";
 import importX, { createNodeResolver } from "eslint-plugin-import-x";
 import noArchDisable from "./scripts/eslint-rules/no-arch-disable.mjs";
 import layerDirection from "./scripts/eslint-rules/layer-direction.mjs";
+import preferTsPattern from "./scripts/eslint-rules/prefer-ts-pattern.mjs";
 import routeParamsSchema from "./scripts/eslint-rules/route-params-schema.mjs";
 import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
+import handlerTypedResponse from "./scripts/eslint-rules/handler-typed-response.mjs";
+import maxParallelDbQueries from "./scripts/eslint-rules/max-parallel-db-queries.mjs";
 import preferRepositoryOrFail from "./scripts/eslint-rules/prefer-repository-or-fail.mjs";
 import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
 import noDuplicateRepositoryRead from "./scripts/eslint-rules/no-duplicate-repository-read.mjs";
@@ -23,6 +27,7 @@ import maxCommentLines, {
 import noSingleRepositoryTransaction from "./scripts/eslint-rules/no-single-repository-transaction.mjs";
 import noDependencyFreeFactoryHelper from "./scripts/eslint-rules/no-dependency-free-factory-helper.mjs";
 import noPrismaShapeOutsideRepository from "./scripts/eslint-rules/no-prisma-shape-outside-repository.mjs";
+import noReadBeforeWriteInTransaction from "./scripts/eslint-rules/no-read-before-write-in-transaction.mjs";
 import { fileURLToPath } from "node:url";
 import { builtinModules } from "node:module";
 import { FlatCompat } from "@eslint/eslintrc";
@@ -111,6 +116,11 @@ const architecture = {
         "domain-repository-imports":
             typescriptEslint.rules["no-restricted-imports"],
         "prefer-repository-or-fail": preferRepositoryOrFail,
+        "handler-typed-response": handlerTypedResponse,
+        "no-read-before-write-in-transaction": noReadBeforeWriteInTransaction,
+        "max-parallel-db-queries": maxParallelDbQueries,
+        "prefer-dayjs": preferDayjs,
+        "prefer-ts-pattern": preferTsPattern,
         "no-prisma-in-modules": restrictedSyntax,
         "public-api": restrictedSyntax,
         "plugin-imports": typescriptEslint.rules["no-restricted-imports"],
@@ -172,7 +182,7 @@ const compat = new FlatCompat({
 });
 
 export default [
-    { ignores: ["build/**", "coverage/**"] },
+    { ignores: ["build/**", "coverage/**", ".stryker-tmp/**", "reports/**"] },
     ...compat.extends(
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended"
@@ -507,10 +517,10 @@ export default [
                 {
                     patterns: [
                         {
-                            regex: "^(?!@/|\\.{1,2}/|node:|fastify$|zod$|@prisma/client$).+",
+                            regex: "^(?!@/|\\.{1,2}/|node:|fastify$|zod$|ts-pattern$|@prisma/client$).+",
                             allowTypeImports: true,
                             message:
-                                "Only @/, ./, node:, fastify, zod and @prisma/client are imported here — any other package reaches handlers/services/repositories through a plugin in src/plugins/; use `import type` (CLAUDE.md, Rule 6).",
+                                "Only @/, ./, node:, fastify, zod, ts-pattern and @prisma/client are imported here — any other package reaches handlers/services/repositories through a plugin in src/plugins/; use `import type` (CLAUDE.md, Rule 6).",
                         },
                     ],
                 },
@@ -1902,6 +1912,37 @@ export default [
                     ],
                 },
             ],
+        },
+    },
+    {
+        files: ["src/modules/**/*.handler.ts"],
+
+        rules: {
+            "arch/handler-typed-response": "error",
+        },
+    },
+    {
+        files: ["src/modules/**/*.ts"],
+
+        rules: {
+            "arch/no-read-before-write-in-transaction": "error",
+        },
+    },
+    {
+        files: ["src/**/*.ts"],
+
+        rules: {
+            "arch/max-parallel-db-queries": "error",
+            "arch/prefer-ts-pattern": "error",
+        },
+    },
+    {
+        // One date API: dayjs. Native Date survives only as a type and as the
+        // value Prisma / zod / JSON hand over.
+        files: ["src/**/*.ts", "test/**/*.ts"],
+
+        rules: {
+            "arch/prefer-dayjs": "error",
         },
     },
     {

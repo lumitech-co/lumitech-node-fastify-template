@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { describe, expect, it, vi } from "vitest";
 import type { EnvConfig } from "@/types/env.type.js";
 import type { CacheService } from "@/lib/cache/cache.service.js";
@@ -20,7 +21,7 @@ const createFakeCache = (): CacheService =>
     }) as unknown as CacheService;
 
 const log = { info: vi.fn() } as unknown as FastifyBaseLogger;
-const enqueuedAt = new Date("2026-01-01T00:00:00.000Z");
+const enqueuedAt = dayjs("2026-01-01T00:00:00.000Z").toDate();
 const messageId = "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b";
 const missingId = "0190a1b2-c3d4-7e5f-9a6b-000000000000";
 const config = { NODE_ENV: "test" } as EnvConfig;
@@ -146,7 +147,12 @@ describe("message.service - getMessages", () => {
 
         const page = {
             messages: [
-                { id: messageId, createdAt: new Date(), text: "A", meta: null },
+                {
+                    id: messageId,
+                    createdAt: dayjs().toDate(),
+                    text: "A",
+                    meta: null,
+                },
             ],
             nextCursor: messageId,
         };

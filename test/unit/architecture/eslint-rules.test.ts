@@ -818,6 +818,55 @@ const CASES: Case[] = [
         reports: false,
     },
     ...pair(
+        "handler-typed-response",
+        {
+            file: HANDLER,
+            code: "async function handle() { return reply.send(await demoService.get()); }",
+        },
+        {
+            file: HANDLER,
+            code: "async function handle() { const response: DemoResponse = await demoService.get(); return reply.status(200).send(response); }",
+        }
+    ),
+    ...pair(
+        "no-read-before-write-in-transaction",
+        {
+            file: SERVICE,
+            code: "prisma.$transaction(async (tx) => { const rows = await tx.demo.findMany({}); await tx.demo.updateMany({ data: rows }); });",
+        },
+        {
+            file: SERVICE,
+            code: "prisma.$transaction(async (tx) => { await tx.demo.updateMany({ data: {} }); await tx.other.deleteMany({}); });",
+        }
+    ),
+    ...pair(
+        "max-parallel-db-queries",
+        {
+            file: SERVICE,
+            code: "await Promise.all([demoRepository.a(), demoRepository.b(), demoRepository.c(), demoRepository.d()]);",
+        },
+        {
+            file: SERVICE,
+            code: "await Promise.all([demoRepository.a(), demoRepository.b(), demoRepository.c(), cacheService.get()]);",
+        }
+    ),
+    ...pair(
+        "prefer-dayjs",
+        { file: LIB_UTIL, code: "const now = new Date();" },
+        { file: LIB_UTIL, code: "const now = dayjs();" }
+    ),
+    ...pair(
+        "prefer-ts-pattern",
+        {
+            file: LIB_UTIL,
+            code: 'switch (kind) { case "a": run(); break; default: stop(); }',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'const value = match(kind).with("a", () => 1).otherwise(() => 2);',
+        }
+    ),
+    ...pair(
         "no-interfaces",
         { file: MODULE_TYPE, code: "export interface Demo { id: string }" },
         {

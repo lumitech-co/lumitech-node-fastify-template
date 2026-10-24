@@ -315,7 +315,8 @@ fastify.get(
 Set `config: { rateLimit: false }` to exempt a route entirely — used on `GET /api/ping` so
 health checks from the load balancer never trip the limit. Clients are identified by
 `request.ip`; Fastify's `trustProxy` is set in `src/server.ts` from the **required**
-`TRUSTED_PROXY_HOPS` env var so this resolves the real client IP behind a proxy/load balancer
+`TRUSTED_PROXY_HOPS` env var (as a trust function, `hop < TRUSTED_PROXY_HOPS`: Fastify 5.12+
+trusts no proxy for a plain number) so this resolves the real client IP behind a proxy/load balancer
 instead of the proxy's own IP. Set it to the actual number of trusted hops for your topology
 (e.g. `1` behind a single load balancer), or `0` when the app is exposed directly with no
 proxy — a mismatch lets clients spoof `X-Forwarded-For` and bypass the limiter, so it has no
@@ -372,6 +373,41 @@ drop the key: `redis-cli DEL ipban:<ip>`.
 Like caching and rate limiting, the guard is **fail-open** — if Redis is unreachable the
 lookup is logged and treated as "not banned" rather than failing the request.
 
+### Security Defaults
+
+- **Response headers** — `src/plugins/helmet.ts`: a no-load CSP (`default-src 'none'`) for
+  the JSON API, a looser one only under the Swagger prefix, HSTS, `nosniff`, frame deny,
+  `no-referrer` and a deny-all `Permissions-Policy`.
+- **Request timeout** — `src/plugins/requestTimeout.ts` answers `503` after
+  `REQUEST_TIMEOUT_MS`. A long-running route (a stream, an upload) goes in `UNTIMED_ROUTES`.
+- **Logs** — the request serializer (`serializeRequestForLog`) blanks credential query
+  parameters (`token`, `code`, `signature`, …). A failed BullMQ job logs
+  `summarizeJobData(job.data)`: top-level ids and flags, never the nested user payload.
+- **Outbound HTTP** — a URL the user supplies is fetched only with `safeFetchJson`
+  (`src/lib/safeFetch`): HTTPS only, DNS resolved once and every answer checked against
+  private ranges, socket pinned to the checked address, no redirects, size and time capped,
+  body parsed with a Zod schema. It never throws; it returns `{ ok: false, reason }`.
+  Calls to known APIs use `fetchWithRetry` (`src/lib/http/fetchWithRetry.ts`): it retries
+  rate limits for any method but 5xx and network errors only for idempotent methods, so a
+  write is never sent twice.
+- **Secrets** — a third-party secret stored in the database is encrypted with
+  `encryptSecret` / `decryptSecret` (`src/lib/secretCipher`, AES-256-GCM keyed by a
+  high-entropy app secret). An API key or invite token is generated with
+  `generateOpaqueToken` / `generateOpaqueSecret`; only `tokenHash` is stored. A secret from a
+  request is compared with `hashing.compareSecret` (constant time), never `===`.
+- **Workers** — every BullMQ `Worker` spreads `WORKER_STALL_DEFAULTS`: a deploy that kills an
+  in-flight job counts as a stall, and BullMQ's default of one stall fails the job for good,
+  skipping its `attempts`.
+
+#### Cron jobs
+
+A scheduler (Cloud Scheduler, a CI cron) calls a route guarded by
+`onRequest: [fastify.authenticateCron]`, which expects `Authorization: Bearer <CRON_SECRET>`
+and refuses everything while `CRON_SECRET` is unset. The handler only enqueues a BullMQ job
+and answers `202` at once (fast ack); the worker does the work with BullMQ's retries. The
+scheduler's own timeout and retry then never overlap a long run, and a deploy cannot cut a
+job off halfway with nobody retrying it.
+
 ### Typed JSON in Prisma
 
 A `Json` column is both typed and validated. Type it with `prisma-json-types-generator`:
@@ -411,10 +447,15 @@ src/
 │   └── prisma/          # Schema and migrations
 ├── lib/
 │   ├── awilix/          # DI helpers
+│   ├── bullmq/          # Job helpers (summarizeJobData)
 │   ├── constants/       # Global constants
+│   ├── dayjs/           # The only date library entry point
 │   ├── errors/          # Error classes
-│   ├── hashing/         # Password hashing
+│   ├── hashing/         # Password and token hashing, opaque tokens
+│   ├── http/            # fetchWithRetry, request log serializer
 │   ├── messages/        # RESPONSE_MESSAGES - all client-facing messages
+│   ├── safeFetch/       # SSRF-safe fetch of user-supplied URLs
+│   ├── secretCipher/    # AES-GCM encryption of stored secrets
 │   └── validation/      # Zod schemas of lib code (module schemas live in the module)
 ├── modules/             # Feature modules: routes, handlers, services, repositories, schemas
 ├── plugins/             # Fastify plugins
@@ -443,6 +484,8 @@ src/
 ### Run tests
 
 - Unit: `npm run test:unit`
+- Mutation (local only): `npm run test:mutation -- --mutate src/lib/http/http.util.ts` shows
+  whether the tests covering a file can fail; the HTML report lands in `reports/mutation/`.
 - Integration: `npm run test:int` (Testcontainers starts Postgres itself; just needs Docker running). Add `docker compose -f docker-compose.test.yml up` only when a test needs the storage emulators.
 
 ## Writing integration tests

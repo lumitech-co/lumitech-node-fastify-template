@@ -51,7 +51,8 @@ The template uses a Vitest testing framework for test coverage.
 #### Unit Tests
 
 1. `npm run test:unit` - run all unit tests with detailed output in the terminal;
-2. `npm run test:unit:ui` - launch the interactive UI test runner.
+2. `npm run test:unit:ui` - launch the interactive UI test runner;
+3. `npm run test:mutation -- --mutate <file>` - mutation testing (StrykerJS) of one file, local only.
 
 #### Integration Tests
 
@@ -293,6 +294,9 @@ Plugins included:
 - **API Documentation** (`swagger.ts` and `zod.ts`): Integrates Swagger for API documentation and Zod for schema validation.
 - **Dependency Injection** (`awilix.ts`): Registers and manages service dependencies using Awilix.
 - **Error Handling** (`error.ts`): Provides a centralized mechanism for managing application errors.
+- **Security Headers** (`helmet.ts`): CSP, HSTS and the other hardening headers.
+- **Request Timeout** (`requestTimeout.ts`): Answers `503` to a request that runs too long.
+- **Cron Authentication** (`authenticateCron.ts`): `fastify.authenticateCron` for scheduler-only routes (`CRON_SECRET`).
 
 #### `src/lib`:
 

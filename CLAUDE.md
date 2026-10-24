@@ -38,7 +38,8 @@ CI, dead files/exports/dependencies by `npm run knip`. Claude Code hooks (`.clau
 refuse a hand-made module, repository or migration and lint every file Claude edits. CI also
 checks formatting of code and docs (`npm run format:check`), runs the generators against all of the above
 (`npm run check:generators`) and enforces unit-test coverage of services and utils
-(`npm run test:unit:coverage`); every commit is type-checked (`npm run tsc-check` in the pre-commit hook). Every `arch/*` rule has a
+(`npm run test:unit:coverage`) and scans `package-lock.json` for known advisories with OSV
+(an accepted one goes in `osv-scanner.toml` with a reason and an `ignoreUntil` date); every commit is type-checked (`npm run tsc-check` in the pre-commit hook). Every `arch/*` rule has a
 firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
 When one fails, fix the code — never disable the check.
 
@@ -218,12 +219,22 @@ a custom index); if a generated migration would be destructive, stop and ask.
   branching, loops or try/catch: it calls the service and returns `reply.status().send()`.
 - Every response schema is the envelope `z.object({ message, data })` (the health check is the
   only exception).
+- A handler types its response payload (`const data: <Name>Response = …`) before sending it
+  (`arch/handler-typed-response`).
 - Log errors under `err` — `log.error({ err: error }, "...")`; pino serializes an Error only
   under that key.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).
 - Prisma only inside repositories; `$transaction` is the single exception (Rule 2). Never
-  query the database in a loop (Rule 3).
+  query the database in a loop (Rule 3). At most 3 queries per `Promise.all`
+  (`arch/max-parallel-db-queries`); a read that runs before a transaction's first write
+  moves above `prisma.$transaction` — the transaction does not protect it
+  (`arch/no-read-before-write-in-transaction`).
+- Dates go through `dayjs` from `@/lib/dayjs/dayjs.util.ts`, never `new Date(…)` / `Date.now()`
+  (`arch/prefer-dayjs`); branching on a value uses `match()` from `ts-pattern`, never `switch`
+  or an `if/else-if` chain over literals (`arch/prefer-ts-pattern`).
+- Outbound HTTP to a user-supplied URL goes through `safeFetchJson` (SSRF guard); other
+  outbound calls use `fetchWithRetry`. See ARCHITECTURE.md, Security Defaults.
 - Repositories take and return domain types (Rule 2). Every Prisma call that returns rows
   passes a `select` matching the domain type (`arch/repository-select`), and a not-found check
   lives in a `…OrFail` repository method, not in the service (`arch/prefer-repository-or-fail`).
