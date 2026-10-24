@@ -17,6 +17,7 @@ import routeParamsSchema from "./scripts/eslint-rules/route-params-schema.mjs";
 import noPassThroughHelper from "./scripts/eslint-rules/no-pass-through-helper.mjs";
 import handlerTypedResponse from "./scripts/eslint-rules/handler-typed-response.mjs";
 import maxParallelDbQueries from "./scripts/eslint-rules/max-parallel-db-queries.mjs";
+import boundedRequestStrings from "./scripts/eslint-rules/bounded-request-strings.mjs";
 import preferRepositoryOrFail from "./scripts/eslint-rules/prefer-repository-or-fail.mjs";
 import noRelationJoinWithCursor from "./scripts/eslint-rules/no-relation-join-with-cursor.mjs";
 import noDuplicateRepositoryRead from "./scripts/eslint-rules/no-duplicate-repository-read.mjs";
@@ -133,6 +134,7 @@ const architecture = {
         "no-cross-test-state": noCrossTestState,
         "unit-no-io": typescriptEslint.rules["no-restricted-imports"],
         "crypto-via-lib": restrictedSyntax,
+        "bounded-request-strings": boundedRequestStrings,
     },
 };
 
@@ -2143,6 +2145,13 @@ export default [
             "vitest/no-duplicate-hooks": "error",
             "vitest/no-conditional-in-test": "error",
             "vitest/require-top-level-describe": "error",
+        },
+    },
+    {
+        files: ["src/**/*.schema.ts"],
+
+        rules: {
+            "arch/bounded-request-strings": "error",
         },
     },
     {

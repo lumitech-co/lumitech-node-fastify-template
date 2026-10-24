@@ -109,6 +109,16 @@ describe("POST /api/messages", () => {
         expect(stored.text).toBe("Client id");
     });
 
+    it("should reject a text longer than the limit", async () => {
+        const response = await server.inject({
+            method: "POST",
+            url: "/api/messages",
+            body: { text: "x".repeat(5001) },
+        });
+
+        expect(response.statusCode).toBe(400);
+    });
+
     it("should reject a client-provided id that is not a UUID v7", async () => {
         const response = await server.inject({
             method: "POST",

@@ -169,7 +169,8 @@ All application data â€” body, params, query, headers, external API responses â€
 with Zod schemas in the module's `src/modules/<name>/<name>.schema.ts` (lib code keeps its
 schemas in `src/lib/validation/<lib>/<lib>.schema.ts`). No manual
 `if (!x) throw`, no ad-hoc casts as a substitute for validation. Types are derived with
-`z.infer`, never hand-written in parallel. This includes the contents of a Prisma `Json`
+`z.infer`, never hand-written in parallel. A request schema bounds every string and array with
+`.max()` (`arch/bounded-request-strings`). This includes the contents of a Prisma `Json`
 column (see Rule 8).
 
 **Exceptions:** environment variables are validated by `@fastify/env` with

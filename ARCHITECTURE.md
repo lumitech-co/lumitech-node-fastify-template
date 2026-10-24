@@ -102,11 +102,24 @@ export type Cradle = {
 `src/modules/<name>/<name>.schema.ts`:
 
 ```typescript
+const MESSAGE_TEXT_MAX_LENGTH = 5000;
+
 const createMessageBodySchema = z.object({
-    text: z.string(),
+    text: z.string().max(MESSAGE_TEXT_MAX_LENGTH),
 });
 type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 ```
+
+Every string and array a request schema accepts has a `.max()` (`arch/bounded-request-strings`):
+`bodyLimit` caps the whole payload, not one field. The limit lives in Zod only — the column
+stays `text`, so there is one place to change it — and reaches the OpenAPI docs as
+`maxLength` / `maxItems`.
+
+A schema shared with a response or a job (`messageMetaSchema` is used by the request, the
+`GET` response and the queued job) applies the limit there too. In a project with live data,
+check existing rows before tightening a limit: a longer stored value fails the response
+serializer (500), and a job queued before the deploy fails its parse in the worker, which is
+unrecoverable.
 
 ### Error Handling
 

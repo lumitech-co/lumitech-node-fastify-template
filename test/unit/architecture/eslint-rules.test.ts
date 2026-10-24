@@ -1016,6 +1016,32 @@ const CASES: Case[] = [
         },
     ].map((testCase) => ({ rule: "crypto-via-lib", ...testCase })),
     ...pair(
+        "bounded-request-strings",
+        {
+            file: SCHEMA,
+            code: "const createDemoBodySchema = z.object({ name: z.string() });",
+        },
+        {
+            file: SCHEMA,
+            code: "const createDemoBodySchema = z.object({ name: z.string().max(DEMO_NAME_MAX_LENGTH) });",
+        }
+    ),
+    {
+        rule: "bounded-request-strings",
+        file: SCHEMA,
+        code: [
+            "const demoMetaSchema = z.object({ tags: z.array(z.string().max(DEMO_TAG_MAX_LENGTH)) });",
+            "const createDemoBodySchema = z.object({ meta: demoMetaSchema });",
+        ].join("\n"),
+        reports: true,
+    },
+    {
+        rule: "bounded-request-strings",
+        file: SCHEMA,
+        code: "const demoResponseSchema = z.object({ message: z.string() });",
+        reports: false,
+    },
+    ...pair(
         "unit-no-io",
         {
             file: UNIT_TEST,
