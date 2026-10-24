@@ -52,11 +52,12 @@ The template uses a Vitest testing framework for test coverage.
 
 1. `npm run test:unit` - run all unit tests with detailed output in the terminal;
 2. `npm run test:unit:ui` - launch the interactive UI test runner;
-3. `npm run test:mutation -- --mutate <file>` - mutation testing (StrykerJS) of one file, local only.
+3. `npm run test:unit:changed` - only the tests affected by changes since `origin/main`;
+4. `npm run test:mutation -- --mutate <file>` - mutation testing (StrykerJS) of one file, local only.
 
 #### Integration Tests
 
-`npm run test:int` - launch integration tests.
+`npm run test:int` - launch integration tests; `npm run test:int:changed` - only those the changes since `origin/main` need.
 
 A throwaway Postgres container is started automatically by Testcontainers and the
 migrations are applied to it once per run, so the only prerequisite is a running

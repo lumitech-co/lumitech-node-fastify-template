@@ -23,6 +23,8 @@ jobs:
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
             - name: Set up Node.js
               uses: actions/setup-node@v4
@@ -33,5 +35,27 @@ jobs:
             - name: Install dependencies
               run: npm i
 
-            - name: Run unit tests
+            # Only the tests whose imports reach the diff, with coverage of the
+            # changed services and utils: thresholds over a partial run would
+            # also count files the selected tests touch only in passing.
+            - name: Run unit tests affected by the change
+              if: github.event_name == 'pull_request'
+              env:
+                  BASE_REF: origin/${{ github.base_ref }}
+              run: |
+                  COVERAGE_ARGS=$(git diff --name-only --diff-filter=d "$BASE_REF...HEAD" \
+                      | grep -E '^src/(modules|lib)/.+\.(service|util)\.ts$' \
+                      | sed 's/^/--coverage.include=/' || true)
+                  npm run test:unit:ci -- --changed "$BASE_REF" \
+                      --exclude 'test/unit/architecture/**' \
+                      ${COVERAGE_ARGS:+--coverage $COVERAGE_ARGS}
+
+            # They read src/ from disk rather than importing it, so --changed
+            # cannot tell what they depend on.
+            - name: Run architecture tests
+              if: github.event_name == 'pull_request'
+              run: npm run test:unit:ci -- test/unit/architecture
+
+            - name: Run all unit tests with coverage
+              if: github.event_name != 'pull_request'
               run: npm run test:unit:ci -- --coverage

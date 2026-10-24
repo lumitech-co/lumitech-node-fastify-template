@@ -38,7 +38,8 @@ CI, dead files/exports/dependencies by `npm run knip`. Claude Code hooks (`.clau
 refuse a hand-made module, repository or migration and lint every file Claude edits. CI also
 checks formatting of code and docs (`npm run format:check`), runs the generators against all of the above
 (`npm run check:generators`) and enforces unit-test coverage of services and utils
-(`npm run test:unit:coverage`) and scans `package-lock.json` for known advisories with OSV
+(`npm run test:unit:coverage`; on a pull request only the tests the diff reaches run, with coverage of the
+changed services and utils, and main runs everything) and scans `package-lock.json` for known advisories with OSV
 (an accepted one goes in `osv-scanner.toml` with a reason and an `ignoreUntil` date); every commit is type-checked (`npm run tsc-check` in the pre-commit hook). Every `arch/*` rule has a
 firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
 When one fails, fix the code — never disable the check.

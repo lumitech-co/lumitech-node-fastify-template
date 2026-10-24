@@ -24,15 +24,8 @@ jobs:
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
-
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
-
-            - name: Pull Docker images
-              run: docker compose -f docker-compose.test.yml pull
-
-            - name: Start Docker Compose services
-              run: docker compose -f docker-compose.test.yml up -d --wait
+              with:
+                  fetch-depth: 0
 
             - name: Set up Node.js
               uses: actions/setup-node@v4
@@ -40,22 +33,66 @@ jobs:
                   node-version: ${{ matrix.node-version }}
                   cache: "npm"
 
+            # A pull request runs the test directories of the modules it changed
+            # (scripts/int-test-selection.mjs); main always runs everything.
+            - name: Select integration tests
+              id: select
+              if: github.event_name == 'pull_request'
+              env:
+                  BASE_REF: origin/${{ github.base_ref }}
+              run: node scripts/select-int-tests.mjs --base "$BASE_REF" --format github >> "$GITHUB_OUTPUT"
+
+            - name: Report selection
+              if: github.event_name == 'pull_request'
+              env:
+                  RUN: ${{ steps.select.outputs.run }}
+                  REASON: ${{ steps.select.outputs.reason }}
+                  TARGETS: ${{ steps.select.outputs.targets }}
+              run: |
+                  if [ "$RUN" != "true" ]; then
+                      echo "$REASON -> nothing to run"
+                  elif [ -z "$TARGETS" ]; then
+                      echo "$REASON -> whole suite"
+                  else
+                      echo "$REASON -> $TARGETS"
+                  fi
+
+            - name: Set up Docker Buildx
+              if: steps.select.outputs.run != 'false'
+              uses: docker/setup-buildx-action@v3
+
+            - name: Pull Docker images
+              if: steps.select.outputs.run != 'false'
+              run: docker compose -f docker-compose.test.yml pull
+
+            - name: Start Docker Compose services
+              if: steps.select.outputs.run != 'false'
+              run: docker compose -f docker-compose.test.yml up -d --wait
+
             - name: Install dependencies
+              if: steps.select.outputs.run != 'false'
               run: npm i
 
             - name: Generate prisma schema
+              if: steps.select.outputs.run != 'false'
               run: npm run prisma:generate
 
             - name: Check migrations reproduce schema.prisma
+              if: steps.select.outputs.run != 'false'
               run: npm run check:drift
 
             - name: Run integration tests
-              run: npm run test:int:ci
+              if: steps.select.outputs.run != 'false'
+              env:
+                  TARGETS: ${{ steps.select.outputs.targets }}
+              run: |
+                  read -r -a filters <<< "$TARGETS"
+                  npm run test:int:ci -- "${filters[@]}"
 
             - name: Docker logs on failure
-              if: ${{ failure() }}
+              if: ${{ failure() && steps.select.outputs.run != 'false' }}
               run: docker compose -f docker-compose.test.yml logs
 
             - name: Stop Docker Compose services
-              if: ${{ always() }}
+              if: ${{ always() && steps.select.outputs.run != 'false' }}
               run: docker compose -f docker-compose.test.yml down -v

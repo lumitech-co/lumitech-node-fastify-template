@@ -484,6 +484,13 @@ src/
 ### Run tests
 
 - Unit: `npm run test:unit`
+- Only what a change reaches: `npm run test:unit:changed` / `npm run test:int:changed` (against
+  `origin/main`; CI does the same on pull requests). Unit tests follow the import graph
+  (`vitest --changed`). Integration tests boot the app, which loads modules at runtime where the
+  graph cannot see them, so `scripts/int-test-selection.mjs` maps paths instead: a change in
+  `src/modules/<name>/` runs `test/int/modules/<name>/` plus the journeys, a shared path (`src/lib`,
+  `src/plugins`, the schema, the test harness, dependencies) or an unclassified one runs everything.
+  A break in another module that the map misses is caught by the full run on main.
 - Mutation (local only): `npm run test:mutation -- --mutate src/lib/http/http.util.ts` shows
   whether the tests covering a file can fail; the HTML report lands in `reports/mutation/`.
 - Integration: `npm run test:int` (Testcontainers starts Postgres itself; just needs Docker running). Add `docker compose -f docker-compose.test.yml up` only when a test needs the storage emulators.
