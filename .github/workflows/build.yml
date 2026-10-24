@@ -2,7 +2,9 @@ name: Lint & Build
 
 on:
     # Every pull request, whatever branch it targets, plus the merged result on main.
+    # A draft runs nothing; marking it ready for review starts the checks.
     pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
     push:
         branches: [main]
 
@@ -15,6 +17,7 @@ concurrency:
 
 jobs:
     build:
+        if: ${{ !github.event.pull_request.draft }}
         runs-on: ubuntu-latest
 
         strategy:

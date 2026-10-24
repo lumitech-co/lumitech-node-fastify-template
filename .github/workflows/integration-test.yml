@@ -1,6 +1,8 @@
 name: Integration Tests
 on:
+    # A draft runs nothing; marking it ready for review starts the checks.
     pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
         paths-ignore: ["**/*.md", "LICENSE"]
     push:
         branches: [main]
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
     integration-test:
+        if: ${{ !github.event.pull_request.draft }}
         runs-on: ubuntu-latest
         strategy:
             matrix:
