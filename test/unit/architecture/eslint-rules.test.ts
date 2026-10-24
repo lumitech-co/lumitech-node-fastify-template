@@ -794,6 +794,29 @@ const CASES: Case[] = [
         code: 'export type { DemoService } from "./demo.service.js";',
         reports: false,
     },
+    {
+        rule: "public-api",
+        file: "src/modules/demo/public.ts",
+        code: 'export type { DemoRepository } from "./demo.repository.js";',
+        reports: true,
+    },
+    ...pair(
+        "plugin-imports",
+        {
+            file: PLUGIN,
+            code: 'import type { DemoService } from "@/modules/demo/demo.service.js";',
+        },
+        {
+            file: PLUGIN,
+            code: 'import type { DemoService } from "@/modules/demo/public.js";',
+        }
+    ),
+    {
+        rule: "plugin-imports",
+        file: "src/plugins/mq/demo/demo.worker.ts",
+        code: 'import { configureDemoWorker } from "@/modules/demo/mq/demo.worker.js";',
+        reports: false,
+    },
     ...pair(
         "no-interfaces",
         { file: MODULE_TYPE, code: "export interface Demo { id: string }" },

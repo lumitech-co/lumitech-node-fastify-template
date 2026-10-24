@@ -113,6 +113,7 @@ const architecture = {
         "prefer-repository-or-fail": preferRepositoryOrFail,
         "no-prisma-in-modules": restrictedSyntax,
         "public-api": restrictedSyntax,
+        "plugin-imports": typescriptEslint.rules["no-restricted-imports"],
     },
 };
 
@@ -1873,6 +1874,32 @@ export default [
                         "Program > :not(ExportNamedDeclaration[exportKind='type'][source])",
                     message:
                         'public.ts only re-exports types: `export type { … } from "./<name>.<kind>.js"` — other modules get services through the container (CLAUDE.md, Rule 1).',
+                },
+                {
+                    selector:
+                        "ExportNamedDeclaration[source.value=/\\.repository\\.js$/]",
+                    message:
+                        "A module never exposes its repository — other modules go through its service, so the data access stays encapsulated (CLAUDE.md, Rule 1).",
+                },
+            ],
+        },
+    },
+    {
+        // src/plugins/mq/** registers a module's queue/worker bodies; any
+        // other module code reaches plugins only through its public API.
+        files: ["src/plugins/**/*.ts"],
+
+        rules: {
+            "arch/plugin-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            regex: "^@/modules/(?!.*/(mq/[^/]+\\.(queue|worker)|public)\\.js$)",
+                            message:
+                                "A plugin imports from a module only its mq/<name>.{queue,worker}.js body or its public.js API (CLAUDE.md, Rules 1 and 6).",
+                        },
+                    ],
                 },
             ],
         },

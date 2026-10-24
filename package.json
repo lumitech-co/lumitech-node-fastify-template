@@ -20,7 +20,7 @@
         "lint:migrations": "squawk",
         "knip": "knip",
         "format": "prettier --write",
-        "format:check": "prettier --check \"**/*.{ts,js,mjs}\"",
+        "format:check": "prettier --check \"**/*.{ts,js,mjs,md,json,jsonc,yml,yaml}\"",
         "commitlint": "commitlint --edit",
         "prisma:push": "prisma db push",
         "prisma:generate": "prisma generate",
@@ -49,6 +49,9 @@
             "npm run format",
             "eslint --color --fix",
             "bash -c 'npm run tsc-check'"
+        ],
+        "**/*.{md,json,jsonc,yml,yaml}": [
+            "npm run format"
         ],
         "**/*.prisma": [
             "npm run prisma:format"

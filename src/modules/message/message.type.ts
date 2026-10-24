@@ -15,16 +15,16 @@ export type MessageId = Pick<Message, "id">;
 export type MessageWrite = {
     id: string;
     text: string;
-    meta?: PrismaJson.MessageMeta | null;
+    meta?: PrismaJson.MessageMeta | null | undefined;
     updatedAt: Date;
 };
 
 export type MessageUpdate = Omit<MessageWrite, "text"> & {
-    text?: string;
+    text?: string | undefined;
 };
 
 export type MessagePage = {
-    cursor?: string;
+    cursor?: string | undefined;
     limit: number;
 };
 

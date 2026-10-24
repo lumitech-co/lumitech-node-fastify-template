@@ -1,0 +1,32 @@
+name: Lint Workflows & Dockerfile
+
+on:
+    # Every pull request, whatever branch it targets, plus the merged result on main.
+    pull_request:
+    push:
+        branches: [main]
+
+jobs:
+    actionlint:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Lint GitHub Actions workflows
+              uses: docker://rhysd/actionlint:1.7.7
+              with:
+                  args: -color
+
+    hadolint:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Lint Dockerfile
+              uses: hadolint/hadolint-action@v3.1.0
+              with:
+                  dockerfile: Dockerfile

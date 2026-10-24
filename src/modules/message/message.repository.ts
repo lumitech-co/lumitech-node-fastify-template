@@ -53,19 +53,28 @@ export const createMessageRepository = (
         }
     },
 
-    createIfAbsent: async ({ id, meta, ...data }) => {
+    createIfAbsent: async ({ id, text, meta, updatedAt }) => {
         await prisma.message.upsert({
             where: { id },
-            create: { id, meta: toMetaInput(meta), ...data },
+            create: {
+                id,
+                text,
+                updatedAt,
+                ...(meta !== undefined && { meta: toMetaInput(meta) }),
+            },
             update: {},
             select: messageIdSelect,
         });
     },
 
-    updateIfNotNewer: async ({ id, meta, ...data }) => {
+    updateIfNotNewer: async ({ id, text, meta, updatedAt }) => {
         const { count } = await prisma.message.updateMany({
-            where: { id, updatedAt: { lte: data.updatedAt } },
-            data: { meta: toMetaInput(meta), ...data },
+            where: { id, updatedAt: { lte: updatedAt } },
+            data: {
+                updatedAt,
+                ...(text !== undefined && { text }),
+                ...(meta !== undefined && { meta: toMetaInput(meta) }),
+            },
         });
 
         if (count > 0) {
@@ -106,7 +115,7 @@ export const createMessageRepository = (
 addDIResolverName(createMessageRepository, "messageRepository");
 
 function toMetaInput(
-    meta: MessageWrite["meta"]
-): PrismaJson.MessageMeta | typeof Prisma.DbNull | undefined {
-    return meta === null ? Prisma.DbNull : meta;
+    meta: PrismaJson.MessageMeta | null
+): PrismaJson.MessageMeta | typeof Prisma.DbNull {
+    return meta ?? Prisma.DbNull;
 }

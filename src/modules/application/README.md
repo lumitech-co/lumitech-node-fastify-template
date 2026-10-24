@@ -11,9 +11,9 @@ used by Docker, load balancers and uptime probes.
 
 ## Endpoints
 
-| Method | Path        | Description                    | Auth |
-|--------|-------------|--------------------------------|------|
-| GET    | /api/ping   | Check application health status | No   |
+| Method | Path      | Description                     | Auth |
+| ------ | --------- | ------------------------------- | ---- |
+| GET    | /api/ping | Check application health status | No   |
 
 ---
 
@@ -56,15 +56,15 @@ The module has no repository: the health check does not touch the database.
 
 ### Files
 
-| File                       | Purpose                                              |
-|----------------------------|------------------------------------------------------|
-| `index.ts`                 | Module entry, exports `autoPrefix`                   |
-| `application.route.ts`     | Tag, route enum and route definitions with Zod       |
-| `application.handler.ts`   | `ApplicationHandler` type, request/response handling |
-| `application.service.ts`   | `ApplicationService` type, business logic            |
-| `application.constant.ts`  | `HEALTH_CHECK_RESPONSE` payload value                |
-| `application.schema.ts`    | Zod validation schemas                               |
-| `public.ts`                | Public API for other modules (empty)                 |
+| File                      | Purpose                                              |
+| ------------------------- | ---------------------------------------------------- |
+| `index.ts`                | Module entry, exports `autoPrefix`                   |
+| `application.route.ts`    | Tag, route enum and route definitions with Zod       |
+| `application.handler.ts`  | `ApplicationHandler` type, request/response handling |
+| `application.service.ts`  | `ApplicationService` type, business logic            |
+| `application.constant.ts` | `HEALTH_CHECK_RESPONSE` payload value                |
+| `application.schema.ts`   | Zod validation schemas                               |
+| `public.ts`               | Public API for other modules (empty)                 |
 
 ---
 
@@ -94,8 +94,8 @@ const healthCheckResponseSchema = z.string();
 
 Injected via Awilix DI container:
 
-| Dependency             | Type                 | Used In |
-|------------------------|----------------------|---------|
-| `applicationService`   | `ApplicationService` | Handler |
+| Dependency           | Type                 | Used In |
+| -------------------- | -------------------- | ------- |
+| `applicationService` | `ApplicationService` | Handler |
 
 The service itself has no dependencies.

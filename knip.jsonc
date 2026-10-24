@@ -14,13 +14,13 @@
         "cli/*/index.js",
         "scripts/*.mjs",
         // Run by Claude Code hooks (.claude/settings.json).
-        "scripts/claude-hooks/*.mjs"
+        "scripts/claude-hooks/*.mjs",
     ],
     "project": [
         "src/**/*.{ts,prisma}",
         "cli/**/*.js",
         "scripts/**/*.mjs",
-        "test/**/*.ts"
+        "test/**/*.ts",
     ],
     // A dependency-free building block the template ships for new projects
     // (CLAUDE.md, Rule 6).
@@ -28,6 +28,6 @@
     "ignoreDependencies": [
         "argon2",
         // Referenced as a pino transport target string.
-        "pino-pretty"
-    ]
+        "pino-pretty",
+    ],
 }

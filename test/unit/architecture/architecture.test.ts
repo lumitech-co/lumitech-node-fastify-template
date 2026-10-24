@@ -4,6 +4,7 @@
  * schema sync, unused RESPONSE_MESSAGES and blanket eslint-disable directives.
  */
 import fs from "node:fs";
+import ts from "typescript";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
@@ -553,6 +554,118 @@ describe("Rule 7: every request part a handler reads is validated by its route",
                     /\b(Body|Params|Querystring|Headers):/g
                 )
             ).toEqual(routeKeys);
+        }
+    );
+});
+
+type FactoryParam = {
+    file: string;
+    name: string;
+    type: string;
+};
+
+const parseSource = (file: string): ts.SourceFile =>
+    ts.createSourceFile(file, readSource(file), ts.ScriptTarget.Latest, true);
+
+const normalizeType = (type: string): string => type.replace(/\s+/g, "");
+
+const cradleTypes = new Map(
+    parseSource("types/di-container.type.ts")
+        .statements.filter(ts.isTypeAliasDeclaration)
+        .filter((alias) => alias.name.text === "Cradle")
+        .flatMap((alias) =>
+            ts.isTypeLiteralNode(alias.type) ? [...alias.type.members] : []
+        )
+        .filter(ts.isPropertySignature)
+        .map((member) => [
+            member.name.getText(),
+            normalizeType(member.type?.getText() ?? ""),
+        ])
+);
+
+const factoryParams: FactoryParam[] = srcFiles
+    .filter((file) => LOADED_BY_AWILIX.test(file))
+    .flatMap((file) =>
+        parseSource(file)
+            .statements.filter(ts.isVariableStatement)
+            .flatMap((statement) => [...statement.declarationList.declarations])
+            .filter(
+                (declaration) =>
+                    declaration.name.getText().startsWith("create") &&
+                    declaration.initializer !== undefined &&
+                    ts.isArrowFunction(declaration.initializer)
+            )
+            .flatMap((declaration) =>
+                ts.isArrowFunction(declaration.initializer!)
+                    ? [...declaration.initializer.parameters]
+                    : []
+            )
+            .map((parameter) => ({
+                file,
+                name: parameter.name.getText(),
+                type: normalizeType(parameter.type?.getText() ?? ""),
+            }))
+    );
+
+describe("Rule 1: every factory parameter is a Cradle entry of the same type", () => {
+    it("finds factory parameters, so an empty scan cannot pass", () => {
+        expect(factoryParams.length).toBeGreaterThan(0);
+    });
+
+    it.each(factoryParams)(
+        "$file: $name is resolved by Awilix as typed",
+        ({ name, type }) => {
+            expect(
+                cradleTypes.has(name),
+                `Awilix resolves "${name}" by name — it is not a Cradle key`
+            ).toBe(true);
+
+            expect(type).toBe(cradleTypes.get(name));
+        }
+    );
+});
+
+const routeEndpoints = (module: string): string[] => {
+    const route = readSource(`modules/${module}/${module}.route.ts`);
+
+    const prefix =
+        readSource(`modules/${module}/index.ts`).match(
+            /export const autoPrefix = "([^"]*)"/
+        )?.[1] ?? "";
+
+    const paths = new Map(
+        [...route.matchAll(/^\s+(\w+) = "([^"]*)"/gm)].map(([, key, value]) => [
+            key!,
+            value!,
+        ])
+    );
+
+    return [
+        ...route.matchAll(
+            /fastify\.(get|post|put|patch|delete)\(\s*\w+\.(\w+)/g
+        ),
+    ]
+        .map(
+            ([, method, key]) =>
+                `${method!.toUpperCase()} ${`${prefix}${paths.get(key!) ?? ""}`.replace(/\/{2,}/g, "/")}`
+        )
+        .sort();
+};
+
+const readmeEndpoints = (module: string): string[] =>
+    [
+        ...readSource(`modules/${module}/README.md`).matchAll(
+            /^\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*(\S+)\s*\|/gm
+        ),
+    ]
+        .map(([, method, endpoint]) => `${method} ${endpoint}`)
+        .sort();
+
+describe("module README lists exactly the module's endpoints", () => {
+    it.each(listDirs("modules"))(
+        "%s: README Endpoints table matches the route file",
+        (module) => {
+            expect(readmeEndpoints(module)).toEqual(routeEndpoints(module));
         }
     );
 });
