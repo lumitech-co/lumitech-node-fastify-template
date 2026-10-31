@@ -1,9 +1,5 @@
 # Accepted findings for the OSV scan in .github/workflows/build.yml.
-#
-# Every entry needs a reason a reviewer can check and an `ignoreUntil` no more
-# than ~3 months out: on that date the finding fails CI again and has to be
-# looked at afresh (a fix released, the risk changed, or a new date with a new
-# reason). Never add an entry without a date.
+# Every entry needs a reason and an `ignoreUntil` at most ~3 months out.
 
 [[IgnoredVulns]]
 id = "GHSA-5gmw-xhrv-c9v3"

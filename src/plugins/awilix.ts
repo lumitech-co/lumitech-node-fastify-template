@@ -18,7 +18,6 @@ const configureAwilix = async (fastify: FastifyInstance) => {
 
     fastify.decorate("di", container);
 
-    // Register dependencies from plugins and libraries
     fastify.di.register({
         log: asValue(fastify.log),
         prisma: asValue(fastify.prisma),
@@ -31,7 +30,6 @@ const configureAwilix = async (fastify: FastifyInstance) => {
         messageQueue: asValue(fastify.messageQueue),
     });
 
-    // Register dependencies from the application: repositories, services, route handlers
     await container.loadModules(
         [
             path.join(

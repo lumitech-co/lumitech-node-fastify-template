@@ -1,7 +1,7 @@
 // A transaction that coordinates exactly one repository is that repository's
 // operation: move it into one repository method that opens the transaction.
 // Two or more repositories, or awaiting anything else, is real orchestration
-// and stays in the service. Ported from tolmete-api.
+// and stays in the service.
 const rootOf = (call) => {
     const callee = call?.type === "CallExpression" ? call.callee : null;
 

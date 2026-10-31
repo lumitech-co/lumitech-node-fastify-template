@@ -1,11 +1,7 @@
 /**
- * CLAUDE.md Rule 9 guard, run in CI against the PR base:
- * - an existing migration is never edited or deleted;
- * - a data-model change in schema.prisma ships with a new migration;
- * - every migration folder is <timestamp>_snake_case with a non-empty SQL.
- * Compares committed HEAD with its merge-base against MIGRATIONS_BASE_REF
- * (default origin/main). Comments, `/// [Type]` annotations, formatting
- * and generator/datasource blocks do not count as data-model changes.
+ * CLAUDE.md Rule 9 guard against MIGRATIONS_BASE_REF (default origin/main): no
+ * existing migration is edited or deleted, a data-model change in schema.prisma
+ * ships with a new migration, and each folder is <timestamp>_snake_case with SQL.
  */
 import fs from "node:fs";
 import path from "node:path";

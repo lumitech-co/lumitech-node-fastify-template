@@ -29,10 +29,8 @@ jobs:
               with:
                   fetch-depth: 0
 
-            # Known advisories in package-lock.json (dev dependencies included)
-            # against OSV.dev: the GitHub advisory database plus malicious-package
-            # reports. Pinned by version and checksum. An accepted finding goes in
-            # osv-scanner.toml with a reason and an expiry date.
+            # Advisories in package-lock.json against OSV.dev; accepted ones go in
+            # osv-scanner.toml.
             - name: Scan dependencies for known vulnerabilities (OSV)
               env:
                   OSV_VERSION: "2.7.0"
