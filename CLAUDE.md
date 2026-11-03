@@ -31,14 +31,17 @@ instead of working around it. Code examples for each live in
 
 Enforcement: most rules are checked by the `arch/*` rules in `eslint.config.mjs` (custom ones in
 `scripts/eslint-rules/`), Rule 0, Rule 8a, BullMQ plugin wiring, Prisma schema conventions, env
-schema sync, unused `RESPONSE_MESSAGES`, factory parameters matching `Cradle` and module READMEs
-matching their routes by `test/unit/architecture/`, Rule 9 by
+schema sync, unused `RESPONSE_MESSAGES`, factory parameters matching `Cradle`, plugin `dependencies` matching the decorators they read, every status a handler replies with having a
+response schema on its route
+and module READMEs matching their routes by `test/unit/architecture/`, Rule 9 by
 `npm run check:migrations`, `npm run check:drift` and squawk (`.squawk.toml`) on new migrations in
 CI, dead files/exports/dependencies by `npm run knip`. Claude Code hooks (`.claude/settings.json`)
 refuse a hand-made module, repository or migration and lint every file Claude edits. CI also
 checks formatting of code and docs (`npm run format:check`), runs the generators against all of the above
 (`npm run check:generators`) and enforces unit-test coverage of services and utils
-(`npm run test:unit:coverage`); every commit is type-checked (`npm run tsc-check` in the pre-commit hook). Every `arch/*` rule has a
+(`npm run test:unit:coverage`; on a pull request only the tests the diff reaches run, with coverage of the
+changed services and utils, and main runs everything) and scans `package-lock.json` for known advisories with OSV
+(an accepted one goes in `osv-scanner.toml` with a reason and an `ignoreUntil` date); every commit is type-checked (`npm run tsc-check` in the pre-commit hook). Every `arch/*` rule has a
 firing and a passing case in `test/unit/architecture/eslint-rules.test.ts` — a new rule needs both.
 When one fails, fix the code — never disable the check.
 
@@ -166,7 +169,8 @@ All application data — body, params, query, headers, external API responses �
 with Zod schemas in the module's `src/modules/<name>/<name>.schema.ts` (lib code keeps its
 schemas in `src/lib/validation/<lib>/<lib>.schema.ts`). No manual
 `if (!x) throw`, no ad-hoc casts as a substitute for validation. Types are derived with
-`z.infer`, never hand-written in parallel. This includes the contents of a Prisma `Json`
+`z.infer`, never hand-written in parallel. A request schema bounds every string and array with
+`.max()` (`arch/bounded-request-strings`). This includes the contents of a Prisma `Json`
 column (see Rule 8).
 
 **Exceptions:** environment variables are validated by `@fastify/env` with
@@ -218,12 +222,32 @@ a custom index); if a generated migration would be destructive, stop and ask.
   branching, loops or try/catch: it calls the service and returns `reply.status().send()`.
 - Every response schema is the envelope `z.object({ message, data })` (the health check is the
   only exception).
+- A handler types its response payload (`const data: <Name>Response = …`) before sending it
+  (`arch/handler-typed-response`).
 - Log errors under `err` — `log.error({ err: error }, "...")`; pino serializes an Error only
   under that key.
 - **Paginate all lists** — every endpoint returning a list must paginate (cursor- or
   offset/skip-based).
 - Prisma only inside repositories; `$transaction` is the single exception (Rule 2). Never
-  query the database in a loop (Rule 3).
+  query the database in a loop (Rule 3). At most 3 queries per `Promise.all`
+  (`arch/max-parallel-db-queries`); a read that runs before a transaction's first write
+  moves above `prisma.$transaction` — the transaction does not protect it
+  (`arch/no-read-before-write-in-transaction`).
+- Dates go through `dayjs` from `@/lib/dayjs/dayjs.util.ts`, never `new Date(…)` / `Date.now()`
+  (`arch/prefer-dayjs`); branching on a value uses `match()` from `ts-pattern`, never `switch`
+  or an `if/else-if` chain over literals (`arch/prefer-ts-pattern`).
+- Outbound HTTP to a user-supplied URL goes through `safeFetchJson` (SSRF guard); other
+  outbound calls use `fetchWithRetry` (`arch/no-raw-fetch`). Secrets are compared with
+  `hashing.compareSecret`, never `===` (`arch/constant-time-secret-compare`). Logs never carry a
+  credential, `request.body`, `request.headers` or `job.data` (`arch/no-sensitive-log-fields`);
+  every BullMQ `Worker` spreads `WORKER_STALL_DEFAULTS` (`arch/worker-stall-defaults`). No MD5/SHA-1;
+  ciphers only via `src/lib/secretCipher`, `timingSafeEqual` only via `src/lib/hashing`
+  (`arch/crypto-via-lib`). See
+  ARCHITECTURE.md, Security Defaults.
+- Tests: integration tests seed with `test/int/factories/` (`arch/seed-via-factories`), no
+  `let` is assigned in one `it` and used in another (`arch/no-cross-test-state`), and unit
+  tests touch no database, Redis or booted app (`arch/unit-no-io`). Tests use `it` inside a top-level
+  `describe`, hooks first, no branching.
 - Repositories take and return domain types (Rule 2). Every Prisma call that returns rows
   passes a `select` matching the domain type (`arch/repository-select`), and a not-found check
   lives in a `…OrFail` repository method, not in the service (`arch/prefer-repository-or-fail`).

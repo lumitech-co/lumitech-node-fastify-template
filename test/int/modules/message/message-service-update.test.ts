@@ -1,5 +1,6 @@
 import { configureServer } from "@/server.js";
 import type { FastifyInstance } from "fastify";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMessage } from "../../factories/message.factory.js";
 import { waitForMessageJob } from "../../helpers/wait-for-message-job.js";
@@ -123,13 +124,15 @@ describe("PUT /api/messages/:id", () => {
     it("should skip a write enqueued before the stored one", async () => {
         const message = await createMessage({
             prisma: server.prisma,
-            overrides: { updatedAt: new Date("2026-01-02T00:00:00.000Z") },
+            overrides: {
+                updatedAt: dayjs("2026-01-02T00:00:00.000Z").toDate(),
+            },
         });
 
         const result = await server.di.resolve("messageService").updateMessage({
             id: message.id,
             text: "Stale retry",
-            enqueuedAt: new Date("2026-01-01T00:00:00.000Z"),
+            enqueuedAt: dayjs("2026-01-01T00:00:00.000Z").toDate(),
         });
 
         const stored = await server.prisma.message.findUniqueOrThrow({

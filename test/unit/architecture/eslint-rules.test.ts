@@ -1,8 +1,6 @@
 /**
- * Every arch/* rule in eslint.config.mjs fires on its violation and stays
- * quiet on the allowed shape, through the real config and its file globs. A
- * selector that silently stops matching leaves lint green on a clean repo, so
- * only a deliberate violation proves it still works.
+ * Every arch/* rule fires on a violation and stays quiet on the allowed shape:
+ * a selector that silently stops matching leaves lint green on a clean repo.
  */
 import path from "node:path";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
@@ -26,6 +24,8 @@ const SCHEMA = "src/modules/demo/demo.schema.ts";
 const LIB_UTIL = "src/lib/demo/demo.util.ts";
 const REPOSITORY = "src/modules/demo/demo.repository.ts";
 const PLUGIN = "src/plugins/demo.ts";
+const UNIT_TEST = "test/unit/demo.test.ts";
+const INT_TEST = "test/int/demo.test.ts";
 
 const ROUTE_OPTIONS =
     '{ schema: { tags: [DEMO_TAG], summary: "s", response: {} } }';
@@ -818,6 +818,55 @@ const CASES: Case[] = [
         reports: false,
     },
     ...pair(
+        "handler-typed-response",
+        {
+            file: HANDLER,
+            code: "async function handle() { return reply.send(await demoService.get()); }",
+        },
+        {
+            file: HANDLER,
+            code: "async function handle() { const response: DemoResponse = await demoService.get(); return reply.status(200).send(response); }",
+        }
+    ),
+    ...pair(
+        "no-read-before-write-in-transaction",
+        {
+            file: SERVICE,
+            code: "prisma.$transaction(async (tx) => { const rows = await tx.demo.findMany({}); await tx.demo.updateMany({ data: rows }); });",
+        },
+        {
+            file: SERVICE,
+            code: "prisma.$transaction(async (tx) => { await tx.demo.updateMany({ data: {} }); await tx.other.deleteMany({}); });",
+        }
+    ),
+    ...pair(
+        "max-parallel-db-queries",
+        {
+            file: SERVICE,
+            code: "await Promise.all([demoRepository.a(), demoRepository.b(), demoRepository.c(), demoRepository.d()]);",
+        },
+        {
+            file: SERVICE,
+            code: "await Promise.all([demoRepository.a(), demoRepository.b(), demoRepository.c(), cacheService.get()]);",
+        }
+    ),
+    ...pair(
+        "prefer-dayjs",
+        { file: LIB_UTIL, code: "const now = new Date();" },
+        { file: LIB_UTIL, code: "const now = dayjs();" }
+    ),
+    ...pair(
+        "prefer-ts-pattern",
+        {
+            file: LIB_UTIL,
+            code: 'switch (kind) { case "a": run(); break; default: stop(); }',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'const value = match(kind).with("a", () => 1).otherwise(() => 2);',
+        }
+    ),
+    ...pair(
         "no-interfaces",
         { file: MODULE_TYPE, code: "export interface Demo { id: string }" },
         {
@@ -834,6 +883,171 @@ const CASES: Case[] = [
         {
             file: PLUGIN,
             code: "export default fp(configure, { name: FastifyPlugin.Demo });",
+        }
+    ),
+    ...pair(
+        "no-raw-fetch",
+        { file: LIB_UTIL, code: "const response = fetch(url);" },
+        { file: LIB_UTIL, code: "const response = fetchWithRetry(url);" }
+    ),
+    {
+        rule: "no-raw-fetch",
+        file: LIB_UTIL,
+        code: 'import axios from "axios";',
+        reports: true,
+    },
+    {
+        rule: "no-raw-fetch",
+        file: "src/lib/http/fetchWithRetry.ts",
+        code: "const response = globalThis.fetch(url);",
+        reports: false,
+    },
+    ...pair(
+        "constant-time-secret-compare",
+        { file: LIB_UTIL, code: "const valid = password === docsPassword;" },
+        {
+            file: LIB_UTIL,
+            code: "const valid = hashing.compareSecret({ secret: password, expected: docsPassword });",
+        }
+    ),
+    {
+        rule: "constant-time-secret-compare",
+        file: LIB_UTIL,
+        code: 'const unset = config.CRON_SECRET === undefined || typeof token !== "string";',
+        reports: false,
+    },
+    ...pair(
+        "no-sensitive-log-fields",
+        {
+            file: LIB_UTIL,
+            code: 'log.error({ err: error, data: job.data }, "Job failed");',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'log.error({ err: error, data: summarizeJobData(job.data) }, "Job failed");',
+        }
+    ),
+    {
+        rule: "no-sensitive-log-fields",
+        file: LIB_UTIL,
+        code: 'request.log.info({ token }, "Signed in");',
+        reports: true,
+    },
+    ...pair(
+        "worker-stall-defaults",
+        {
+            file: WORKER,
+            code: "const worker = new Worker(DEMO_QUEUE_NAME, run, { connection });",
+        },
+        {
+            file: WORKER,
+            code: "const worker = new Worker(DEMO_QUEUE_NAME, run, { connection, ...WORKER_STALL_DEFAULTS });",
+        }
+    ),
+    ...pair(
+        "seed-via-factories",
+        {
+            file: INT_TEST,
+            code: 'const seeded = server.prisma.message.create({ data: { text: "a" } });',
+        },
+        {
+            file: INT_TEST,
+            code: "const seeded = createMessage({ prisma: server.prisma });",
+        }
+    ),
+    ...pair(
+        "no-cross-test-state",
+        {
+            file: INT_TEST,
+            code: [
+                'let id = "";',
+                'it("creates", () => { id = "a"; });',
+                'it("reads", () => { expect(id).toBe("a"); });',
+            ].join("\n"),
+        },
+        {
+            file: INT_TEST,
+            code: [
+                'let id = "";',
+                'beforeEach(() => { id = "a"; });',
+                'it("reads", () => { expect(id).toBe("a"); });',
+            ].join("\n"),
+        }
+    ),
+    {
+        rule: "no-cross-test-state",
+        file: INT_TEST,
+        code: 'it.each([1])("keeps %s local", () => { let id = ""; id = "a"; expect(id).toBe("a"); });',
+        reports: false,
+    },
+    ...pair(
+        "crypto-via-lib",
+        {
+            file: LIB_UTIL,
+            code: 'const digest = createHash("md5").update(value).digest("hex");',
+        },
+        {
+            file: LIB_UTIL,
+            code: 'const digest = createHash("sha256").update(value).digest("hex");',
+        }
+    ),
+    ...[
+        {
+            file: LIB_UTIL,
+            code: "const equal = crypto.timingSafeEqual(a, b);",
+            reports: true,
+        },
+        {
+            file: "src/lib/hashing/hashing.ts",
+            code: "const equal = timingSafeEqual(a, b);",
+            reports: false,
+        },
+        {
+            file: LIB_UTIL,
+            code: 'const cipher = createCipheriv("aes-256-gcm", key, iv);',
+            reports: true,
+        },
+        {
+            file: "src/lib/secretCipher/secretCipher.util.ts",
+            code: 'const cipher = createCipheriv("aes-256-gcm", key, iv);',
+            reports: false,
+        },
+    ].map((testCase) => ({ rule: "crypto-via-lib", ...testCase })),
+    ...pair(
+        "bounded-request-strings",
+        {
+            file: SCHEMA,
+            code: "const createDemoBodySchema = z.object({ name: z.string() });",
+        },
+        {
+            file: SCHEMA,
+            code: "const createDemoBodySchema = z.object({ name: z.string().max(DEMO_NAME_MAX_LENGTH) });",
+        }
+    ),
+    {
+        rule: "bounded-request-strings",
+        file: SCHEMA,
+        code: [
+            "const demoMetaSchema = z.object({ tags: z.array(z.string().max(DEMO_TAG_MAX_LENGTH)) });",
+            "const createDemoBodySchema = z.object({ meta: demoMetaSchema });",
+        ].join("\n"),
+        reports: true,
+    },
+    {
+        rule: "bounded-request-strings",
+        file: SCHEMA,
+        code: "const demoResponseSchema = z.object({ message: z.string() });",
+        reports: false,
+    },
+    ...pair(
+        "unit-no-io",
+        {
+            file: UNIT_TEST,
+            code: 'import { configureServer } from "@/server.js";',
+        },
+        {
+            file: UNIT_TEST,
+            code: 'import type { PrismaClient } from "@prisma/client";',
         }
     ),
 ];
@@ -875,13 +1089,18 @@ describe("arch/* ESLint rules", () => {
         .calculateConfigForFile(path.join(process.cwd(), SERVICE))
         .then((config) => Object.keys(config.plugins.arch.rules));
 
-    it("has a case for every registered arch rule", async () => {
-        const covered = new Set(CASES.map(({ rule }) => rule));
+    // The first test pays for loading the whole ESLint config.
+    it(
+        "has a case for every registered arch rule",
+        { timeout: 30_000 },
+        async () => {
+            const covered = new Set(CASES.map(({ rule }) => rule));
 
-        expect((await configured).filter((rule) => !covered.has(rule))).toEqual(
-            []
-        );
-    });
+            expect(
+                (await configured).filter((rule) => !covered.has(rule))
+            ).toEqual([]);
+        }
+    );
 
     it.each(CASES)("arch/$rule reports=$reports in $file", async (testCase) => {
         const rules = await reportedRules(testCase);

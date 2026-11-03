@@ -1,18 +1,32 @@
 import { z } from "zod";
 import { RESPONSE_MESSAGES } from "@/lib/messages/messages.constant.js";
 
+const MESSAGE_TEXT_MAX_LENGTH = 5000;
+const MESSAGE_LOCALE_MAX_LENGTH = 35;
+const MESSAGE_TAGS_MAX_ITEMS = 20;
+const MESSAGE_TAG_MAX_LENGTH = 50;
+const MESSAGE_ATTACHMENTS_MAX_ITEMS = 10;
+const MESSAGE_ATTACHMENT_URL_MAX_LENGTH = 2048;
+const MESSAGE_MIME_TYPE_MAX_LENGTH = 255;
+
+const messageTextSchema = z.string().max(MESSAGE_TEXT_MAX_LENGTH);
+
 const messageMetaSchema = z.object({
     source: z.enum(["web", "mobile", "api"]),
-    locale: z.string().optional(),
-    tags: z.array(z.string()).optional(),
+    locale: z.string().max(MESSAGE_LOCALE_MAX_LENGTH).optional(),
+    tags: z
+        .array(z.string().max(MESSAGE_TAG_MAX_LENGTH))
+        .max(MESSAGE_TAGS_MAX_ITEMS)
+        .optional(),
     attachments: z
         .array(
             z.object({
-                url: z.url(),
-                mimeType: z.string(),
+                url: z.url().max(MESSAGE_ATTACHMENT_URL_MAX_LENGTH),
+                mimeType: z.string().max(MESSAGE_MIME_TYPE_MAX_LENGTH),
                 sizeBytes: z.number().int().nonnegative(),
             })
         )
+        .max(MESSAGE_ATTACHMENTS_MAX_ITEMS)
         .optional(),
 });
 
@@ -25,7 +39,7 @@ const defaultMessageSchema = z.object({
 
 const createMessageBodySchema = z.object({
     id: z.uuidv7().optional(),
-    text: z.string(),
+    text: messageTextSchema,
     meta: messageMetaSchema.optional(),
 });
 
@@ -33,7 +47,7 @@ type CreateMessageInput = z.infer<typeof createMessageBodySchema>;
 
 const updateMessageBodySchema = z
     .object({
-        text: z.string(),
+        text: messageTextSchema,
         meta: messageMetaSchema.nullable(),
     })
     .partial()
