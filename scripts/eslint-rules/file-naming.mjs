@@ -1,7 +1,13 @@
 // A copied module keeps its old file names; globs can't compare a file name
 // with its folder, so this does.
 const NAMED_FOLDERS =
-    /\/src\/(?:modules|database\/repositories|lib\/validation|plugins\/mq)\/([^/]+)\/(?:mq\/)?([^/]+)$/;
+    /\/src\/(?:modules|lib\/validation|plugins\/mq)\/([^/]+)\/(mq\/)?([^/]+)$/;
+
+// A module may own repositories for several models: <entity>.repository.ts.
+const isUnnamedFile = ({ inMq, file }) =>
+    file === "index.ts" ||
+    file === "public.ts" ||
+    (!inMq && file.endsWith(".repository.ts"));
 
 export default {
     meta: {
@@ -21,11 +27,14 @@ export default {
             return {};
         }
 
-        const [, folder, file] = match;
+        const [, folder, inMq, file] = match;
 
         return {
             Program(node) {
-                if (file !== "index.ts" && !file.startsWith(`${folder}.`)) {
+                if (
+                    !isUnnamedFile({ inMq, file }) &&
+                    !file.startsWith(`${folder}.`)
+                ) {
                     context.report({
                         node,
                         messageId: "mismatch",

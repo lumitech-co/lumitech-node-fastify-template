@@ -50,7 +50,7 @@ to `main`/`master` if `dev` does not exist.
 2. Read each changed file **in full**, not just the diff hunks. A rule violation is usually
    invisible in a hunk: a service that got a new method is fine in isolation and a blocker
    once you see it calls `prisma.*` directly.
-3. Read the files the change *depends on* when the rule requires cross-file consistency —
+3. Read the files the change _depends on_ when the rule requires cross-file consistency —
    e.g. `src/types/di-container.type.ts` when a new factory is registered, the Prisma schema
    when a repository changes, `src/lib/messages/messages.constant.ts` when a message is
    returned to a client.
@@ -64,7 +64,7 @@ it breaks. "This feels wrong" is not a finding. Before you report anything, veri
 the actual file — not against your memory of what the file probably contains.
 
 Grep is your friend for the mechanical rules. Useful sweeps for this stack (adapt them to what
-`CLAUDE.md` actually says — these are how you *check*, not what you check):
+`CLAUDE.md` actually says — these are how you _check_, not what you check):
 
 ```bash
 # DI: a factory that is never registered in the container
@@ -77,7 +77,10 @@ grep -rho 'addDIResolverName([^,]*, *"\([^"]*\)"' -r src | sed 's/.*"\(.*\)"/\1/
 grep -rn "prisma\." src/modules src/lib src/plugins | grep -v "\$transaction"
 
 # Prisma types leaking past a repository (only Prisma.TransactionClient may)
-grep -rn "Prisma\.\|@prisma/client" src/modules src/database/repositories/*/*.type.ts | grep -v TransactionClient
+grep -rn "Prisma\.\|@prisma/client" src/modules --include=*.ts | grep -v "\.repository\.ts:" | grep -v TransactionClient
+
+# Another module imported past its public API
+grep -rn "@/modules/" src/modules | grep -v "/public.js"
 
 # DB call inside a loop
 grep -rn -B3 "await .*Repository\." src/modules | grep -E "for |while |\.map\(|\.forEach\("
@@ -102,7 +105,7 @@ is a violation.
   ignored.
 
 When `CLAUDE.md` itself says "if a task cannot be done without breaking a rule, stop and ask" —
-a PR that broke the rule without any explanation is a blocker, and a PR that broke it *with* a
+a PR that broke the rule without any explanation is a blocker, and a PR that broke it _with_ a
 documented reason in its description is a suggestion asking to confirm the trade-off.
 
 ## Anti-patterns in your own output
@@ -120,24 +123,24 @@ Return **only** a JSON object as your final message, with no surrounding prose:
 
 ```json
 {
-  "summary": "One or two lines: which rules from CLAUDE.md you checked and confirmed OK (e.g. Awilix registration + Cradle typing, Prisma-only-in-repositories, no DB in loops, generator-scaffolded module/repository, typed+validated Json, migration created via script, message placement). Always filled, even when findings is empty.",
-  "rules_source": "CLAUDE.md (+ any nested CLAUDE.md you used)",
-  "findings": [
-    {
-      "path": "src/modules/message/message.service.ts",
-      "line": 42,
-      "start_line": null,
-      "severity": "blocker | suggestion | nit",
-      "rule": "Architecture Rules #2 — Database access only through repositories",
-      "body": "[Blocker] <what breaks, which line, why it breaks that rule, and the concrete fix>",
-      "suggestion": "<replacement code for a GitHub suggested-change block, or null>"
-    }
-  ]
+    "summary": "One or two lines: which rules from CLAUDE.md you checked and confirmed OK (e.g. Awilix registration + Cradle typing, Prisma-only-in-repositories, no DB in loops, generator-scaffolded module/repository, typed+validated Json, migration created via script, message placement). Always filled, even when findings is empty.",
+    "rules_source": "CLAUDE.md (+ any nested CLAUDE.md you used)",
+    "findings": [
+        {
+            "path": "src/modules/message/message.service.ts",
+            "line": 42,
+            "start_line": null,
+            "severity": "blocker | suggestion | nit",
+            "rule": "Architecture Rules #2 — Database access only through repositories",
+            "body": "[Blocker] <what breaks, which line, why it breaks that rule, and the concrete fix>",
+            "suggestion": "<replacement code for a GitHub suggested-change block, or null>"
+        }
+    ]
 }
 ```
 
 `line` must be a line that exists on the **RIGHT side of the PR diff** (an added or modified
-line). If the problem is an *absence* (a missing registration, a missing README), anchor the
+line). If the problem is an _absence_ (a missing registration, a missing README), anchor the
 finding to the most relevant added line in the diff and explain the absence in the body — a
 comment on a line outside the diff cannot be posted.
 

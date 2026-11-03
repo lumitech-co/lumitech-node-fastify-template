@@ -15,6 +15,7 @@
         "composite": true,
         "strict": true,
         "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
         "noImplicitOverride": true,
         "noPropertyAccessFromIndexSignature": true,
         "verbatimModuleSyntax": true,
@@ -27,11 +28,11 @@
         "baseUrl": ".",
         "typeRoots": ["node_modules/@types", "src/types"],
         "paths": {
-          "@/*": ["src/*"],
-          "@test/*": ["test/*"]
+            "@/*": ["src/*"],
+            "@test/*": ["test/*"]
         },
         "outDir": "build",
         "incremental": true
     },
-    "include": ["src/**/*", "**/*.json", "test/**/*"],
+    "include": ["src/**/*", "**/*.json", "test/**/*"]
 }

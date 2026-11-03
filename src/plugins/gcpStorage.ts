@@ -12,7 +12,7 @@ const configureGcpStorage = async (fastify: FastifyInstance) => {
     } = fastify.config;
 
     const storage = new Storage({
-        projectId: GCP_PROJECT_ID,
+        ...(GCP_PROJECT_ID && { projectId: GCP_PROJECT_ID }),
         ...(GCP_STORAGE_API_ENDPOINT && {
             apiEndpoint: GCP_STORAGE_API_ENDPOINT,
         }),

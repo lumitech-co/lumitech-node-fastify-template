@@ -22,11 +22,10 @@ const ROUTE = "src/modules/demo/demo.route.ts";
 const MODULE_TYPE = "src/modules/demo/demo.type.ts";
 const MODULE_CONSTANT = "src/modules/demo/demo.constant.ts";
 const WORKER = "src/modules/demo/mq/demo.worker.ts";
-const SCHEMA = "src/lib/validation/demo/demo.schema.ts";
+const SCHEMA = "src/modules/demo/demo.schema.ts";
 const LIB_UTIL = "src/lib/demo/demo.util.ts";
-const REPOSITORY = "src/database/repositories/demo/demo.repository.ts";
+const REPOSITORY = "src/modules/demo/demo.repository.ts";
 const PLUGIN = "src/plugins/demo.ts";
-const REPOSITORY_TYPE = "src/database/repositories/demo/demo.type.ts";
 
 const ROUTE_OPTIONS =
     '{ schema: { tags: [DEMO_TAG], summary: "s", response: {} } }';
@@ -56,7 +55,7 @@ const CASES: Case[] = [
         },
         {
             file: SERVICE,
-            code: 'import type { MessageService } from "@/modules/message/message.service.js";',
+            code: 'import type { MessageService } from "@/modules/message/public.js";',
         }
     ),
     ...pair(
@@ -285,11 +284,11 @@ const CASES: Case[] = [
         "handler-imports",
         {
             file: HANDLER,
-            code: 'import { messageIdSelect } from "@/database/repositories/message/message.repository.js";',
+            code: 'import type { DemoRepository } from "./demo.repository.js";',
         },
         {
             file: HANDLER,
-            code: 'import type { MessageIdParam } from "@/lib/validation/message/message.schema.js";',
+            code: 'import type { DemoIdParam } from "./demo.schema.js";',
         }
     ),
     ...pair(
@@ -442,11 +441,11 @@ const CASES: Case[] = [
         "layer-imports",
         {
             file: SERVICE,
-            code: 'import { createMessageRepository } from "@/database/repositories/message/message.repository.js";',
+            code: 'import { createDemoRepository } from "./demo.repository.js";',
         },
         {
             file: SERVICE,
-            code: 'import type { MessageRepository } from "@/database/repositories/message/message.repository.js";',
+            code: 'import type { DemoRepository } from "./demo.repository.js";',
         }
     ),
     ...pair(
@@ -662,11 +661,11 @@ const CASES: Case[] = [
     ...pair(
         "domain-repository-types",
         {
-            file: REPOSITORY_TYPE,
+            file: MODULE_TYPE,
             code: 'import type { Demo } from "@prisma/client";',
         },
         {
-            file: REPOSITORY_TYPE,
+            file: MODULE_TYPE,
             code: "export type Demo = { id: string; createdAt: Date };",
         }
     ),
@@ -736,7 +735,7 @@ const CASES: Case[] = [
         },
         {
             file: HANDLER,
-            code: 'import type { Demo } from "@/database/repositories/demo/demo.type.js";',
+            code: 'import type { Demo } from "./demo.type.js";',
         }
     ),
     ...pair(
@@ -753,25 +752,71 @@ const CASES: Case[] = [
     ...pair(
         "domain-repository-imports",
         {
-            file: LIB_UTIL,
-            code: 'import { demoSelect } from "@/database/repositories/demo/demo.repository.js";',
+            file: SERVICE,
+            code: 'import { demoSelect } from "./demo.repository.js";',
         },
         {
-            file: LIB_UTIL,
-            code: 'import type { DemoRepository } from "@/database/repositories/demo/demo.repository.js";',
+            file: SERVICE,
+            code: 'import type { DemoRepository } from "./demo.repository.js";',
         }
     ),
     ...pair(
-        "domain-repository-imports",
+        "layer-direction",
         {
             file: SERVICE,
-            code: 'import { demoSelect } from "@/database/repositories/demo/demo.repository.js";',
+            code: 'import type { MessageService } from "@/modules/message/message.service.js";',
         },
         {
             file: SERVICE,
-            code: 'import type { DemoRepository } from "@/database/repositories/demo/demo.repository.js";',
+            code: 'import type { MessageService } from "@/modules/message/public.js";',
         }
     ),
+    ...pair(
+        "public-api",
+        {
+            file: "src/modules/demo/public.ts",
+            code: 'export { createService } from "./demo.service.js";',
+        },
+        {
+            file: "src/modules/demo/public.ts",
+            code: 'export type { DemoService } from "./demo.service.js";',
+        }
+    ),
+    {
+        rule: "file-naming",
+        file: "src/modules/demo/attachment.repository.ts",
+        code: "const a = 1;",
+        reports: false,
+    },
+    {
+        rule: "no-barrel-files",
+        file: "src/modules/demo/public.ts",
+        code: 'export type { DemoService } from "./demo.service.js";',
+        reports: false,
+    },
+    {
+        rule: "public-api",
+        file: "src/modules/demo/public.ts",
+        code: 'export type { DemoRepository } from "./demo.repository.js";',
+        reports: true,
+    },
+    ...pair(
+        "plugin-imports",
+        {
+            file: PLUGIN,
+            code: 'import type { DemoService } from "@/modules/demo/demo.service.js";',
+        },
+        {
+            file: PLUGIN,
+            code: 'import type { DemoService } from "@/modules/demo/public.js";',
+        }
+    ),
+    {
+        rule: "plugin-imports",
+        file: "src/plugins/mq/demo/demo.worker.ts",
+        code: 'import { configureDemoWorker } from "@/modules/demo/mq/demo.worker.js";',
+        reports: false,
+    },
     ...pair(
         "no-interfaces",
         { file: MODULE_TYPE, code: "export interface Demo { id: string }" },

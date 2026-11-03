@@ -5,19 +5,22 @@
     "entry": [
         "src/plugins/**/*.ts",
         "src/modules/*/index.ts",
-        "src/modules/**/*.{service,handler}.ts",
-        "src/database/repositories/**/*.repository.ts",
+        "src/modules/**/*.{service,handler,repository}.ts",
+        // A module's public API is what other modules may import.
+        "src/modules/*/public.ts",
         "src/lib/**/*.service.ts",
         // The error catalog is offered to every module, used or not.
         "src/lib/errors/errors.ts",
         "cli/*/index.js",
-        "scripts/*.mjs"
+        "scripts/*.mjs",
+        // Run by Claude Code hooks (.claude/settings.json).
+        "scripts/claude-hooks/*.mjs",
     ],
     "project": [
         "src/**/*.{ts,prisma}",
         "cli/**/*.js",
         "scripts/**/*.mjs",
-        "test/**/*.ts"
+        "test/**/*.ts",
     ],
     // A dependency-free building block the template ships for new projects
     // (CLAUDE.md, Rule 6).
@@ -25,6 +28,6 @@
     "ignoreDependencies": [
         "argon2",
         // Referenced as a pino transport target string.
-        "pino-pretty"
-    ]
+        "pino-pretty",
+    ],
 }

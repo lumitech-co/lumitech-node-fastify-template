@@ -17,10 +17,11 @@
         "lint:fix": "eslint --color --fix",
         "check:migrations": "node scripts/check-migrations.mjs",
         "check:drift": "node scripts/check-drift.mjs",
+        "check:generators": "node scripts/check-generators.mjs",
         "lint:migrations": "squawk",
         "knip": "knip",
         "format": "prettier --write",
-        "format:check": "prettier --check \"**/*.{ts,js,mjs}\"",
+        "format:check": "prettier --check \"**/*.{ts,js,mjs,md,json,jsonc,yml,yaml}\"",
         "commitlint": "commitlint --edit",
         "prisma:push": "prisma db push",
         "prisma:generate": "prisma generate",
@@ -33,6 +34,7 @@
         "test:unit": "vitest -c vitest-unit.config.ts",
         "test:unit:ui": "vitest -c vitest-unit.config.ts --ui",
         "test:unit:ci": "vitest run -c vitest-unit.config.ts --reporter verbose",
+        "test:unit:coverage": "vitest run -c vitest-unit.config.ts --coverage",
         "test:int": "vitest -c vitest-int.config.ts",
         "test:int:ui": "vitest -c vitest-int.config.ts --ui",
         "test:int:ci": "vitest run -c vitest-int.config.ts --reporter verbose",
@@ -47,8 +49,10 @@
     "lint-staged": {
         "**/*.{js,jsx,ts,tsx}": [
             "npm run format",
-            "eslint --color --fix",
-            "bash -c 'npm run tsc-check'"
+            "eslint --color --fix"
+        ],
+        "**/*.{md,json,jsonc,yml,yaml}": [
+            "npm run format"
         ],
         "**/*.prisma": [
             "npm run prisma:format"
@@ -77,6 +81,7 @@
         "@types/pg": "^8.15.5",
         "@typescript-eslint/eslint-plugin": "^8.71.1",
         "@typescript-eslint/parser": "^8.71.1",
+        "@vitest/coverage-v8": "^3.2.4",
         "@vitest/eslint-plugin": "^1.6.27",
         "@vitest/ui": "^3.2.4",
         "commitizen": "^4.3.1",

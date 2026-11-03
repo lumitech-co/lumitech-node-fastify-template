@@ -5,7 +5,7 @@ import type {
     CreateMessageJobData,
     UpdateMessageJobData,
     DeleteMessageJobData,
-} from "@/lib/validation/message/message.schema.js";
+} from "@/modules/message/message.schema.js";
 
 export type EnqueueCreateMessagePayload = {
     payload: CreateMessageInput;
