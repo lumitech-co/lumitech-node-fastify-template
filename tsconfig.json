@@ -34,5 +34,10 @@
         "outDir": "build",
         "incremental": true
     },
-    "include": ["src/**/*", "**/*.json", "test/**/*"]
+    "include": [
+        "src/**/*",
+        "**/*.json",
+        "test/**/*",
+        "scripts/int-test-selection.mjs"
+    ]
 }
