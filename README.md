@@ -51,11 +51,13 @@ The template uses a Vitest testing framework for test coverage.
 #### Unit Tests
 
 1. `npm run test:unit` - run all unit tests with detailed output in the terminal;
-2. `npm run test:unit:ui` - launch the interactive UI test runner.
+2. `npm run test:unit:ui` - launch the interactive UI test runner;
+3. `npm run test:unit:changed` - only the tests affected by changes since `origin/main`;
+4. `npm run test:mutation -- --mutate <file>` - mutation testing (StrykerJS) of one file, local only.
 
 #### Integration Tests
 
-`npm run test:int` - launch integration tests.
+`npm run test:int` - launch integration tests; `npm run test:int:changed` - only those the changes since `origin/main` need.
 
 A throwaway Postgres container is started automatically by Testcontainers and the
 migrations are applied to it once per run, so the only prerequisite is a running
@@ -63,7 +65,7 @@ Docker daemon. Each test starts from an empty database (tables are truncated
 between tests), and each vitest worker gets its own database so files still run
 in parallel.
 
-Only if a test needs the storage emulators (fake GCS / LocalStack S3):
+Only if a test needs the storage emulators (fake GCS / LocalStack S3 / Azurite):
 `docker compose -f docker-compose.test.yml up`.
 
 ## ⚙ Key Features
@@ -293,10 +295,13 @@ Plugins included:
 - **API Documentation** (`swagger.ts` and `zod.ts`): Integrates Swagger for API documentation and Zod for schema validation.
 - **Dependency Injection** (`awilix.ts`): Registers and manages service dependencies using Awilix.
 - **Error Handling** (`error.ts`): Provides a centralized mechanism for managing application errors.
+- **Security Headers** (`helmet.ts`): CSP, HSTS and the other hardening headers.
+- **Request Timeout** (`requestTimeout.ts`): Answers `503` to a request that runs too long.
+- **Cron Authentication** (`authenticateCron.ts`): `fastify.authenticateCron` for scheduler-only routes (`CRON_SECRET`).
 
 #### `src/lib`:
 
-This directory serves as an abstraction layer for third-party services and integrations. It is designed to encapsulate interactions with external services such as BullMQ for job processing, Stripe for payment processing, email sending services, file storage providers (e.g. AWS S3, GCP Cloud Storage), and more.  
+This directory serves as an abstraction layer for third-party services and integrations. It is designed to encapsulate interactions with external services such as BullMQ for job processing, Stripe for payment processing, email sending services, file storage providers (e.g. AWS S3, GCP Cloud Storage, Azure Blob Storage), and more.  
  These abstraction layers are registered in the Awilix container and imported by services as needed. Additionally, this folder includes validation schemas using Zod for different modules, as well as utility functions and helpers that support the overall application infrastructure.
 
 #### `src/types`:

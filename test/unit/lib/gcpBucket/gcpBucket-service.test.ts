@@ -1,3 +1,4 @@
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { describe, expect, it, vi } from "vitest";
 import type { Storage } from "@google-cloud/storage";
 import type { EnvConfig } from "@/types/env.type.js";
@@ -86,7 +87,7 @@ describe("gcpBucket.service - createGcpBucketService", () => {
             config
         );
 
-        const beforeCall = Date.now();
+        const beforeCall = dayjs().valueOf();
 
         const url = await gcpBucketService.createUploadSignedUrl({
             key: "documents/report.pdf",
@@ -120,7 +121,7 @@ describe("gcpBucket.service - createGcpBucketService", () => {
             config
         );
 
-        const beforeCall = Date.now();
+        const beforeCall = dayjs().valueOf();
 
         const url = await gcpBucketService.createReadSignedUrl({
             key: "documents/report.pdf",

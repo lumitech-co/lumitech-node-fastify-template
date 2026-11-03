@@ -4,6 +4,7 @@ import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import fastifyBasicAuth from "@fastify/basic-auth";
 import type { FastifyInstance } from "fastify";
+import { hashing } from "@/lib/hashing/hashing.js";
 import { UnauthorizedError } from "@/lib/errors/errors.js";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import {
@@ -34,7 +35,10 @@ const configureSwagger = async (fastify: FastifyInstance) => {
             validate(username, password, _req, _reply, done) {
                 if (
                     username === SWAGGER_BASIC_AUTH_USERNAME &&
-                    password === docsPassword
+                    hashing.compareSecret({
+                        secret: password,
+                        expected: docsPassword,
+                    })
                 ) {
                     done();
 

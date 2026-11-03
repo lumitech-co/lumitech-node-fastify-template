@@ -17,6 +17,7 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .prop("APPLICATION_URL", S.string())
             .prop("PORT", S.number())
             .prop("DOCS_PASSWORD", S.string())
+            .prop("CRON_SECRET", S.string())
             .prop("HOST", S.string().default("0.0.0.0"))
             .prop("TRUSTED_PROXY_HOPS", S.string())
             .prop("GCP_PROJECT_ID", S.string())
@@ -29,6 +30,10 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .prop("AWS_SECRET_ACCESS_KEY", S.string())
             .prop("AWS_S3_BUCKET_NAME", S.string())
             .prop("AWS_S3_ENDPOINT", S.string())
+            .prop("AZURE_STORAGE_ACCOUNT_NAME", S.string())
+            .prop("AZURE_STORAGE_ACCOUNT_KEY", S.string())
+            .prop("AZURE_STORAGE_CONTAINER_NAME", S.string())
+            .prop("AZURE_STORAGE_BLOB_ENDPOINT", S.string())
             .required([
                 "NODE_ENV",
                 "DATABASE_URL",

@@ -398,6 +398,86 @@ describe("Rule 6: plugin names are declared only when needed", () => {
     );
 });
 
+describe("Rule 6: a plugin depends on the plugins whose decorators it reads", () => {
+    const LIBRARY_DECORATORS = new Map([
+        ["config", "Env"],
+        ["jwt", "Jwt"],
+    ]);
+
+    const plugins = srcFiles
+        .filter((file) => file.startsWith("plugins/"))
+        .map((file) => {
+            const wrapper = readSource(file);
+
+            const body = wrapper.match(
+                /from "@\/modules\/(.+\/mq\/[^"]+)\.js"/
+            )?.[1];
+
+            const source = body
+                ? `${wrapper}\n${readSource(`modules/${body}.ts`)}`
+                : wrapper;
+
+            const options =
+                wrapper.match(/export default fp\([\s\S]*$/)?.[0] ?? "";
+
+            return {
+                file,
+                source,
+                name: options.match(/name:\s*FastifyPlugin\.(\w+)/)?.[1],
+                dependencies: new Set(
+                    [
+                        ...(
+                            options.match(
+                                /dependencies:\s*\[([^\]]*)\]/
+                            )?.[1] ?? ""
+                        ).matchAll(/FastifyPlugin\.(\w+)/g),
+                    ].map(([, name]) => name!)
+                ),
+            };
+        });
+
+    const owners = new Map<string, { file: string; name: string | undefined }>([
+        ...[...LIBRARY_DECORATORS].map(
+            ([decorator, name]) => [decorator, { file: "", name }] as const
+        ),
+        ...plugins.flatMap(({ file, source, name }) =>
+            [...source.matchAll(/\.decorate\(\s*"(\w+)"/g)].map(
+                ([, decorator]) => [decorator!, { file, name }] as const
+            )
+        ),
+    ]);
+
+    const reads = plugins.flatMap(({ file, source, name, dependencies }) =>
+        [
+            ...new Set(
+                [...source.matchAll(/\bfastify\.(\w+)/g)].map(([, key]) => key!)
+            ),
+        ]
+            .map((decorator) => ({ decorator, owner: owners.get(decorator) }))
+            .filter(
+                ({ owner }) =>
+                    owner && owner.file !== file && owner.name !== name
+            )
+            .map(({ decorator, owner }) => ({
+                file,
+                decorator,
+                owner: owner!.name ?? `(unnamed plugin in ${owner!.file})`,
+                dependencies,
+            }))
+    );
+
+    it("finds plugins reading another plugin's decorator, so an empty scan cannot pass", () => {
+        expect(reads.length).toBeGreaterThan(0);
+    });
+
+    it.each(reads)(
+        "$file lists $owner in dependencies for fastify.$decorator",
+        ({ owner, dependencies }) => {
+            expect([...dependencies]).toContain(owner);
+        }
+    );
+});
+
 describe("Rule 0: every module has the files the generator creates", () => {
     describe.each(listDirs("modules"))("module %s", (name) => {
         it.each([
@@ -505,6 +585,7 @@ type RouteBinding = {
     module: string;
     method: string;
     routeKeys: string[];
+    responseCodes: number[];
 };
 
 const sortedKeys = (source: string, pattern: RegExp): string[] =>
@@ -521,6 +602,9 @@ const routeBindings: RouteBinding[] = listDirs("modules").flatMap((module) =>
         routeKeys: sortedKeys(
             options!,
             /\b(body|params|querystring|headers):/g
+        ),
+        responseCodes: [...options!.matchAll(/\b([1-5]\d{2})\s*:/g)].map(
+            ([, code]) => Number(code)
         ),
     }))
 );
@@ -554,6 +638,69 @@ describe("Rule 7: every request part a handler reads is validated by its route",
                     /\b(Body|Params|Querystring|Headers):/g
                 )
             ).toEqual(routeKeys);
+        }
+    );
+});
+
+/**
+ * Status codes a handler method replies with: the literal in reply.status(N) /
+ * reply.code(N), or 200 when it only calls reply.send. NaN marks a non-literal.
+ */
+const handlerStatuses = ({
+    module,
+    method,
+}: Pick<RouteBinding, "module" | "method">): number[] => {
+    const statuses: number[] = [];
+
+    const visit = (node: ts.Node, inMethod: boolean): void => {
+        const isMethod =
+            ts.isPropertyAssignment(node) &&
+            node.name.getText() === method &&
+            (ts.isArrowFunction(node.initializer) ||
+                ts.isFunctionExpression(node.initializer));
+
+        const inside = inMethod || isMethod;
+
+        if (
+            inside &&
+            ts.isCallExpression(node) &&
+            ts.isPropertyAccessExpression(node.expression) &&
+            ["status", "code"].includes(node.expression.name.text)
+        ) {
+            const [status] = node.arguments;
+
+            statuses.push(
+                status && ts.isNumericLiteral(status)
+                    ? Number(status.text)
+                    : NaN
+            );
+        }
+
+        ts.forEachChild(node, (child) => {
+            visit(child, inside);
+        });
+    };
+
+    visit(parseSource(`modules/${module}/${module}.handler.ts`), false);
+
+    return statuses.length > 0 ? statuses : [200];
+};
+
+describe("every status a handler replies with has a response schema on its route", () => {
+    it.each(routeBindings)(
+        "$module: $method replies only with codes in its route's response",
+        ({ module, method, responseCodes }) => {
+            const statuses = handlerStatuses({ module, method });
+
+            expect(
+                statuses.every(Number.isInteger),
+                `${method} must pass a literal status to reply.status()`
+            ).toBe(true);
+
+            expect(
+                responseCodes,
+                "without a schema for the code, Fastify sends the payload unfiltered"
+            ).toEqual(expect.arrayContaining(statuses));
         }
     );
 });

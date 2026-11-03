@@ -8,6 +8,7 @@ export type EnvConfig = {
     APPLICATION_SECRET: string;
     APPLICATION_URL: string;
     DOCS_PASSWORD: string | undefined;
+    CRON_SECRET: string | undefined;
     GCP_PROJECT_ID: string | undefined;
     GCP_CLIENT_EMAIL: string | undefined;
     GCP_PRIVATE_KEY: string | undefined;
@@ -18,4 +19,8 @@ export type EnvConfig = {
     AWS_SECRET_ACCESS_KEY: string | undefined;
     AWS_S3_BUCKET_NAME: string | undefined;
     AWS_S3_ENDPOINT: string | undefined;
+    AZURE_STORAGE_ACCOUNT_NAME: string | undefined;
+    AZURE_STORAGE_ACCOUNT_KEY: string | undefined;
+    AZURE_STORAGE_CONTAINER_NAME: string | undefined;
+    AZURE_STORAGE_BLOB_ENDPOINT: string | undefined;
 };

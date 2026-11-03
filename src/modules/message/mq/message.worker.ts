@@ -1,10 +1,13 @@
 import { ZodError } from "zod";
 import type { FastifyInstance } from "fastify";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { UnrecoverableError, Worker } from "bullmq";
 import { MESSAGE_QUEUE_NAME } from "./message.constant.js";
 import type { MessageJobName } from "./message.constant.js";
+import { summarizeJobData } from "@/lib/bullmq/bullmq.util.js";
 import { BadRequestError, NotFoundError } from "@/lib/errors/errors.js";
 import type { MessageJobData, MessageJobResult } from "./message.type.js";
+import { WORKER_STALL_DEFAULTS } from "@/lib/constants/bullmq.constant.js";
 
 export const configureMessageWorker = async (
     fastify: FastifyInstance
@@ -18,7 +21,7 @@ export const configureMessageWorker = async (
                 .processMessageJob({
                     name: job.name,
                     data: job.data,
-                    enqueuedAt: new Date(job.timestamp),
+                    enqueuedAt: dayjs(job.timestamp).toDate(),
                 })
                 .catch((error) => {
                     if (
@@ -31,7 +34,7 @@ export const configureMessageWorker = async (
 
                     throw error;
                 }),
-        { connection: fastify.bullmqConnection }
+        { connection: fastify.bullmqConnection, ...WORKER_STALL_DEFAULTS }
     );
 
     worker.on("error", (error) => {
@@ -40,7 +43,12 @@ export const configureMessageWorker = async (
 
     worker.on("failed", (job, error) => {
         fastify.log.error(
-            { err: error, jobId: job?.id, jobName: job?.name },
+            {
+                err: error,
+                jobId: job?.id,
+                jobName: job?.name,
+                data: summarizeJobData(job?.data),
+            },
             "Message job failed"
         );
     });

@@ -7,19 +7,15 @@ import {
 
 const configureErrorHandler = async (fastify: FastifyInstance) => {
     fastify.setErrorHandler((error, request, reply) => {
-        // Hide not predefined errors from the client and just log them.
-        if (!("statusCode" in error)) {
-            request.log.error(error, error.message);
+        if (!(error instanceof Error) || !("statusCode" in error)) {
+            request.log.error({ err: error }, "Unhandled error");
 
-            // Returning a generic error message instead.
-            // Do not use an Error instance reply value because it creates
-            // an error log with unnecessary stack trace.
+            // A plain object, not an Error: an Error reply logs the stack twice.
             return reply
                 .status(INTERNAL_SERVER_ERROR_STATUS_CODE)
                 .send(INTERNAL_SERVER_ERROR_RESPONSE);
         }
 
-        // Use parent error handler with the predefined error.
         return reply.send(error);
     });
 };
