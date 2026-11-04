@@ -1,0 +1,17 @@
+# Lints new Prisma migrations in CI (CLAUDE.md, Rule 9). A violation means
+# the migration locks or loses data: rethink the schema change, or — once it
+# is approved — put `-- squawk-ignore <rule>` above that statement.
+pg_version = "18.0"
+# Prisma applies each migration as one unit, so indexes and foreign keys on a
+# table created in the same migration are not reported.
+assume_in_transaction = true
+excluded_rules = [
+    # Prisma never emits these; satisfying them means hand-editing every migration.
+    "require-lock-timeout",
+    "require-statement-timeout",
+    # Column types are chosen in schema.prisma, not in the SQL.
+    "prefer-bigint-over-int",
+    "prefer-identity",
+    "prefer-text-field",
+    "prefer-timestamp-tz",
+]

@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
-import { MessageHandler } from "./message.handler.js";
+import type { FastifyInstance } from "fastify";
+import type { MessageHandler } from "./message.handler.js";
 import {
     MESSAGE_CACHE_NAMESPACE,
     MESSAGE_CACHE_TTL_SECONDS,
@@ -8,34 +8,68 @@ import {
 } from "./message.constant.js";
 import {
     createMessageBodySchema,
+    updateMessageBodySchema,
+    messageIdParamSchema,
     fetchMessagesQuerySchema,
-    createMessageResponseSchema,
+    enqueueMessageResponseSchema,
     fetchMessagesResponseSchema,
-} from "@/lib/validation/message/message.schema.js";
+} from "./message.schema.js";
 
 const MESSAGE_TAG = "message";
 
 enum MessageRoute {
     Root = "/",
+    ById = "/:id",
 }
 
 export const createMessageRoutes = (
     fastify: FastifyInstance,
     messageHandler: MessageHandler
-) => {
+): void => {
     fastify.post(
         MessageRoute.Root,
         {
             schema: {
                 tags: [MESSAGE_TAG],
-                summary: "Create message",
+                summary: "Enqueue message creation",
                 body: createMessageBodySchema,
                 response: {
-                    200: createMessageResponseSchema,
+                    202: enqueueMessageResponseSchema,
                 },
             },
         },
         messageHandler.createMessage
+    );
+
+    fastify.put(
+        MessageRoute.ById,
+        {
+            schema: {
+                tags: [MESSAGE_TAG],
+                summary: "Enqueue message update",
+                params: messageIdParamSchema,
+                body: updateMessageBodySchema,
+                response: {
+                    200: enqueueMessageResponseSchema,
+                },
+            },
+        },
+        messageHandler.updateMessage
+    );
+
+    fastify.delete(
+        MessageRoute.ById,
+        {
+            schema: {
+                tags: [MESSAGE_TAG],
+                summary: "Enqueue message deletion",
+                params: messageIdParamSchema,
+                response: {
+                    200: enqueueMessageResponseSchema,
+                },
+            },
+        },
+        messageHandler.deleteMessage
     );
 
     fastify.get(

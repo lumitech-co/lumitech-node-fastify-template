@@ -1,6 +1,6 @@
-import { FastifyReply, FastifyRequest } from "fastify";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
-import { ApplicationService } from "./application.service.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { ApplicationService } from "./application.service.js";
 
 export type ApplicationHandler = {
     healthChecker: (
@@ -11,14 +11,12 @@ export type ApplicationHandler = {
 
 export const createHandler = (
     applicationService: ApplicationService
-): ApplicationHandler => {
-    return {
-        healthChecker: async (_request, reply) => {
-            const data = await applicationService.healthChecker();
+): ApplicationHandler => ({
+    healthChecker: async (_request, reply) => {
+        const data = await applicationService.healthChecker();
 
-            return reply.send(data);
-        },
-    };
-};
+        return reply.send(data);
+    },
+});
 
 addDIResolverName(createHandler, "applicationHandler");

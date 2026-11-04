@@ -1,8 +1,8 @@
-import path from "path";
 import fp from "fastify-plugin";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FastifyInstance } from "fastify";
+import path, { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { FastifyInstance } from "fastify";
+import type { Cradle } from "@/types/di-container.type.js";
 import { asValue, createContainer, InjectionMode } from "awilix";
 import { FastifyPlugin } from "@/lib/constants/fastify.constant.js";
 import { resolverOptionsRegister } from "@/lib/awilix/resolver-registration.js";
@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const configureAwilix = async (fastify: FastifyInstance) => {
-    const container = createContainer({
+    const container = createContainer<Cradle>({
         injectionMode: InjectionMode.CLASSIC,
         strict: true,
     });
@@ -26,15 +26,16 @@ const configureAwilix = async (fastify: FastifyInstance) => {
         gcpStorageClient: asValue(fastify.gcpStorageClient),
         awsS3Client: asValue(fastify.awsS3Client),
         redis: asValue(fastify.redis),
+        bullmqConnection: asValue(fastify.bullmqConnection),
+        messageQueue: asValue(fastify.messageQueue),
     });
 
     // Register dependencies from the application: repositories, services, route handlers
     await container.loadModules(
         [
-            path.join(__dirname, "../modules/**/*.{service,handler}.{js,ts}"),
             path.join(
                 __dirname,
-                "../database/repositories/{*,**/*}.repository.{js,ts}"
+                "../modules/**/*.{service,handler,repository}.{js,ts}"
             ),
             path.join(__dirname, "../lib/**/*.service.{js,ts}"),
         ],
@@ -55,5 +56,7 @@ export default fp(configureAwilix, {
         FastifyPlugin.GcpStorage,
         FastifyPlugin.AwsS3,
         FastifyPlugin.Redis,
+        FastifyPlugin.BullMq,
+        FastifyPlugin.MessageQueue,
     ],
 });

@@ -1,4 +1,4 @@
-const MAX_TRUSTED_PROXY_HOPS = 10;
+import { MAX_TRUSTED_PROXY_HOPS } from "./proxy.constant.js";
 
 export const resolveTrustProxy = (rawValue: string | undefined): number => {
     const normalized = rawValue?.trim();

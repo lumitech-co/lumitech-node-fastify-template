@@ -1,6 +1,6 @@
-import { Storage } from "@google-cloud/storage";
 import { describe, expect, it, vi } from "vitest";
-import { EnvConfig } from "@/types/env.type.js";
+import type { Storage } from "@google-cloud/storage";
+import type { EnvConfig } from "@/types/env.type.js";
 import { createGcpBucketService } from "@/lib/gcpBucket/gcpBucket.service.js";
 import { GCP_BUCKET_NOT_CONFIGURED } from "@/lib/gcpBucket/gcpBucket.constant.js";
 
@@ -96,13 +96,14 @@ describe("gcpBucket.service - createGcpBucketService", () => {
         expect(url).toBe("https://upload.example/signed");
         expect(bucketMock.file).toHaveBeenCalledWith("documents/report.pdf");
 
-        const [options] = fileMock.getSignedUrl.mock.calls[0];
+        const [options] = fileMock.getSignedUrl.mock.calls[0]!;
 
         expect(options).toMatchObject({
             version: "v4",
             action: "write",
             contentType: "application/pdf",
         });
+
         expect(options.expires).toBeGreaterThan(beforeCall);
     });
 
@@ -128,12 +129,13 @@ describe("gcpBucket.service - createGcpBucketService", () => {
         expect(url).toBe("https://read.example/signed");
         expect(bucketMock.file).toHaveBeenCalledWith("documents/report.pdf");
 
-        const [options] = fileMock.getSignedUrl.mock.calls[0];
+        const [options] = fileMock.getSignedUrl.mock.calls[0]!;
 
         expect(options).toMatchObject({
             version: "v4",
             action: "read",
         });
+
         expect(options).not.toHaveProperty("contentType");
         expect(options.expires).toBeGreaterThan(beforeCall);
     });

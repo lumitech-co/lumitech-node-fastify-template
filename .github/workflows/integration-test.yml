@@ -1,7 +1,9 @@
 name: Integration Tests
 on:
+    # Every pull request, whatever branch it targets, plus the merged result on main.
     pull_request:
-        branches: [main, master]
+    push:
+        branches: [main]
 jobs:
     integration-test:
         runs-on: ubuntu-latest
@@ -41,6 +43,9 @@ jobs:
 
             - name: Generate prisma schema
               run: npm run prisma:generate
+
+            - name: Check migrations reproduce schema.prisma
+              run: npm run check:drift
 
             - name: Run integration tests
               run: npm run test:int:ci

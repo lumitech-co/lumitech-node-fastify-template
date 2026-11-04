@@ -1,7 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-export const extendCradle = (namePascal, nameCamel, nameKebab) => {
+export const extendCradle = ({ entity, module }) => {
+    const { pascal: namePascal, camel: nameCamel, kebab: nameKebab } = entity;
+
     const diContainerPath = path.join(
         process.cwd(),
         "src/types/di-container.type.ts"
@@ -10,10 +12,10 @@ export const extendCradle = (namePascal, nameCamel, nameKebab) => {
     let diContent = fs.readFileSync(diContainerPath, "utf8");
 
     if (!diContent.includes(`${namePascal}Repository`)) {
-        const importMarker = 'import { EnvConfig } from "./env.type.js";';
+        const importMarker = 'import type { EnvConfig } from "./env.type.js";';
 
         const newImports = `
-import { ${namePascal}Repository } from "@/database/repositories/${nameKebab}/${nameKebab}.repository.js";`;
+import type { ${namePascal}Repository } from "@/modules/${module.kebab}/${nameKebab}.repository.js";`;
 
         diContent = diContent.replace(
             importMarker,

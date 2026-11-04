@@ -13,7 +13,10 @@ const PINO_LEVEL_TO_GCP_SEVERITY: Record<string, string> = {
 export const GCP_LOGGER = {
     messageKey: "message",
     formatters: {
-        level(label: string, number: number) {
+        level(
+            label: string,
+            number: number
+        ): { severity: string; level: number } {
             return {
                 severity: PINO_LEVEL_TO_GCP_SEVERITY[label] ?? "INFO",
                 level: number,
