@@ -1,5 +1,11 @@
 # Accepted findings for the OSV scan in .github/workflows/build.yml.
-# Every entry needs a reason and an `ignoreUntil` at most ~3 months out.
+#
+# Every entry needs a reason a reviewer can check and an `ignoreUntil`
+# (`effectiveUntil` on a [[PackageOverrides]] entry, which ignores one
+# version of a package instead of an advisory everywhere) no more
+# than ~3 months out: on that date the finding fails CI again and has to be
+# looked at afresh (a fix released, the risk changed, or a new date with a new
+# reason). Never add an entry without a date.
 
 [[IgnoredVulns]]
 id = "GHSA-5gmw-xhrv-c9v3"
@@ -80,23 +86,44 @@ which calls only v4; testcontainers and the Prisma generators are dev only. \
 Our own code does not import uuid. The fix needs @google-cloud/storage 8.
 """
 
-[[IgnoredVulns]]
-id = "GHSA-4mjr-xmp4-gh2g"
-ignoreUntil = 2027-01-24
+[[PackageOverrides]]
+name = "minimatch"
+version = "3.1.5"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-03
 reason = """
-qs 6.15.1, pinned exactly by typed-rest-client in @stryker-mutator/core (dev dependency). Stryker uses it only in `stryker init` to query the npm registry; `npm run test:mutation` never loads it and the app does not depend on qs.
+GHSA-g3hv-75wg-m249 (pattern amplification DoS): minimatch 3 in eslint, \
+@eslint/eslintrc and commitizen. Dev only, the patterns are this repository's \
+own lint config. Fixed only in minimatch 11, whose named-export API those \
+packages cannot load, so package.json `overrides` cannot lift it.
 """
 
-[[IgnoredVulns]]
-id = "GHSA-q8mj-m7cp-5q26"
-ignoreUntil = 2027-01-24
+[[PackageOverrides]]
+name = "minimatch"
+version = "10.2.6"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-03
 reason = """
-qs 6.15.1, pinned exactly by typed-rest-client in @stryker-mutator/core (dev dependency). Stryker uses it only in `stryker init` to query the npm registry; `npm run test:mutation` never loads it and the app does not depend on qs.
+GHSA-g3hv-75wg-m249: minimatch 10 in eslint-plugin-import-x 4 (dev \
+dependency), which matches this repository's own lint settings. minimatch 11 \
+dropped `makeRe`, which its no-internal-modules rule imports, so it is not \
+overridden there; every other minimatch 10 is overridden to 11 in package.json.
 """
 
-[[IgnoredVulns]]
-id = "GHSA-x5fp-wj9c-mxmx"
-ignoreUntil = 2027-01-24
+[[PackageOverrides]]
+name = "minimatch"
+version = "5.1.9"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-03
 reason = """
-qs 6.15.1, pinned exactly by typed-rest-client in @stryker-mutator/core (dev dependency). Stryker uses it only in `stryker init` to query the npm registry; `npm run test:mutation` never loads it and the app does not depend on qs.
+GHSA-g3hv-75wg-m249: minimatch 5 in @prisma/internals 5 \
+(prisma-dbml-generator, dev dependency). It matches the generator's own file \
+patterns, never request input. Same as minimatch 3: minimatch 11 breaks its \
+callers.
 """
