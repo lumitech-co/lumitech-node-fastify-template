@@ -9,13 +9,7 @@ type WaitForMessageJobArgs = {
     timeoutMs?: number;
 };
 
-/**
- * Listens on the queue's event stream instead of polling `Job.fromId`.
- * The queue's default job options remove a job as soon as it completes or
- * fails, so by the time a poll runs the job document may already be gone —
- * indistinguishable from "never existed". The event stream still reports the
- * outcome after removal, so it is the only reliable way to await a job here.
- */
+/** Event stream, not `Job.fromId` polling: a finished job is removed at once. */
 export const waitForMessageJob = async ({
     server,
     jobId,

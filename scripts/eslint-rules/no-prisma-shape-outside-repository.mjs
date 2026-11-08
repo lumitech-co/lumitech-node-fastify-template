@@ -1,6 +1,5 @@
 // A Prisma select / include / where / write payload describes a query, so it
-// lives with the repository that runs it (CLAUDE.md, Rule 2). Ported from
-// tolmete-api.
+// lives with the repository that runs it (CLAUDE.md, Rule 2).
 const SHAPE_SUFFIX =
     /(?:Select|Include|Omit|GetPayload|WhereInput|WhereUniqueInput|OrderByWithRelationInput|CreateInput|UncheckedCreateInput|UpdateInput|UncheckedUpdateInput|CreateManyInput)$/;
 

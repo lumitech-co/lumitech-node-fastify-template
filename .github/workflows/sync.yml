@@ -1,0 +1,32 @@
+name: Sync client → main
+
+# Mirrors the `client` branch to `main` of the client's repository.
+# Needs the `SYNC_TARGET_REPO` variable (`owner/repo`) and an `SSH_KEY` secret holding a deploy key with write access there.
+on:
+    push:
+        branches: [client]
+
+permissions:
+    contents: read
+
+concurrency:
+    group: sync-client-main
+    cancel-in-progress: false
+
+jobs:
+    sync:
+        if: ${{ vars.SYNC_TARGET_REPO != '' }}
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - uses: webfactory/ssh-agent@v0.9.0
+              with:
+                  ssh-private-key: ${{ secrets.SSH_KEY }}
+
+            - name: Push client → main (fast-forward, else force)
+              run: |
+                  git remote add target "git@github.com:${{ vars.SYNC_TARGET_REPO }}.git"
+                  git push target HEAD:main || git push --force target HEAD:main

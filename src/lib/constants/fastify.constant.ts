@@ -5,6 +5,7 @@ export enum FastifyPlugin {
     Awilix = "awilix",
     GcpStorage = "gcpStorage",
     AwsS3 = "awsS3",
+    AzureBlob = "azureBlob",
     Redis = "redis",
     BullMq = "bullmq",
     MessageQueue = "messageQueue",

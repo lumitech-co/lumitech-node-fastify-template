@@ -65,7 +65,7 @@ Docker daemon. Each test starts from an empty database (tables are truncated
 between tests), and each vitest worker gets its own database so files still run
 in parallel.
 
-Only if a test needs the storage emulators (fake GCS / LocalStack S3):
+Only if a test needs the storage emulators (fake GCS / LocalStack S3 / Azurite):
 `docker compose -f docker-compose.test.yml up`.
 
 ## ⚙ Key Features
@@ -301,7 +301,7 @@ Plugins included:
 
 #### `src/lib`:
 
-This directory serves as an abstraction layer for third-party services and integrations. It is designed to encapsulate interactions with external services such as BullMQ for job processing, Stripe for payment processing, email sending services, file storage providers (e.g. AWS S3, GCP Cloud Storage), and more.  
+This directory serves as an abstraction layer for third-party services and integrations. It is designed to encapsulate interactions with external services such as BullMQ for job processing, Stripe for payment processing, email sending services, file storage providers (e.g. AWS S3, GCP Cloud Storage, Azure Blob Storage), and more.  
  These abstraction layers are registered in the Awilix container and imported by services as needed. Additionally, this folder includes validation schemas using Zod for different modules, as well as utility functions and helpers that support the overall application infrastructure.
 
 #### `src/types`:

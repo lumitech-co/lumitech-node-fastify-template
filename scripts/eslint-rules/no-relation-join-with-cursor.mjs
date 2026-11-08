@@ -1,6 +1,6 @@
 // Prisma silently ignores `relationLoadStrategy: "join"` when a `cursor` is
 // present (prisma/prisma#23564). Counts a cursor set directly or spread in via
-// `...(cursor ? { cursor } : {})`. Ported from tolmete-api.
+// `...(cursor ? { cursor } : {})`.
 const isNamed = (property, name) =>
     property.type === "Property" &&
     !property.computed &&
