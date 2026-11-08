@@ -1,3 +1,4 @@
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import type { Storage } from "@google-cloud/storage";
 import type { EnvConfig } from "@/types/env.type.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
@@ -46,7 +47,7 @@ export const createGcpBucketService = (
                 .getSignedUrl({
                     version: "v4",
                     action: "write",
-                    expires: Date.now() + SIGNED_URL_EXPIRES_IN_MS,
+                    expires: dayjs().valueOf() + SIGNED_URL_EXPIRES_IN_MS,
                     contentType,
                 });
 
@@ -59,7 +60,7 @@ export const createGcpBucketService = (
                 .getSignedUrl({
                     version: "v4",
                     action: "read",
-                    expires: Date.now() + SIGNED_URL_EXPIRES_IN_MS,
+                    expires: dayjs().valueOf() + SIGNED_URL_EXPIRES_IN_MS,
                 });
 
             return url;

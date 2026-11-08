@@ -1,0 +1,129 @@
+# Accepted findings for the OSV scan in .github/workflows/build.yml.
+#
+# Every entry needs a reason a reviewer can check and an `ignoreUntil`
+# (`effectiveUntil` on a [[PackageOverrides]] entry, which ignores one
+# version of a package instead of an advisory everywhere) no more
+# than ~3 months out: on that date the finding fails CI again and has to be
+# looked at afresh (a fix released, the risk changed, or a new date with a new
+# reason). Never add an entry without a date.
+
+[[IgnoredVulns]]
+id = "GHSA-5gmw-xhrv-c9v3"
+ignoreUntil = 2027-01-24
+reason = """
+tinypool 1.1.1 (vitest 3): prototype pollution in worker options. Dev only: \
+vitest runs this repository's own tests, never request input. The fix needs \
+vitest 5, a major upgrade of the test stack.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-85c8-ppgw-ccpr"
+ignoreUntil = 2027-01-24
+reason = """
+tinypool 1.1.1 (vitest 3): prototype pollution in run() options. Same as \
+GHSA-5gmw-xhrv-c9v3: test runner only, fixed in vitest 5.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-82fw-gwwq-j7x9"
+ignoreUntil = 2027-01-24
+reason = """
+vitest 3: file read via a redirect mock. Dev only, the mocks are written in \
+this repository. Fixed in vitest 4.1.11, a major upgrade.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-qxg6-89mg-rqv8"
+ignoreUntil = 2027-01-24
+reason = """
+@vitest/mocker 3: unauthenticated mock registration. It needs a vitest \
+server to be listening (`vitest --ui` on a developer machine); CI and the \
+app never run one. Fixed in vitest 4.1.12, a major upgrade.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-ggr8-5vv4-36mx"
+ignoreUntil = 2027-01-24
+reason = """
+deepmerge-ts 7 in @prisma/config (prisma CLI 6, dev dependency): stack \
+exhaustion on recursive objects. It merges the repository's own Prisma \
+config, never request input. Fixed in prisma 7, a major upgrade.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-3xgq-45jj-v275"
+ignoreUntil = 2027-01-24
+reason = """
+cross-spawn 7.0.3 in @prisma/generator-helper 5 (prisma-dbml-generator, dev \
+dependency): ReDoS on spawn arguments, which are the generator's own command \
+line. Fixed in prisma-dbml-generator 0.6+ only on another Prisma major.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-ph9p-34f9-6g65"
+ignoreUntil = 2027-01-24
+reason = """
+tmp 0.2.1 (@prisma/internals via prisma-dbml-generator) and 0.2.7 \
+(testcontainers): path traversal through the prefix/postfix options. Dev \
+only, the options are fixed strings in those tools.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-52f5-9888-hmc6"
+ignoreUntil = 2027-01-24
+reason = """
+tmp 0.2.1 (@prisma/internals via prisma-dbml-generator): symlinked `dir` \
+option. Dev only, the generator passes no `dir`.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-w5hq-g745-h8pq"
+ignoreUntil = 2027-01-24
+reason = """
+uuid < 11.1.1: missing bounds check in v3/v5/v6 when a buffer is passed. It \
+reaches production through @google-cloud/storage (gaxios, teeny-request), \
+which calls only v4; testcontainers and the Prisma generators are dev only. \
+Our own code does not import uuid. The fix needs @google-cloud/storage 8.
+"""
+
+[[PackageOverrides]]
+name = "minimatch"
+version = "3.1.5"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-03
+reason = """
+GHSA-g3hv-75wg-m249 (pattern amplification DoS): minimatch 3 in eslint, \
+@eslint/eslintrc and commitizen. Dev only, the patterns are this repository's \
+own lint config. Fixed only in minimatch 11, whose named-export API those \
+packages cannot load, so package.json `overrides` cannot lift it.
+"""
+
+[[PackageOverrides]]
+name = "minimatch"
+version = "10.2.6"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-03
+reason = """
+GHSA-g3hv-75wg-m249: minimatch 10 in eslint-plugin-import-x 4 (dev \
+dependency), which matches this repository's own lint settings. minimatch 11 \
+dropped `makeRe`, which its no-internal-modules rule imports, so it is not \
+overridden there; every other minimatch 10 is overridden to 11 in package.json.
+"""
+
+[[PackageOverrides]]
+name = "minimatch"
+version = "5.1.9"
+ecosystem = "npm"
+group = "dev"
+vulnerability.ignore = true
+effectiveUntil = 2027-02-03
+reason = """
+GHSA-g3hv-75wg-m249: minimatch 5 in @prisma/internals 5 \
+(prisma-dbml-generator, dev dependency). It matches the generator's own file \
+patterns, never request input. Same as minimatch 3: minimatch 11 breaks its \
+callers.
+"""

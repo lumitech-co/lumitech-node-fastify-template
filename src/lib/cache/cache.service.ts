@@ -1,5 +1,6 @@
 import type { Redis } from "ioredis";
 import type { FastifyBaseLogger } from "fastify";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { addDIResolverName } from "@/lib/awilix/awilix.js";
 import {
     CACHE_INVALIDATION_SCAN_COUNT,
@@ -174,9 +175,9 @@ export const createCacheService = (
         key,
         schema,
     }: GetCachePayload<T>): Promise<CacheReadResult<T>> {
-        const deadline = Date.now() + CACHE_LOCK_MAX_WAIT_MS;
+        const deadline = dayjs().valueOf() + CACHE_LOCK_MAX_WAIT_MS;
 
-        while (Date.now() < deadline) {
+        while (dayjs().valueOf() < deadline) {
             await sleep({ ms: CACHE_LOCK_POLL_INTERVAL_MS });
 
             const cached = await read({ key, schema });

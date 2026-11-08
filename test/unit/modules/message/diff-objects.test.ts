@@ -2,6 +2,7 @@
  * Example test suite for diffObjects function.
  * */
 import { describe, it, expect } from "vitest";
+import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { diffObjects } from "@/modules/message/message.util.js";
 
 type Person = {
@@ -65,8 +66,8 @@ describe("message.util - diffObjects", () => {
     });
 
     it("should detect Date changes", () => {
-        const oldDate = new Date("2023-01-01");
-        const newDate = new Date("2023-01-02");
+        const oldDate = dayjs.utc("2023-01-01").toDate();
+        const newDate = dayjs.utc("2023-01-02").toDate();
 
         const oldObj = { created: oldDate, updated: oldDate };
         const newObj = { created: oldDate, updated: newDate };
@@ -79,8 +80,8 @@ describe("message.util - diffObjects", () => {
     });
 
     it("should not detect changes when dates are identical", () => {
-        const date1 = new Date("2023-01-01T10:00:00Z");
-        const date2 = new Date("2023-01-01T10:00:00Z");
+        const date1 = dayjs("2023-01-01T10:00:00Z").toDate();
+        const date2 = dayjs("2023-01-01T10:00:00Z").toDate();
 
         const oldObj = { created: date1 };
         const newObj = { created: date2 };
@@ -139,14 +140,14 @@ describe("message.util - diffObjects", () => {
             name: "Bob",
             age: 28,
             tags: ["user"],
-            birthday: new Date("1997-04-12"),
+            birthday: dayjs.utc("1997-04-12").toDate(),
         };
 
         const newP: Person = {
             name: "Bob",
             age: 29,
             tags: ["user", "admin"],
-            birthday: new Date("1997-04-12"),
+            birthday: dayjs.utc("1997-04-12").toDate(),
         };
 
         const result = diffObjects({ oldObj: oldP, newObj: newP });
