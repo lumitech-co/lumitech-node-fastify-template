@@ -1,16 +1,7 @@
 /**
- * Keeps dayjs the only date API. Native `Date` survives only as a TYPE and as
- * the transport value Prisma / zod / JSON hand over — constructing one, reading
- * or mutating its fields, or importing dayjs around the wrapper is reported.
- * The wrapper `src/lib/dayjs/dayjs.util.ts` registers the plugins and is exempt. Ported from tolmete-api.
- *
- * Syntactic only (the api ESLint builds no TypeScript program), so native
- * methods are matched by NAME. `toLocaleString` is deliberately absent: numbers
- * have it too.
- *
- * Also guards raw SQL: `Prisma.sql` / `$queryRaw` accept `unknown`, so a Dayjs
- * interpolated there compiles and serializes wrongly — it must end in
- * `.toDate()`.
+ * dayjs is the only date API: `Date` stays a type and the value Prisma, Zod and
+ * JSON hand over. Matched by method name, without types. A Dayjs in raw SQL must
+ * end in `.toDate()`. `src/lib/dayjs/dayjs.util.ts` is exempt.
  *
  * @type {import("eslint").Rule.RuleModule}
  */

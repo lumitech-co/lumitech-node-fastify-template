@@ -30,6 +30,10 @@ const configureEnv = async (fastify: FastifyInstance) => {
             .prop("AWS_SECRET_ACCESS_KEY", S.string())
             .prop("AWS_S3_BUCKET_NAME", S.string())
             .prop("AWS_S3_ENDPOINT", S.string())
+            .prop("AZURE_STORAGE_ACCOUNT_NAME", S.string())
+            .prop("AZURE_STORAGE_ACCOUNT_KEY", S.string())
+            .prop("AZURE_STORAGE_CONTAINER_NAME", S.string())
+            .prop("AZURE_STORAGE_BLOB_ENDPOINT", S.string())
             .required([
                 "NODE_ENV",
                 "DATABASE_URL",

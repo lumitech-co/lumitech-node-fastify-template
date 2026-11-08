@@ -1,6 +1,3 @@
-/**
- * Example test suite for diffObjects function.
- * */
 import { describe, it, expect } from "vitest";
 import { dayjs } from "@/lib/dayjs/dayjs.util.js";
 import { diffObjects } from "@/modules/message/message.util.js";

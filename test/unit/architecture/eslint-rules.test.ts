@@ -1,8 +1,6 @@
 /**
- * Every arch/* rule in eslint.config.mjs fires on its violation and stays
- * quiet on the allowed shape, through the real config and its file globs. A
- * selector that silently stops matching leaves lint green on a clean repo, so
- * only a deliberate violation proves it still works.
+ * Every arch/* rule fires on a violation and stays quiet on the allowed shape:
+ * a selector that silently stops matching leaves lint green on a clean repo.
  */
 import path from "node:path";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
