@@ -1,0 +1,23 @@
+name: CI
+
+# The only workflow a repository keeps for checks: triggers live here, the steps in
+# the shared node-ci.yml. Change `branches` to the repository's main branch.
+on:
+    # A draft runs nothing; marking it ready for review starts the checks.
+    pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
+        paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
+    # The merged result on the main branch only; node-ci.yml skips any other branch.
+    push:
+        branches: [main]
+        paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
+
+permissions:
+    contents: read
+
+jobs:
+    ci:
+        # The template checks itself in self-test.yml, against its own copy of node-ci.yml.
+        if: ${{ github.repository != 'lumitech-co/lumitech-node-fastify-template' }}
+        uses: lumitech-co/lumitech-node-fastify-template/.github/workflows/node-ci.yml@main
+        secrets: inherit

@@ -1,0 +1,20 @@
+name: Self test
+
+# Runs the template's own node-ci.yml, so a pull request here is checked with its own
+# changes before the repositories calling @main pick them up.
+on:
+    pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
+        paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
+    push:
+        branches: [main]
+        paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
+
+permissions:
+    contents: read
+
+jobs:
+    ci:
+        if: ${{ github.repository == 'lumitech-co/lumitech-node-fastify-template' }}
+        uses: ./.github/workflows/node-ci.yml
+        secrets: inherit
