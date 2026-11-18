@@ -42,6 +42,7 @@ describe("selectIntTests", () => {
         "test/int/factories/message.factory.ts",
         "package-lock.json",
         "vitest-int.config.ts",
+        ".github/workflows/node-ci.yml",
     ])("runs everything when %s changes", (file) => {
         expect(
             select(["src/modules/message/message.service.ts", file])
@@ -62,7 +63,8 @@ describe("selectIntTests", () => {
                 "test/unit/lib/http/http-util.test.ts",
                 "scripts/eslint-rules/prefer-dayjs.mjs",
                 "eslint.config.mjs",
-                ".github/workflows/build.yml",
+                ".github/workflows/ci.yml",
+                ".github/workflows/self-test.yml",
             ])
         ).toMatchObject({ targets: [], runAll: false });
     });

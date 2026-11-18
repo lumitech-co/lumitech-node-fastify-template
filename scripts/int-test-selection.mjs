@@ -30,7 +30,7 @@ export const RUNS_EVERYTHING = [
     "tsconfig.build.json",
     "docker-compose.test.yml",
     ".env.test",
-    ".github/workflows/integration-test.yml",
+    ".github/workflows/node-ci.yml",
     "scripts/int-test-selection.mjs",
     "scripts/select-int-tests.mjs",
 ];
@@ -58,7 +58,7 @@ export const RUNS_NOTHING = [
     /^Dockerfile$/,
     /^\.dockerignore$/,
     /^docker-compose\.yml$/,
-    /^\.github\/workflows\/(build|unit-test)\.yml$/,
+    /^\.github\/workflows\/(ci|self-test)\.yml$/,
 ];
 
 /**
