@@ -1,7 +1,6 @@
 name: Self test
 
-# Runs the template's own node-ci.yml, so a pull request here is checked with its own
-# changes before the repositories calling @main pick them up.
+# Runs this branch's own node-ci.yml in the template.
 on:
     pull_request:
         types: [opened, synchronize, reopened, ready_for_review]
