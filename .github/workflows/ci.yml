@@ -1,13 +1,13 @@
 name: CI
 
-# Set `branches` to the repository's main branch.
+# node-ci.yml runs a push only on the default branch; add it below if it is not listed.
 on:
     pull_request:
         types: [opened, synchronize, reopened, ready_for_review]
         paths-ignore:
             ["**/*.md", "docs/**", ".vscode/**", ".idea/**", "LICENSE"]
     push:
-        branches: [main]
+        branches: [main, master, dev, develop]
         paths-ignore:
             ["**/*.md", "docs/**", ".vscode/**", ".idea/**", "LICENSE"]
 
