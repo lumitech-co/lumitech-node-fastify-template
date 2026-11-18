@@ -1,4 +1,4 @@
-# Accepted findings for the OSV scan in .github/workflows/build.yml.
+# Accepted findings for the OSV scan in .github/workflows/node-ci.yml.
 #
 # Every entry needs a reason a reviewer can check and an `ignoreUntil`
 # (`effectiveUntil` on a [[PackageOverrides]] entry, which ignores one
