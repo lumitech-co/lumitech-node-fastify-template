@@ -11,7 +11,7 @@ on:
     workflow_call:
         inputs:
             runner:
-                description: Runner label for every job.
+                description: Runner label.
                 type: string
                 default: ubuntu-latest
             node-version:
@@ -24,6 +24,10 @@ on:
             run-integration:
                 type: boolean
                 default: true
+            timeout-minutes:
+                description: Hard stop for the job; without it a hung step bills up to 6 hours.
+                type: number
+                default: 40
 
 permissions:
     contents: read
@@ -35,21 +39,36 @@ concurrency:
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-    # Draft pull requests run nothing; a push runs only on the default branch.
-    # The diff-based steps below need history only on pull requests.
+    # The diff-based steps need history only on pull requests.
     # `cond && 0 || 1` would always give 1 (0 is falsy), hence the inverted test.
     FETCH_DEPTH: ${{ github.event_name != 'pull_request' && 1 || 0 }}
+    NODE_MODULES_KEY: node-modules-${{ inputs.runner }}-node${{ inputs.node-version }}
 
+# ONE job on purpose: every job is billed per started minute and pays its own
+# checkout, Node setup and install. Steps run cheapest first, so a failure stops
+# the job before the database and the integration suite are paid for.
 jobs:
-    build:
-        name: Lint & Build
+    ci:
+        name: CI
+        # Draft pull requests run nothing; a push runs only on the default branch.
         if: ${{ !github.event.pull_request.draft && (github.event_name != 'push' || github.ref_name == github.event.repository.default_branch) }}
         runs-on: ${{ inputs.runner }}
+        timeout-minutes: ${{ inputs.timeout-minutes }}
 
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout repository
+              uses: actions/checkout@v4
               with:
                   fetch-depth: ${{ env.FETCH_DEPTH }}
+
+            # Pulling images costs bandwidth, not billed minutes, so it overlaps
+            # the install, lint and unit tests; the start step waits for it.
+            - name: Prefetch test images in the background
+              if: ${{ inputs.run-integration && hashFiles('docker-compose.test.yml') != '' }}
+              run: |
+                  nohup docker compose -f docker-compose.test.yml pull -q \
+                      > "$RUNNER_TEMP/pull.log" 2>&1 &
+                  echo $! > "$RUNNER_TEMP/pull.pid"
 
             # Known advisories in package-lock.json (dev dependencies included)
             # against OSV.dev: the GitHub advisory database plus malicious-package
@@ -78,20 +97,74 @@ jobs:
                   node-version: ${{ inputs.node-version }}
                   cache: "npm"
 
-            - name: Install dependencies
-              run: npm ci
+            # setup-node caches the npm store; this caches the installed tree, so
+            # a hit skips `npm ci` outright. A pull request reads its own caches
+            # and the default branch's, which the push run on that branch writes.
+            - name: Restore node_modules
+              id: node-modules
+              uses: actions/cache/restore@v4
+              with:
+                  path: node_modules
+                  key: ${{ env.NODE_MODULES_KEY }}-${{ hashFiles('package-lock.json') }}
 
-            # npm pkg prints {} for a script that does not exist.
+            - name: Install dependencies
+              id: install
+              if: ${{ steps.node-modules.outputs.cache-hit != 'true' }}
+              run: npm ci --prefer-offline --no-audit --no-fund
+
+            # Saved right away, not in a post step: GitHub skips post steps after
+            # a failure, and the cache would go missing exactly when CI is red.
+            - name: Save node_modules
+              if: ${{ always() && steps.install.outcome == 'success' }}
+              uses: actions/cache/save@v4
+              with:
+                  path: node_modules
+                  key: ${{ env.NODE_MODULES_KEY }}-${{ hashFiles('package-lock.json') }}
+
+            # npm pkg prints {} for a script that does not exist. ESLint caching is
+            # on only when `lint` is a plain eslint call that accepts --cache.
             - name: Detect available scripts
               id: has
               run: |
-                  for s in tsc-check format:check knip check:generators check:migrations lint:migrations prisma:generate; do
+                  for s in tsc-check format:check knip check:generators check:migrations lint:migrations prisma:generate test:unit:ci test:int:ci; do
                       if [ "$(npm pkg get "scripts.$s")" = "{}" ]; then r=false; else r=true; fi
                       echo "${s//[:-]/_}=$r" >> "$GITHUB_OUTPUT"
                   done
+                  if npm pkg get scripts.lint | grep -q '^"eslint '; then
+                      echo "eslint_cache=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "eslint_cache=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # Unconditional on a cache hit too: a restored tree carries the client
+            # generated for whatever schema the lockfile last saw.
+            - name: Generate Prisma Client
+              if: ${{ steps.has.outputs.prisma_generate == 'true' }}
+              run: npm run prisma:generate
+
+            - name: Restore ESLint cache
+              if: ${{ steps.has.outputs.eslint_cache == 'true' }}
+              uses: actions/cache/restore@v4
+              with:
+                  path: .eslintcache
+                  key: eslintcache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', '.eslintrc*') }}-${{ github.run_id }}
+                  restore-keys: |
+                      eslintcache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', '.eslintrc*') }}-
 
             - name: Lint application
-              run: npm run lint
+              id: lint
+              env:
+                  CACHE_ARGS: ${{ steps.has.outputs.eslint_cache == 'true' && '--cache --cache-location .eslintcache' || '' }}
+              run: npm run lint -- $CACHE_ARGS
+
+            # Saved on failure too: ESLint keeps valid entries for every file it
+            # checked, so the fixing push starts warm.
+            - name: Save ESLint cache
+              if: ${{ always() && steps.has.outputs.eslint_cache == 'true' && steps.lint.conclusion != 'skipped' }}
+              uses: actions/cache/save@v4
+              with:
+                  path: .eslintcache
+                  key: eslintcache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', '.eslintrc*') }}-${{ github.run_id }}
 
             - name: Type-check application and tests
               if: ${{ steps.has.outputs.tsc_check == 'true' }}
@@ -130,31 +203,11 @@ jobs:
             - name: Build application
               run: npm run build
 
-    unit-test:
-        name: Unit Tests
-        if: ${{ !github.event.pull_request.draft && (github.event_name != 'push' || github.ref_name == github.event.repository.default_branch) }}
-        runs-on: ${{ inputs.runner }}
-
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: ${{ env.FETCH_DEPTH }}
-
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ inputs.node-version }}
-                  cache: "npm"
-
-            - name: Install dependencies
-              run: npm ci
-
             # Only the tests whose imports reach the diff, with coverage of the
             # changed services and utils: thresholds over a partial run would
             # also count files the selected tests touch only in passing.
             - name: Run unit tests affected by the change
-              if: github.event_name == 'pull_request'
+              if: ${{ github.event_name == 'pull_request' && steps.has.outputs.test_unit_ci == 'true' }}
               env:
                   BASE_REF: origin/${{ github.base_ref }}
               run: |
@@ -168,36 +221,19 @@ jobs:
             # They read src/ from disk rather than importing it, so --changed
             # cannot tell what they depend on.
             - name: Run architecture tests
-              if: ${{ github.event_name == 'pull_request' && hashFiles('test/unit/architecture/**') != '' }}
+              if: ${{ github.event_name == 'pull_request' && steps.has.outputs.test_unit_ci == 'true' && hashFiles('test/unit/architecture/**') != '' }}
               run: npm run test:unit:ci -- test/unit/architecture
 
             - name: Run all unit tests with coverage
-              if: github.event_name != 'pull_request'
+              if: ${{ github.event_name != 'pull_request' && steps.has.outputs.test_unit_ci == 'true' }}
               run: npm run test:unit:ci -- --coverage
-
-    integration-test:
-        name: Integration Tests
-        if: ${{ inputs.run-integration && !github.event.pull_request.draft && (github.event_name != 'push' || github.ref_name == github.event.repository.default_branch) }}
-        runs-on: ${{ inputs.runner }}
-
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: ${{ env.FETCH_DEPTH }}
-
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ inputs.node-version }}
-                  cache: "npm"
 
             # A pull request runs the test directories of the modules it changed
             # (scripts/int-test-selection.mjs); the default branch runs everything.
             # A repository without the script runs the whole suite.
             - name: Select integration tests
               id: select
-              if: ${{ github.event_name == 'pull_request' && hashFiles('scripts/select-int-tests.mjs') != '' }}
+              if: ${{ inputs.run-integration && github.event_name == 'pull_request' && hashFiles('scripts/select-int-tests.mjs') != '' }}
               env:
                   BASE_REF: origin/${{ github.base_ref }}
               run: node scripts/select-int-tests.mjs --base "$BASE_REF" --format github >> "$GITHUB_OUTPUT"
@@ -217,13 +253,15 @@ jobs:
                       echo "$REASON -> $TARGETS"
                   fi
 
-            # RUN_INT gates the remaining steps: no test compose file or an empty
-            # selection means there is nothing to start.
-            - name: Decide whether to run
+            # RUN_INT gates the remaining steps: integration switched off, no test
+            # compose file, no test:int:ci script or an empty selection means
+            # there is nothing to start.
+            - name: Decide whether to run integration tests
               env:
+                  ENABLED: ${{ inputs.run-integration && steps.has.outputs.test_int_ci == 'true' }}
                   SELECTED: ${{ steps.select.outputs.run }}
               run: |
-                  if [ ! -f docker-compose.test.yml ] || [ "$SELECTED" = "false" ]; then
+                  if [ "$ENABLED" != "true" ] || [ ! -f docker-compose.test.yml ] || [ "$SELECTED" = "false" ]; then
                       echo "RUN_INT=false" >> "$GITHUB_ENV"
                   else
                       echo "RUN_INT=true" >> "$GITHUB_ENV"
@@ -233,21 +271,16 @@ jobs:
               if: ${{ env.RUN_INT == 'true' }}
               uses: docker/setup-buildx-action@v3
 
-            - name: Pull Docker images
-              if: ${{ env.RUN_INT == 'true' }}
-              run: docker compose -f docker-compose.test.yml pull
-
             - name: Start Docker Compose services
               if: ${{ env.RUN_INT == 'true' }}
-              run: docker compose -f docker-compose.test.yml up -d --wait
-
-            - name: Install dependencies
-              if: ${{ env.RUN_INT == 'true' }}
-              run: npm ci
-
-            - name: Generate prisma schema
-              if: ${{ env.RUN_INT == 'true' }}
-              run: npm run prisma:generate
+              run: |
+                  if [ -s "$RUNNER_TEMP/pull.pid" ]; then
+                      while kill -0 "$(cat "$RUNNER_TEMP/pull.pid")" 2>/dev/null; do
+                          sleep 1
+                      done
+                      cat "$RUNNER_TEMP/pull.log" || true
+                  fi
+                  docker compose -f docker-compose.test.yml up -d --wait
 
             - name: Check migrations reproduce schema.prisma
               if: ${{ env.RUN_INT == 'true' && hashFiles('scripts/check-drift.mjs') != '' }}

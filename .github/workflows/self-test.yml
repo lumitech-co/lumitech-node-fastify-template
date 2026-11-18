@@ -5,10 +5,12 @@ name: Self test
 on:
     pull_request:
         types: [opened, synchronize, reopened, ready_for_review]
-        paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
+        paths-ignore:
+            ["**/*.md", "docs/**", ".vscode/**", ".idea/**", "LICENSE"]
     push:
         branches: [main]
-        paths-ignore: ["**/*.md", "docs/**", "LICENSE"]
+        paths-ignore:
+            ["**/*.md", "docs/**", ".vscode/**", ".idea/**", "LICENSE"]
 
 permissions:
     contents: read
