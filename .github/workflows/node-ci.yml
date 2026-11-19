@@ -231,23 +231,30 @@ jobs:
                       echo "$REASON -> $TARGETS"
                   fi
 
+            # Services come from docker-compose.test.yml when the repository has one;
+            # without it the tests start their own (e.g. testcontainers).
             - name: Decide whether to run integration tests
               env:
                   ENABLED: ${{ inputs.run-integration && steps.has.outputs.test_int_ci == 'true' }}
                   SELECTED: ${{ steps.select.outputs.run }}
               run: |
-                  if [ "$ENABLED" != "true" ] || [ ! -f docker-compose.test.yml ] || [ "$SELECTED" = "false" ]; then
+                  if [ "$ENABLED" != "true" ] || [ "$SELECTED" = "false" ]; then
                       echo "RUN_INT=false" >> "$GITHUB_ENV"
                   else
                       echo "RUN_INT=true" >> "$GITHUB_ENV"
                   fi
+                  if [ -f docker-compose.test.yml ]; then
+                      echo "INT_COMPOSE=true" >> "$GITHUB_ENV"
+                  else
+                      echo "INT_COMPOSE=false" >> "$GITHUB_ENV"
+                  fi
 
             - name: Set up Docker Buildx
-              if: ${{ env.RUN_INT == 'true' }}
+              if: ${{ env.RUN_INT == 'true' && env.INT_COMPOSE == 'true' }}
               uses: docker/setup-buildx-action@v3
 
             - name: Start Docker Compose services
-              if: ${{ env.RUN_INT == 'true' }}
+              if: ${{ env.RUN_INT == 'true' && env.INT_COMPOSE == 'true' }}
               run: |
                   if [ -s "$RUNNER_TEMP/pull.pid" ]; then
                       while kill -0 "$(cat "$RUNNER_TEMP/pull.pid")" 2>/dev/null; do
@@ -256,6 +263,18 @@ jobs:
                       cat "$RUNNER_TEMP/pull.log" || true
                   fi
                   docker compose -f docker-compose.test.yml up -d --wait
+
+            # A repository whose integration tests need real credentials keeps them in
+            # one multi-line INT_TEST_ENV secret (KEY=value lines).
+            - name: Write integration test env from the INT_TEST_ENV secret
+              if: ${{ env.RUN_INT == 'true' }}
+              env:
+                  INT_TEST_ENV: ${{ secrets.INT_TEST_ENV }}
+              run: |
+                  if [ -n "$INT_TEST_ENV" ]; then
+                      printf '%s\n' "$INT_TEST_ENV" > .env.test.local
+                      echo "wrote $(grep -c '=' .env.test.local) variable(s) to .env.test.local"
+                  fi
 
             - name: Check migrations reproduce schema.prisma
               if: ${{ env.RUN_INT == 'true' && hashFiles('scripts/check-drift.mjs') != '' }}
@@ -270,9 +289,9 @@ jobs:
                   npm run test:int:ci -- "${filters[@]}"
 
             - name: Docker logs on failure
-              if: ${{ failure() && env.RUN_INT == 'true' }}
+              if: ${{ failure() && env.RUN_INT == 'true' && env.INT_COMPOSE == 'true' }}
               run: docker compose -f docker-compose.test.yml logs
 
             - name: Stop Docker Compose services
-              if: ${{ always() && env.RUN_INT == 'true' }}
+              if: ${{ always() && env.RUN_INT == 'true' && env.INT_COMPOSE == 'true' }}
               run: docker compose -f docker-compose.test.yml down -v
