@@ -110,6 +110,11 @@ jobs:
                   else
                       echo "eslint_cache=false" >> "$GITHUB_OUTPUT"
                   fi
+                  if [ -d node_modules/@vitest/coverage-v8 ] || [ -d node_modules/@vitest/coverage-istanbul ]; then
+                      echo "coverage=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "coverage=false" >> "$GITHUB_OUTPUT"
+                  fi
 
             # Also on a cache hit: the cached client may belong to an older schema.
             - name: Generate Prisma Client
@@ -180,10 +185,14 @@ jobs:
               if: ${{ github.event_name == 'pull_request' && steps.has.outputs.test_unit_ci == 'true' }}
               env:
                   BASE_REF: origin/${{ github.base_ref }}
+                  COVERAGE: ${{ steps.has.outputs.coverage }}
               run: |
-                  COVERAGE_ARGS=$(git diff --name-only --diff-filter=d "$BASE_REF...HEAD" \
-                      | grep -E '^src/(modules|lib)/.+\.(service|util)\.ts$' \
-                      | sed 's/^/--coverage.include=/' || true)
+                  COVERAGE_ARGS=""
+                  if [ "$COVERAGE" = "true" ]; then
+                      COVERAGE_ARGS=$(git diff --name-only --diff-filter=d "$BASE_REF...HEAD" \
+                          | grep -E '^src/(modules|lib)/.+\.(service|util)\.ts$' \
+                          | sed 's/^/--coverage.include=/' || true)
+                  fi
                   npm run test:unit:ci -- --changed "$BASE_REF" \
                       --exclude 'test/unit/architecture/**' \
                       ${COVERAGE_ARGS:+--coverage $COVERAGE_ARGS}
@@ -193,9 +202,12 @@ jobs:
               if: ${{ github.event_name == 'pull_request' && steps.has.outputs.test_unit_ci == 'true' && hashFiles('test/unit/architecture/**') != '' }}
               run: npm run test:unit:ci -- test/unit/architecture
 
-            - name: Run all unit tests with coverage
+            # Coverage only where a @vitest/coverage-* provider is installed.
+            - name: Run all unit tests
               if: ${{ github.event_name != 'pull_request' && steps.has.outputs.test_unit_ci == 'true' }}
-              run: npm run test:unit:ci -- --coverage
+              env:
+                  COVERAGE_FLAG: ${{ steps.has.outputs.coverage == 'true' && '--coverage' || '' }}
+              run: npm run test:unit:ci -- $COVERAGE_FLAG
 
             - name: Select integration tests
               id: select
