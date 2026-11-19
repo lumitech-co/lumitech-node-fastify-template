@@ -1,15 +1,12 @@
 name: CI
 
-# node-ci.yml runs a push only on the default branch; add it below if it is not listed.
+# Triggers only. What actually runs (default branch only, drafts and docs-only changes
+# skipped, timeouts) is decided in node-ci.yml. Add the default branch below if it is not listed.
 on:
     pull_request:
         types: [opened, synchronize, reopened, ready_for_review]
-        paths-ignore:
-            ["**/*.md", "docs/**", ".vscode/**", ".idea/**", "LICENSE"]
     push:
         branches: [main, master, dev, develop]
-        paths-ignore:
-            ["**/*.md", "docs/**", ".vscode/**", ".idea/**", "LICENSE"]
 
 permissions:
     contents: read
