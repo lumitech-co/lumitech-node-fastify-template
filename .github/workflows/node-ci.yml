@@ -124,7 +124,7 @@ jobs:
               if: ${{ env.CI_SKIP != 'true' }}
               id: has
               run: |
-                  for s in tsc-check format:check knip check:generators check:migrations lint:migrations prisma:generate test:unit:ci test:int:ci; do
+                  for s in check:branch tsc-check format:check knip check:generators check:migrations lint:migrations prisma:generate test:unit:ci test:int:ci; do
                       if [ "$(npm pkg get "scripts.$s")" = "{}" ]; then r=false; else r=true; fi
                       echo "${s//[:-]/_}=$r" >> "$GITHUB_OUTPUT"
                   done
@@ -138,6 +138,12 @@ jobs:
                   else
                       echo "coverage=false" >> "$GITHUB_OUTPUT"
                   fi
+
+            - name: Check branch name
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name == 'pull_request' && steps.has.outputs.check_branch == 'true') }}
+              env:
+                  BRANCH_NAME: ${{ github.head_ref }}
+              run: npm run check:branch
 
             # Also on a cache hit: the cached client may belong to an older schema.
             - name: Generate Prisma Client
