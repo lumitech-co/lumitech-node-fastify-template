@@ -14,7 +14,9 @@ const arg = (flag) => {
     return index === -1 ? undefined : process.argv[index + 1];
 };
 
-const root = path.resolve(import.meta.dirname, "..");
+// The repository under test: node-ci.yml runs this script from the template's
+// own checkout, outside the repository it selects tests for.
+const root = process.cwd();
 // The remote's default branch, whatever it is called; CI passes --base explicitly.
 const base = arg("--base") ?? "origin/HEAD";
 const format = arg("--format") ?? "plain";

@@ -5,6 +5,7 @@ const TESTED = new Set([
     "test/int/modules/message/",
     "test/int/journey/",
     "test/int/plugins/",
+    "test/int/payment/",
 ]);
 
 const select = (changedFiles: string[]) =>
@@ -26,6 +27,22 @@ describe("selectIntTests", () => {
                 "test/int/plugins/cache-plugin.test.ts",
             ]).targets
         ).toEqual(["test/int/modules/message/", "test/int/plugins/"]);
+    });
+
+    it("finds a module's tests directly under test/int/ too", () => {
+        expect(
+            select([
+                "src/modules/payment/payment.service.ts",
+                "test/int/payment/payment-refund.test.ts",
+            ]).targets
+        ).toEqual(["test/int/journey/", "test/int/payment/"]);
+    });
+
+    it("runs everything for a test/int folder that holds no tests", () => {
+        expect(select(["test/int/_helpers/seed.ts"])).toMatchObject({
+            runAll: true,
+            reason: "test/int/_helpers/seed.ts is unclassified",
+        });
     });
 
     it("runs everything for a module that has no integration tests", () => {

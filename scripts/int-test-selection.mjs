@@ -1,14 +1,15 @@
 /**
  * Which integration tests a pull request's changed files need. Every rule fails
  * towards running more: a shared or unclassified path, or a module without
- * integration tests of its own, runs the whole suite.
+ * integration tests of its own, runs the whole suite. A module's tests live in
+ * test/int/modules/<name>/ (template layout) or test/int/<name>/.
  * Cross-module breakage a path map cannot see is caught by the full run on main.
  * Ported from tolmete-api; the CLI is select-int-tests.mjs.
  */
 
 export const INT_MODULES_PREFIX = "test/int/modules/";
 export const INT_JOURNEY_DIR = "test/int/journey/";
-export const INT_PLUGINS_DIR = "test/int/plugins/";
+const INT_DIR = "test/int/";
 const SRC_MODULES_PREFIX = "src/modules/";
 
 /** Behaviour no single module owns: the selection is abandoned. */
@@ -93,20 +94,19 @@ export const selectIntTests = ({ changedFiles, hasIntTests }) => {
             return { targets: [], runAll: true, reason: `${file} is shared` };
         }
 
-        const modulePrefix = [SRC_MODULES_PREFIX, INT_MODULES_PREFIX].find(
-            (prefix) => file.startsWith(prefix)
-        );
+        if (file.startsWith(SRC_MODULES_PREFIX)) {
+            const [moduleName] = file
+                .slice(SRC_MODULES_PREFIX.length)
+                .split("/");
 
-        if (modulePrefix) {
-            const [moduleName] = file.slice(modulePrefix.length).split("/");
-            const moduleTests = `${INT_MODULES_PREFIX}${moduleName}/`;
+            const moduleTests = [
+                `${INT_MODULES_PREFIX}${moduleName}/`,
+                `${INT_DIR}${moduleName}/`,
+            ].find(hasIntTests);
 
             // Other modules may use it (through DI, invisible to imports), and it
             // has no tests of its own to narrow the run to.
-            if (
-                modulePrefix === SRC_MODULES_PREFIX &&
-                !hasIntTests(moduleTests)
-            ) {
+            if (!moduleTests) {
                 return {
                     targets: [],
                     runAll: true,
@@ -114,23 +114,28 @@ export const selectIntTests = ({ changedFiles, hasIntTests }) => {
                 };
             }
 
-            addIfTested(moduleTests);
-
-            if (modulePrefix === SRC_MODULES_PREFIX) {
-                addIfTested(INT_JOURNEY_DIR);
-            }
+            targets.add(moduleTests);
+            addIfTested(INT_JOURNEY_DIR);
 
             continue;
         }
 
-        const ownDir = [INT_JOURNEY_DIR, INT_PLUGINS_DIR].find((dir) =>
-            file.startsWith(dir)
-        );
+        if (file.startsWith(INT_DIR)) {
+            const [first, second, ...rest] = file
+                .slice(INT_DIR.length)
+                .split("/");
 
-        if (ownDir) {
-            addIfTested(ownDir);
+            const testDir =
+                first === "modules"
+                    ? rest.length > 0 && `${INT_MODULES_PREFIX}${second}/`
+                    : second !== undefined && `${INT_DIR}${first}/`;
 
-            continue;
+            // A folder without tests of its own holds code other tests share.
+            if (testDir && hasIntTests(testDir)) {
+                targets.add(testDir);
+
+                continue;
+            }
         }
 
         return { targets: [], runAll: true, reason: `${file} is unclassified` };

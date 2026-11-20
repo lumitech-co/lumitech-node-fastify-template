@@ -234,12 +234,27 @@ jobs:
                   COVERAGE_FLAG: ${{ steps.has.outputs.coverage == 'true' && '--coverage' || '' }}
               run: npm run test:unit:ci -- $COVERAGE_FLAG
 
+            # The selection rules live only in the template, at the very commit of
+            # this workflow, so every repository uses the same version of them.
+            - name: Fetch the integration test selection from the template
+              if: ${{ env.CI_SKIP != 'true' && (inputs.run-integration && github.event_name == 'pull_request') }}
+              uses: actions/checkout@v4
+              with:
+                  repository: ${{ job.workflow_repository }}
+                  ref: ${{ job.workflow_sha }}
+                  path: .ci-template
+                  sparse-checkout: scripts
+                  persist-credentials: false
+
+            # Moved out of the workspace so it does not count as a changed file.
             - name: Select integration tests
               id: select
-              if: ${{ env.CI_SKIP != 'true' && (inputs.run-integration && github.event_name == 'pull_request' && hashFiles('scripts/select-int-tests.mjs') != '') }}
+              if: ${{ env.CI_SKIP != 'true' && (inputs.run-integration && github.event_name == 'pull_request') }}
               env:
                   BASE_REF: origin/${{ github.base_ref }}
-              run: node scripts/select-int-tests.mjs --base "$BASE_REF" --format github >> "$GITHUB_OUTPUT"
+              run: |
+                  mv .ci-template "$RUNNER_TEMP/ci-template"
+                  node "$RUNNER_TEMP/ci-template/scripts/select-int-tests.mjs" --base "$BASE_REF" --format github >> "$GITHUB_OUTPUT"
 
             - name: Report selection
               if: ${{ env.CI_SKIP != 'true' && (steps.select.outcome == 'success') }}
