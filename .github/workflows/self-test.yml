@@ -1,0 +1,17 @@
+name: Self test
+
+# Runs this branch's own node-ci.yml in the template.
+on:
+    pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+jobs:
+    ci:
+        if: ${{ github.repository == 'lumitech-co/lumitech-node-fastify-template' }}
+        uses: ./.github/workflows/node-ci.yml
+        secrets: inherit

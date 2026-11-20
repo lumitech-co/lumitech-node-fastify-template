@@ -5,6 +5,7 @@ const TESTED = new Set([
     "test/int/modules/message/",
     "test/int/journey/",
     "test/int/plugins/",
+    "test/int/payment/",
 ]);
 
 const select = (changedFiles: string[]) =>
@@ -28,10 +29,28 @@ describe("selectIntTests", () => {
         ).toEqual(["test/int/modules/message/", "test/int/plugins/"]);
     });
 
-    it("skips a module that has no integration tests", () => {
-        expect(select(["src/modules/user/user.service.ts"]).targets).toEqual([
-            "test/int/journey/",
-        ]);
+    it("finds a module's tests directly under test/int/ too", () => {
+        expect(
+            select([
+                "src/modules/payment/payment.service.ts",
+                "test/int/payment/payment-refund.test.ts",
+            ]).targets
+        ).toEqual(["test/int/journey/", "test/int/payment/"]);
+    });
+
+    it("runs everything for a test/int folder that holds no tests", () => {
+        expect(select(["test/int/_helpers/seed.ts"])).toMatchObject({
+            runAll: true,
+            reason: "test/int/_helpers/seed.ts is unclassified",
+        });
+    });
+
+    it("runs everything for a module that has no integration tests", () => {
+        expect(select(["src/modules/user/user.service.ts"])).toEqual({
+            targets: [],
+            runAll: true,
+            reason: "src/modules/user/user.service.ts is in a module without integration tests",
+        });
     });
 
     it.each([
@@ -42,6 +61,8 @@ describe("selectIntTests", () => {
         "test/int/factories/message.factory.ts",
         "package-lock.json",
         "vitest-int.config.ts",
+        ".github/workflows/node-ci.yml",
+        ".github/workflows/ci.yml",
     ])("runs everything when %s changes", (file) => {
         expect(
             select(["src/modules/message/message.service.ts", file])
@@ -62,7 +83,7 @@ describe("selectIntTests", () => {
                 "test/unit/lib/http/http-util.test.ts",
                 "scripts/eslint-rules/prefer-dayjs.mjs",
                 "eslint.config.mjs",
-                ".github/workflows/build.yml",
+                ".github/workflows/self-test.yml",
             ])
         ).toMatchObject({ targets: [], runAll: false });
     });

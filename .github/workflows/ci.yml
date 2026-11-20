@@ -1,0 +1,19 @@
+name: CI
+
+# Triggers only. What actually runs (default branch only, drafts and docs-only changes
+# skipped, timeouts) is decided in node-ci.yml. Add the default branch below if it is not listed.
+on:
+    pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
+    push:
+        branches: [main, master, dev, develop]
+
+permissions:
+    contents: read
+
+jobs:
+    ci:
+        # The template runs self-test.yml instead.
+        if: ${{ github.repository != 'lumitech-co/lumitech-node-fastify-template' }}
+        uses: lumitech-co/lumitech-node-fastify-template/.github/workflows/node-ci.yml@main
+        secrets: inherit
