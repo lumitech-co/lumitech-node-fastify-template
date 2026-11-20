@@ -4,7 +4,7 @@
     // entry points) and Awilix loadModules (services, handlers, repositories).
     "entry": [
         "src/plugins/**/*.ts",
-        "src/modules/*/index.ts",
+        "src/modules/{*,*/*}/index.ts",
         "src/modules/**/*.{service,handler,repository}.ts",
         // A module's public API is what other modules may import.
         "src/modules/*/public.ts",

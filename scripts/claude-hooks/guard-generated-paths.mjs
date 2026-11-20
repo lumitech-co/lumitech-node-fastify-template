@@ -34,7 +34,14 @@ const relative =
         : "";
 
 const exists = relative !== "" && fs.existsSync(path.join(root, relative));
-const moduleName = relative.match(/^src\/modules\/([^/]+)\//)?.[1];
+// The unit a file belongs to: a flat module, or <module>/<submodule>.
+const unitMatch = relative.match(/^src\/modules\/([^/]+)\/(?:([^/]+)\/)?/);
+
+const moduleName =
+    unitMatch &&
+    (unitMatch[2] && unitMatch[2] !== "mq"
+        ? `${unitMatch[1]}/${unitMatch[2]}`
+        : unitMatch[1]);
 
 if (relative.startsWith(MIGRATIONS) && !exists) {
     decide(

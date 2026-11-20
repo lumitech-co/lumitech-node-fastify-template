@@ -51,7 +51,8 @@ export const configureServer = async ({
             dirNameRoutePrefix: false,
             forceESM: true,
 
-            maxDepth: 1,
+            // index.ts of a flat module (depth 1) or of a submodule (depth 2).
+            maxDepth: 2,
             matchFilter: /\/index\.(ts|js)$/,
         });
 

@@ -44,6 +44,50 @@ Each module in `src/modules/<name>/`:
 `index.ts` is a Fastify plugin entry point (autoload + `autoPrefix`), **not** a barrel file —
 it is required in every module.
 
+### Modules with submodules
+
+A module starts flat. When a domain grows into several features (one module per
+integration provider, say), group them as **submodules** of one module instead of adding
+more top-level folders:
+
+```
+src/modules/integrations/        # the module: one domain, one public API
+├── public.ts                    # export type { … } from "./github/github.service.js"
+├── README.md                    # what the domain does and its submodules
+├── github/                      # a submodule: laid out exactly like a flat module
+│   ├── index.ts
+│   ├── github.route.ts
+│   ├── github.service.ts
+│   ├── github-commit.repository.ts
+│   └── mq/
+└── jira/
+```
+
+- **The module is the boundary.** Other modules import only `@/modules/integrations/public.js`;
+  submodules of one module import each other freely (`arch/layer-direction`).
+- **A module is either flat or grouped, never both.** A grouped module's root holds only
+  `public.ts`, `README.md` and its submodule folders; it has no `index.ts` and no code
+  (`test/unit/architecture/`). `mq` is never a submodule name.
+- **Two levels, no more.** A submodule's files are named after the submodule
+  (`arch/file-naming`), and anything deeper than `<module>/<submodule>/mq/` is refused
+  (`arch/file-layout`).
+- **DI names stay global.** A submodule registers `<submodule>Service` / `<submodule>Handler`
+  like a flat module, so two submodules in different modules need different names.
+- Generate with `npm run generate:module integrations/github` (creates the module root on
+  first use) and `npm run generate:repository githubCommit -- --module integrations/github`.
+- Worker plugins stay under `src/plugins/mq/<submodule>/`; tests mirror the source path
+  (`test/unit/modules/integrations/github/`).
+
+**Optional module order.** A large project can list its modules from the most basic up and
+pass the list to `arch/layer-direction`; a listed module then imports only modules above it,
+so the modules cannot form a cycle:
+
+```js
+"arch/layer-direction": ["error", { order: ["access", "organization", "integrations"] }],
+```
+
+The template orders nothing; a module missing from the list is not ordered.
+
 The module's factories are named `createService`, `createHandler` and `create<Name>Routes`
 in every module — the DI name passed to `addDIResolverName()` is what makes them unique,
 not the function name. See `src/modules/message/` as the reference module.

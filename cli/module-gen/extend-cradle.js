@@ -1,7 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-export const extendCradle = (namePascal, nameCamel, nameKebab) => {
+export const extendCradle = ({ unit, dir }) => {
+    const { pascal: namePascal, camel: nameCamel, kebab: nameKebab } = unit;
+
     const diContainerPath = path.join(
         process.cwd(),
         "src/types/di-container.type.ts"
@@ -13,8 +15,8 @@ export const extendCradle = (namePascal, nameCamel, nameKebab) => {
         const importMarker = 'import type { EnvConfig } from "./env.type.js";';
 
         const newImports = `
-import type { ${namePascal}Service } from "@/modules/${nameKebab}/${nameKebab}.service.js";
-import type { ${namePascal}Handler } from "@/modules/${nameKebab}/${nameKebab}.handler.js";`;
+import type { ${namePascal}Service } from "@/modules/${dir}/${nameKebab}.service.js";
+import type { ${namePascal}Handler } from "@/modules/${dir}/${nameKebab}.handler.js";`;
 
         diContent = diContent.replace(
             importMarker,
