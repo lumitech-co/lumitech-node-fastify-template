@@ -2,7 +2,7 @@
  * Which integration tests a pull request's changed files need. Every rule fails
  * towards running more: a shared or unclassified path runs the whole suite.
  * Cross-module breakage a path map cannot see is caught by the full run on main.
- * Ported from tolmete-api; the CLI is select-int-tests.mjs.
+ * The CLI is select-int-tests.mjs.
  */
 
 export const INT_MODULES_PREFIX = "test/int/modules/";

@@ -1,6 +1,6 @@
 // A helper inside a service / repository factory that touches no DI dependency
 // and no factory-local binding (followed transitively through sibling helpers)
-// is a pure function. Ported from tolmete-api.
+// is a pure function.
 export default {
     meta: {
         type: "suggestion",

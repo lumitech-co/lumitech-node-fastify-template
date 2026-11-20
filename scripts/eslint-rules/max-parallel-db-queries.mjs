@@ -1,8 +1,5 @@
-// Workers and crons run at concurrency, so the connections a background task
-// holds at once is (batch size) × (queries fired together) — that product, not
-// a single slow query, exhausts the Prisma pool. One Promise.all/allSettled
-// may fire at most MAX_PARALLEL repository / prisma / tx calls; past that, run
-// them as sequential awaits or chunk them. Ported from tolmete-api's rule of 3.
+// Connections held = concurrency × queries fired together, so one
+// Promise.all / allSettled fires at most MAX_PARALLEL db calls.
 const MAX_PARALLEL = 3;
 const PARALLEL_COMBINATORS = new Set(["all", "allSettled", "race", "any"]);
 

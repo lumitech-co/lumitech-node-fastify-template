@@ -247,21 +247,17 @@ export default [
             "no-console": "error",
             "no-inline-comments": "error",
 
-            // log.trace()/log.debug() are suppressed in GCP (logger level is
-            // 'info'), so they never reach Cloud Logging yet add noise. Flag
-            // them so they aren't committed. `warn` keeps CI/commits green for
-            // the existing intentional debug calls.
+            // `warn`: some debug calls in the code are intentional.
             "no-restricted-syntax": [
                 "warn",
                 {
-                    // log.trace() / log.debug() — direct logger reference
                     selector:
                         "CallExpression[callee.object.name=/^(log|logger)$/][callee.property.name=/^(trace|debug)$/]",
                     message:
                         "log.trace()/log.debug() are suppressed in GCP (logger level is 'info') and add noise — use log.info() or higher, or remove before committing.",
                 },
                 {
-                    // *.log.trace() / *.log.debug() — request.log, fastify.log, this.log
+                    // request.log, fastify.log, this.log
                     selector:
                         "CallExpression[callee.object.property.name='log'][callee.property.name=/^(trace|debug)$/]",
                     message:
@@ -1693,8 +1689,6 @@ export default [
         },
     },
     {
-        // Pino serializes an Error only under `err`; under any other key it
-        // is logged as {} and the message and stack are lost.
         files: ["src/**/*.ts"],
 
         rules: {

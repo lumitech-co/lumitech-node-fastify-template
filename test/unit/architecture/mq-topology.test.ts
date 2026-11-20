@@ -1,8 +1,6 @@
 /**
- * Every modules/<x>/mq/*.queue.ts and *.worker.ts exports configure<X>Queue /
- * configure<X>Worker, registered by exactly one plugin under src/plugins/mq/.
- * A broken link compiles and passes the integration suite (it registers no
- * worker plugin), then fails in production. Ported from tolmete-api.
+ * Every mq/*.queue.ts and *.worker.ts exports configure<X>Queue / Worker and is
+ * registered by one plugin in src/plugins/mq/. A broken link fails only in production.
  */
 import fs from "node:fs";
 import path from "node:path";

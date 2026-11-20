@@ -6,6 +6,7 @@ import type { S3Client } from "@aws-sdk/client-s3";
 import type { PrismaClient } from "@prisma/client";
 import type { Storage } from "@google-cloud/storage";
 import type { Cradle } from "./di-container.type.js";
+import type { BlobServiceClient } from "@azure/storage-blob";
 import type { MessageJobData } from "@/modules/message/mq/message.type.js";
 import type { MessageJobName } from "@/modules/message/mq/message.constant.js";
 import type {
@@ -20,6 +21,7 @@ declare module "fastify" {
         di: AwilixContainer<Cradle>;
         gcpStorageClient: Storage;
         awsS3Client: S3Client;
+        azureBlobClient: BlobServiceClient;
         redis: Redis;
         bullmqConnection: Redis;
         bullmqProducerConnection: Redis;

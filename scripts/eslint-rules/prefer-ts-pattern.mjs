@@ -1,38 +1,13 @@
 /**
- * Nudges `switch` statements and single-discriminant `if / else if` chains toward
- * the `ts-pattern` `match(...)` the template standardizes on. Ported from
- * tolmete-api. NOT auto-fixable: converting
- * control flow to `match().with().exhaustive()` is a human edit — guards,
- * per-branch side effects, and exhaustiveness intent don't mechanically
- * translate.
- *
- * A `switch` whose `default` asserts `never` is left alone: it already has a
- * compile-time exhaustiveness check, which `.otherwise()` would discard.
- *
- * An `if / else if` chain is flagged ONLY when every branch tests the SAME
- * discriminant against a literal / enum member with `===` / `==`:
- *   - the discriminant is the side whose source text is identical across all
- *     branches; the paired value side must be a Literal or an `Enum.Member`-shaped
- *     MemberExpression (or a negative numeric literal), and must vary;
- *   - at least one `else if` (≥2 comparisons) — a lone `if/else` isn't worth a match;
- *   - any branch that is not a clean `X === <literal>` — a `.includes()`, a
- *     relational `>`/`<`, `instanceof`, `typeof`, a logical `&&`/`||`, a bare
- *     truthiness check, or a different discriminant — disqualifies the WHOLE
- *     chain. Those are exactly the shapes that do not translate to a literal
- *     `match().with(...)`, so they must not be flagged.
+ * Flags a `switch` and an `if / else if` chain that tests one discriminant
+ * against literals: use `match()` from ts-pattern. Not auto-fixable. A `switch`
+ * with a `never` default and a chain with any other test are left alone.
  *
  * @type {import("eslint").Rule.RuleModule}
  */
 
-// The "value" side of a discriminant comparison: a literal, an `Enum.Member`
-// access, or a negative numeric literal. Deliberately excludes bare identifiers
-// (could be a runtime variable, not a pattern) and deep/computed member access.
-//
-// `Enum.Member` is recognized by the PascalCase container the codebase uses for
-// enums and const maps. Without type information `Role.Admin` and `opts.first`
-// are the same shape, but only the former is a pattern `.with()` accepts — the
-// latter is a runtime value that would have to become `.when()`. Requiring the
-// uppercase initial keeps runtime lookups off the report.
+// A literal, a negative number or `Enum.Member`. The PascalCase object tells
+// `Role.Admin` (a pattern) from `opts.first` (a runtime value) without types.
 const isLiteralValue = (node) =>
     node.type === "Literal" ||
     (node.type === "MemberExpression" &&
@@ -43,11 +18,8 @@ const isLiteralValue = (node) =>
         node.operator === "-" &&
         node.argument.type === "Literal");
 
-// Does the `default` clause assert exhaustiveness — `const _: never = x` or an
-// `assertNever(x)`-style helper? Such a `switch` already fails to compile when a
-// union member is added; `match().otherwise()` would silently accept it instead,
-// so converting trades a compile-time guarantee for nothing. (`.exhaustive()`
-// keeps it, but that is a rewrite this rule can't verify, so don't nag.)
+// A `never` default already fails to compile on a new union member;
+// `.otherwise()` would lose that check.
 const hasExhaustivenessGuard = (switchStatement) => {
     const defaultCase = switchStatement.cases.find((one) => one.test === null);
 
@@ -111,9 +83,7 @@ const asEqualityTest = (test, sourceCode) => {
     };
 };
 
-// Walk the `if / else if` links from the head, collecting each test. Returns null
-// if any link's test is not an equality comparison (a mixed chain is not a clean
-// match). The trailing `else` block is not a test and ends the walk.
+// The tests of an `if / else if` chain; null when one is not an equality.
 const collectChain = (head, sourceCode) => {
     const tests = [];
 
@@ -134,20 +104,16 @@ const collectChain = (head, sourceCode) => {
     return tests;
 };
 
-// A discriminant is a plain value being matched — a variable or `obj.prop` —
-// NOT a `typeof x`, a call, or computed access (those are type-narrowing /
-// dynamic, a different, judgment-call migration).
+// A variable or `obj.prop`; not `typeof x`, a call or computed access.
 const isDiscriminantShape = (node) =>
     node.type === "Identifier" ||
     (node.type === "MemberExpression" && !node.computed);
 
-// A lone `if/else` (one comparison) isn't worth a match — require at least one
-// `else if`, i.e. two discriminant comparisons.
+// A lone `if/else` is not worth a match.
 const MIN_DISCRIMINANT_BRANCHES = 2;
 
-// One discriminant tested against varying literals across every branch → its
-// source text; else null. The discriminant is the side identical in all tests;
-// the other side must be literal-valued and must vary.
+// The source text of the side identical in all tests, when the other side is a
+// varying literal; else null.
 const resolveDiscriminant = (tests) => {
     if (tests.length < MIN_DISCRIMINANT_BRANCHES) {
         return null;
