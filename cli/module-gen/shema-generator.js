@@ -1,17 +1,17 @@
 import fs from "fs";
 import path from "path";
 
-export const generateSchema = (nameKebab) => {
+export const generateSchema = ({ unit, dir }) => {
     const schemaFilePath = path.join(
         process.cwd(),
         "src/modules",
-        nameKebab,
-        `${nameKebab}.schema.ts`
+        dir,
+        `${unit.kebab}.schema.ts`
     );
 
     fs.writeFileSync(
         schemaFilePath,
-        `// Zod schemas for the ${nameKebab} module\n`
+        `// Zod schemas for the ${unit.kebab} module\n`
     );
 
     console.log(`📄 Created file: ${schemaFilePath}`);

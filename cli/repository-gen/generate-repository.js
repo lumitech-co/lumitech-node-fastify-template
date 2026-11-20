@@ -2,25 +2,26 @@ import fs from "fs";
 import path from "path";
 import { templates } from "./templates.js";
 
-export const generateRepository = ({ entity, module }) => {
-    const modulePath = path.join(process.cwd(), "src/modules", module.kebab);
+export const generateRepository = ({ entity, target }) => {
+    const { unit, dir } = target;
+    const unitPath = path.join(process.cwd(), "src/modules", dir);
 
-    if (!fs.existsSync(modulePath)) {
+    if (!fs.existsSync(path.join(unitPath, "index.ts"))) {
         console.error(
-            `❌ Module "${module.kebab}" does not exist — run npm run generate:module ${module.camel} first.`
+            `❌ Module "${dir}" does not exist — run npm run generate:module ${dir} first.`
         );
 
         process.exit(1);
     }
 
-    const filePath = path.join(modulePath, `${entity.kebab}.repository.ts`);
+    const filePath = path.join(unitPath, `${entity.kebab}.repository.ts`);
 
     if (fs.existsSync(filePath)) {
         console.error(`❌ Repository "${entity.camel}" already exists!`);
         process.exit(1);
     }
 
-    const typePath = path.join(modulePath, `${module.kebab}.type.ts`);
+    const typePath = path.join(unitPath, `${unit.kebab}.type.ts`);
 
     const existingTypes = fs.existsSync(typePath)
         ? fs.readFileSync(typePath, "utf8").trimEnd()
@@ -35,7 +36,7 @@ export const generateRepository = ({ entity, module }) => {
 
     fs.writeFileSync(
         filePath,
-        `${templates["repository"](entity.camel, entity.pascal, module.kebab)}\n`
+        `${templates["repository"](entity.camel, entity.pascal, unit.kebab)}\n`
     );
 
     console.log(`📄 Created file: ${filePath}`);

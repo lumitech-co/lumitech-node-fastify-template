@@ -20,6 +20,20 @@ const listDirs = (dir: string): string[] =>
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name);
 
+// A unit is a flat module ("message") or a submodule ("integrations/github"):
+// a module without its own index.ts groups submodules.
+const unitDirs: string[] = listDirs("modules").flatMap((module) =>
+    fs.existsSync(path.join(SRC, "modules", module, "index.ts"))
+        ? [module]
+        : listDirs(`modules/${module}`)
+              .filter((submodule) => submodule !== "mq")
+              .map((submodule) => `${module}/${submodule}`)
+);
+
+const groupedModules: string[] = listDirs("modules").filter(
+    (module) => !fs.existsSync(path.join(SRC, "modules", module, "index.ts"))
+);
+
 const kebabToCamel = (name: string): string =>
     name.replace(/-([a-z0-9])/g, (_, char: string) => char.toUpperCase());
 
@@ -73,25 +87,24 @@ type ModuleRepository = {
     pascal: string;
 };
 
-const moduleRepositories: ModuleRepository[] = listDirs("modules").flatMap(
-    (module) =>
-        fs
-            .readdirSync(path.join(SRC, "modules", module))
-            .filter((file) => file.endsWith(".repository.ts"))
-            .map((file) => {
-                const entity = kebabToCamel(file.replace(".repository.ts", ""));
+const moduleRepositories: ModuleRepository[] = unitDirs.flatMap((module) =>
+    fs
+        .readdirSync(path.join(SRC, "modules", module))
+        .filter((file) => file.endsWith(".repository.ts"))
+        .map((file) => {
+            const entity = kebabToCamel(file.replace(".repository.ts", ""));
 
-                return {
-                    module,
-                    entity,
-                    pascal: entity.replace(/^./, (char) => char.toUpperCase()),
-                };
-            })
+            return {
+                module,
+                entity,
+                pascal: entity.replace(/^./, (char) => char.toUpperCase()),
+            };
+        })
 );
 
 describe("Rule 0: modules and repositories are wired by the generators", () => {
-    describe.each(listDirs("modules"))("module %s", (name) => {
-        const camel = kebabToCamel(name);
+    describe.each(unitDirs)("module %s", (name) => {
+        const camel = kebabToCamel(path.basename(name));
 
         it("has its service and handler in Cradle", () => {
             expect(cradle).toMatch(cradleEntry(`${camel}Service`));
@@ -479,14 +492,37 @@ describe("Rule 6: a plugin depends on the plugins whose decorators it reads", ()
 });
 
 describe("Rule 0: every module has the files the generator creates", () => {
-    describe.each(listDirs("modules"))("module %s", (name) => {
+    it.each(listDirs("modules"))("module %s has public.ts", (module) => {
+        expect(
+            fs.existsSync(path.join(SRC, "modules", module, "public.ts"))
+        ).toBe(true);
+    });
+
+    it.each(groupedModules)(
+        "module %s holds only public.ts, README.md and its submodules in its root",
+        (module) => {
+            const rootFiles = fs
+                .readdirSync(path.join(SRC, "modules", module), {
+                    withFileTypes: true,
+                })
+                .filter((entry) => !entry.isDirectory())
+                .map((entry) => entry.name)
+                .sort();
+
+            expect(rootFiles).toEqual(["README.md", "public.ts"]);
+            expect(listDirs(`modules/${module}`)).not.toContain("mq");
+        }
+    );
+
+    describe.each(unitDirs)("module %s", (name) => {
+        const unit = path.basename(name);
+
         it.each([
             "index.ts",
-            `${name}.route.ts`,
-            `${name}.handler.ts`,
-            `${name}.service.ts`,
-            `${name}.schema.ts`,
-            "public.ts",
+            `${unit}.route.ts`,
+            `${unit}.handler.ts`,
+            `${unit}.service.ts`,
+            `${unit}.schema.ts`,
             "README.md",
         ])("has %s", (file) => {
             expect(fs.existsSync(path.join(SRC, "modules", name, file))).toBe(
@@ -498,9 +534,9 @@ describe("Rule 0: every module has the files the generator creates", () => {
     it.each(moduleRepositories)(
         "$module.type.ts declares the $pascal domain model of $entity.repository.ts",
         ({ module, pascal }) => {
-            expect(readSource(`modules/${module}/${module}.type.ts`)).toMatch(
-                new RegExp(`^(export )?type ${pascal} = \\{`, "m")
-            );
+            expect(
+                readSource(`modules/${module}/${path.basename(module)}.type.ts`)
+            ).toMatch(new RegExp(`^(export )?type ${pascal} = \\{`, "m"));
         }
     );
 });
@@ -591,9 +627,11 @@ type RouteBinding = {
 const sortedKeys = (source: string, pattern: RegExp): string[] =>
     [...source.matchAll(pattern)].map(([, key]) => key!.toLowerCase()).sort();
 
-const routeBindings: RouteBinding[] = listDirs("modules").flatMap((module) =>
+const routeBindings: RouteBinding[] = unitDirs.flatMap((module) =>
     [
-        ...readSource(`modules/${module}/${module}.route.ts`).matchAll(
+        ...readSource(
+            `modules/${module}/${path.basename(module)}.route.ts`
+        ).matchAll(
             /fastify\.(?:get|post|put|patch|delete|head|options)\(([\s\S]*?)\b\w+Handler\.(\w+)\s*,?\s*\)/g
         ),
     ].map(([, options, method]) => ({
@@ -618,7 +656,7 @@ describe("Rule 7: every request part a handler reads is validated by its route",
         "$module: $method declares a schema for every Body/Params/Querystring/Headers it types",
         ({ module, method, routeKeys }) => {
             const handlerType = readSource(
-                `modules/${module}/${module}.handler.ts`
+                `modules/${module}/${path.basename(module)}.handler.ts`
             );
 
             const signature = [
@@ -681,7 +719,10 @@ const handlerStatuses = ({
         });
     };
 
-    visit(parseSource(`modules/${module}/${module}.handler.ts`), false);
+    visit(
+        parseSource(`modules/${module}/${path.basename(module)}.handler.ts`),
+        false
+    );
 
     return statuses.length > 0 ? statuses : [200];
 };
@@ -773,7 +814,9 @@ describe("Rule 1: every factory parameter is a Cradle entry of the same type", (
 });
 
 const routeEndpoints = (module: string): string[] => {
-    const route = readSource(`modules/${module}/${module}.route.ts`);
+    const route = readSource(
+        `modules/${module}/${path.basename(module)}.route.ts`
+    );
 
     const prefix =
         readSource(`modules/${module}/index.ts`).match(
@@ -809,7 +852,7 @@ const readmeEndpoints = (module: string): string[] =>
         .sort();
 
 describe("module README lists exactly the module's endpoints", () => {
-    it.each(listDirs("modules"))(
+    it.each(unitDirs)(
         "%s: README Endpoints table matches the route file",
         (module) => {
             expect(readmeEndpoints(module)).toEqual(routeEndpoints(module));
