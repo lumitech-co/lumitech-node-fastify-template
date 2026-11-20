@@ -1,6 +1,6 @@
 // A private factory helper whose whole body forwards its own parameters to one
 // dependency call adds a hop and nothing else. Helpers exposed in the returned
-// object are the public surface and exempt. Ported from tolmete-api.
+// object are the public surface and exempt.
 const paramNames = (params) => {
     const names = new Set();
 

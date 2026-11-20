@@ -1,37 +1,8 @@
 /**
- * A transaction exists so writes can be rolled back. A read has nothing to roll
- * back, so a read before the first write is buying nothing and is what forces
- * the transaction to stay in the service — which is how `…InTx` method pairs
- * appear instead of one repository method that owns the whole block.
- *
- *   await prisma.$transaction(async (tx) => {
- *       const rows = await tx.member.findMany(…);   // hoist this out
- *       …decide…
- *       await tx.member.update(…);                  // the part worth a transaction
- *   });
- *
- * **The snapshot argument does not apply by default.** Prisma's interactive
- * transactions run at the connector default — `ReadCommitted` on Postgres — so
- * a plain read takes no locks and gives the later write no protection against
- * the row changing underneath it. A check-then-write race is closed by
- * re-checking the condition in the write's `where`, not by wrapping both.
- *
- * Where the guarantee IS wanted this codebase says so explicitly, and the rule
- * steps aside for exactly that: a callback whose `$transaction` call passes an
- * `isolationLevel`, or that takes a lock itself (`FOR UPDATE`, an advisory
- * lock), is not reported.
- *
- * Reads and writes are recognised on the transaction handle and on a repository
- * that is handed it, since after the data-access migration most blocks call
- * repositories rather than `tx.<model>` directly.
- *
- * KNOWN LIMIT: a repository call is classified by its name, so a writing method
- * whose name begins with a read verb reads as a read. `findOrCreate` is the case
- * that exists here. The report is then about the wrong statement, though the
- * question it raises — does this need the transaction at all — usually still has
- * the same answer. Judge the block, not the highlighted line.
- *
- * Ported from tolmete-api.
+ * A read before the first write in `prisma.$transaction` gets no protection:
+ * Postgres runs it at `ReadCommitted`. Move the read above the transaction.
+ * An `isolationLevel` or a lock (`FOR UPDATE`, advisory) opts out. Repository
+ * calls are classified by name, so `findOrCreate` reads as a read.
  *
  * @type {import("eslint").Rule.RuleModule}
  */

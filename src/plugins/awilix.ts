@@ -18,19 +18,18 @@ const configureAwilix = async (fastify: FastifyInstance) => {
 
     fastify.decorate("di", container);
 
-    // Register dependencies from plugins and libraries
     fastify.di.register({
         log: asValue(fastify.log),
         prisma: asValue(fastify.prisma),
         config: asValue(fastify.config),
         gcpStorageClient: asValue(fastify.gcpStorageClient),
         awsS3Client: asValue(fastify.awsS3Client),
+        azureBlobClient: asValue(fastify.azureBlobClient),
         redis: asValue(fastify.redis),
         bullmqConnection: asValue(fastify.bullmqConnection),
         messageQueue: asValue(fastify.messageQueue),
     });
 
-    // Register dependencies from the application: repositories, services, route handlers
     await container.loadModules(
         [
             path.join(
@@ -55,6 +54,7 @@ export default fp(configureAwilix, {
         FastifyPlugin.Env,
         FastifyPlugin.GcpStorage,
         FastifyPlugin.AwsS3,
+        FastifyPlugin.AzureBlob,
         FastifyPlugin.Redis,
         FastifyPlugin.BullMq,
         FastifyPlugin.MessageQueue,

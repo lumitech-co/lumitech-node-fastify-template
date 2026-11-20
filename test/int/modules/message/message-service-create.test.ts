@@ -55,9 +55,7 @@ describe("POST /api/messages", () => {
         const response = await server.inject({
             method: "POST",
             url: "/api/messages",
-            body: {
-                // Missing text property
-            },
+            body: {},
         });
 
         const { statusCode } = response;

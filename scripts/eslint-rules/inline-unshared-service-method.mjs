@@ -1,6 +1,6 @@
 // A factory helper exposed by shorthand in `return { name }` but referenced
 // nowhere else reads as "reused internally" when it is not — write it inline
-// as a property of the returned object. Ported from tolmete-api.
+// as a property of the returned object.
 export default {
     meta: {
         type: "suggestion",

@@ -4,7 +4,7 @@
  * integration tests of its own, runs the whole suite. A module's tests live in
  * test/int/modules/<name>/ (template layout) or test/int/<name>/.
  * Cross-module breakage a path map cannot see is caught by the full run on main.
- * Ported from tolmete-api; the CLI is select-int-tests.mjs.
+ * The CLI is select-int-tests.mjs.
  */
 
 export const INT_MODULES_PREFIX = "test/int/modules/";
