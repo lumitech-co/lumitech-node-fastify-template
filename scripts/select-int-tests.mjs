@@ -1,6 +1,6 @@
 /**
  * Prints (or with `--run`, runs) the integration tests the current branch needs.
- *   node scripts/select-int-tests.mjs [--base origin/main] [--format github] [--run]
+ *   node scripts/select-int-tests.mjs [--base origin/HEAD] [--format github] [--run]
  * Rules: int-test-selection.mjs.
  */
 import fs from "node:fs";
@@ -15,7 +15,8 @@ const arg = (flag) => {
 };
 
 const root = path.resolve(import.meta.dirname, "..");
-const base = arg("--base") ?? "origin/main";
+// The remote's default branch, whatever it is called; CI passes --base explicitly.
+const base = arg("--base") ?? "origin/HEAD";
 const format = arg("--format") ?? "plain";
 
 const git = (args) =>
@@ -26,8 +27,10 @@ const git = (args) =>
 
 const changedFiles = [
     ...new Set([
-        ...git(["diff", "--name-only", `${base}...HEAD`]),
-        ...git(["diff", "--name-only", "HEAD"]),
+        // --no-renames lists both paths of a move, so a file leaving shared code
+        // still counts as a change to shared code.
+        ...git(["diff", "--name-only", "--no-renames", `${base}...HEAD`]),
+        ...git(["diff", "--name-only", "--no-renames", "HEAD"]),
         ...git(["ls-files", "--others", "--exclude-standard"]),
     ]),
 ];

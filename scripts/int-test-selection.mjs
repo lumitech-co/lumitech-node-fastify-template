@@ -1,6 +1,7 @@
 /**
  * Which integration tests a pull request's changed files need. Every rule fails
- * towards running more: a shared or unclassified path runs the whole suite.
+ * towards running more: a shared or unclassified path, or a module without
+ * integration tests of its own, runs the whole suite.
  * Cross-module breakage a path map cannot see is caught by the full run on main.
  * Ported from tolmete-api; the CLI is select-int-tests.mjs.
  */
@@ -30,7 +31,9 @@ export const RUNS_EVERYTHING = [
     "tsconfig.build.json",
     "docker-compose.test.yml",
     ".env.test",
+    // node-ci.yml changes in the template; ci.yml picks its version in every repository.
     ".github/workflows/node-ci.yml",
+    ".github/workflows/ci.yml",
     "scripts/int-test-selection.mjs",
     "scripts/select-int-tests.mjs",
 ];
@@ -58,7 +61,7 @@ export const RUNS_NOTHING = [
     /^Dockerfile$/,
     /^\.dockerignore$/,
     /^docker-compose\.yml$/,
-    /^\.github\/workflows\/(ci|self-test)\.yml$/,
+    /^\.github\/workflows\/self-test\.yml$/,
 ];
 
 /**
@@ -96,8 +99,22 @@ export const selectIntTests = ({ changedFiles, hasIntTests }) => {
 
         if (modulePrefix) {
             const [moduleName] = file.slice(modulePrefix.length).split("/");
+            const moduleTests = `${INT_MODULES_PREFIX}${moduleName}/`;
 
-            addIfTested(`${INT_MODULES_PREFIX}${moduleName}/`);
+            // Other modules may use it (through DI, invisible to imports), and it
+            // has no tests of its own to narrow the run to.
+            if (
+                modulePrefix === SRC_MODULES_PREFIX &&
+                !hasIntTests(moduleTests)
+            ) {
+                return {
+                    targets: [],
+                    runAll: true,
+                    reason: `${file} is in a module without integration tests`,
+                };
+            }
+
+            addIfTested(moduleTests);
 
             if (modulePrefix === SRC_MODULES_PREFIX) {
                 addIfTested(INT_JOURNEY_DIR);
