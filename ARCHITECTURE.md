@@ -68,15 +68,40 @@ src/modules/integrations/        # the module: one domain, one public API
 - **A module is either flat or grouped, never both.** A grouped module's root holds only
   `public.ts`, `README.md` and its submodule folders; it has no `index.ts` and no code
   (`test/unit/architecture/`). `mq` is never a submodule name.
-- **Two levels, no more.** A submodule's files are named after the submodule
-  (`arch/file-naming`), and anything deeper than `<module>/<submodule>/mq/` is refused
-  (`arch/file-layout`).
+- **Two unit levels, no more.** A submodule's files are named after the submodule
+  (`arch/file-naming`). Folders below a unit are internal folders (next section), never
+  submodules.
 - **DI names stay global.** A submodule registers `<submodule>Service` / `<submodule>Handler`
   like a flat module, so two submodules in different modules need different names.
 - Generate with `npm run generate:module integrations/github` (creates the module root on
   first use) and `npm run generate:repository githubCommit -- --module integrations/github`.
 - Worker plugins stay under `src/plugins/mq/<submodule>/`; tests mirror the source path
   (`test/unit/modules/integrations/github/`).
+
+### Internal folders
+
+A large unit (a flat module or a submodule) may sort its code into folders of its own,
+at any depth:
+
+```
+src/modules/signals/card-summary/          # the unit
+├── index.ts, card-summary.route.ts, …     # entry points stay here
+└── llm/                                    # an internal folder
+    ├── card-summary-llm.service.ts
+    └── prompts/
+        └── card-summary-prompt.constant.ts
+```
+
+- **Code only.** An internal folder holds `*.{service,schema,constant,type,util}.ts`
+  (`arch/file-layout`). `index.ts`, routes, handlers, repositories and `mq/` stay in the
+  unit itself (`arch/file-naming`): autoload would mount an internal `index.ts`, and the
+  unit's routes and data access should be found in one place.
+- **Not a boundary.** An internal folder has no `public.ts` and no README of its own; the
+  unit's README describes it. Code outside the module still goes through `public.ts`.
+- **Free file names.** File names in internal folders are not checked; prefix them with the
+  unit (`card-summary-llm.service.ts`) and keep DI names unique across the app
+  (`cardSummaryLlmService`).
+- Promote an internal folder to a submodule when it gets routes of its own.
 
 **Optional module order.** A large project can list its modules from the most basic up and
 pass the list to `arch/layer-direction`; a listed module then imports only modules above it,

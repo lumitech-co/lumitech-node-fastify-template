@@ -51,6 +51,14 @@ const UNIT_DIRS = ["src/modules/*", "src/modules/*/!(mq)"];
 const inUnits = (...paths) =>
     UNIT_DIRS.flatMap((dir) => paths.map((file) => `${dir}/${file}`));
 
+// Below its unit a module may sort code into internal folders. Globs can't
+// tell a flat module's internal folder from a submodule, so arch/file-naming
+// keeps index.ts, routes, handlers, repositories and mq/ out of them.
+const IN_INTERNAL_FOLDERS =
+    "src/modules/*/*/**/*.{service,schema,constant,type,util}.ts";
+
+const MODULE_SCHEMAS = "src/modules/**/*.schema.ts";
+
 const HTTP_METHOD_CALL =
     "CallExpression[callee.object.name='fastify'][callee.property.name=/^(get|post|put|patch|delete|head|options)$/]";
 
@@ -590,6 +598,7 @@ export default [
                 "*.{route,handler,service,repository,schema,constant,type,util}.ts",
                 "mq/*.{queue,worker,service,constant,type}.ts"
             ),
+            IN_INTERNAL_FOLDERS,
         ],
 
         rules: {
@@ -598,7 +607,7 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "A unit (a flat module, or a submodule src/modules/<module>/<submodule>/) holds only index.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts; public.ts sits in the module root (ARCHITECTURE.md, Module Structure).",
+                        "A unit (a flat module, or a submodule src/modules/<module>/<submodule>/) holds only index.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts; internal folders below it hold only *.{service,schema,constant,type,util}.ts; public.ts sits in the module root (ARCHITECTURE.md, Module Structure).",
                 },
             ],
         },
@@ -750,7 +759,7 @@ export default [
     },
     {
         files: ["src/**/*.ts"],
-        ignores: ["src/lib/validation/**", ...inUnits("*.schema.ts")],
+        ignores: ["src/lib/validation/**", MODULE_SCHEMAS],
 
         rules: {
             "arch/zod-placement": [
@@ -973,7 +982,7 @@ export default [
         },
     },
     {
-        files: ["src/lib/validation/**/*.schema.ts", ...inUnits("*.schema.ts")],
+        files: ["src/lib/validation/**/*.schema.ts", MODULE_SCHEMAS],
 
         rules: {
             "arch/schema-types": [
@@ -1602,7 +1611,7 @@ export default [
         },
     },
     {
-        files: ["src/lib/validation/**/*.schema.ts", ...inUnits("*.schema.ts")],
+        files: ["src/lib/validation/**/*.schema.ts", MODULE_SCHEMAS],
 
         rules: {
             "arch/bounded-pagination": [
@@ -1715,7 +1724,7 @@ export default [
     {
         // healthCheck answers probes with a bare string; cached is the cache
         // plugin's storage shape, not an HTTP response.
-        files: ["src/lib/validation/**/*.schema.ts", ...inUnits("*.schema.ts")],
+        files: ["src/lib/validation/**/*.schema.ts", MODULE_SCHEMAS],
 
         rules: {
             "arch/response-envelope": [

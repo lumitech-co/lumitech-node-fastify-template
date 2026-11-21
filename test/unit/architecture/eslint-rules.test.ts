@@ -1067,10 +1067,52 @@ const CASES: Case[] = [
     ...pair(
         "file-layout",
         {
-            file: "src/modules/demo/sub/deep/deep.service.ts",
+            file: "src/modules/demo/sub/deep/deep.route.ts",
             code: "const a = 1;",
         },
-        { file: "src/modules/demo/sub/sub.service.ts", code: "const a = 1;" }
+        {
+            file: "src/modules/demo/sub/deep/nested/sub-deep.service.ts",
+            code: "const a = 1;",
+        }
+    ),
+    // Internal folders: code only, any file name; entry points stay in the unit.
+    ...pair(
+        "file-naming",
+        { file: "src/modules/demo/sub/deep/index.ts", code: "const a = 1;" },
+        {
+            file: "src/modules/demo/sub/deep/sub-deep.util.ts",
+            code: "const a = 1;",
+        }
+    ),
+    ...pair(
+        "file-naming",
+        {
+            file: "src/modules/message/attachments/index.ts",
+            code: "const a = 1;",
+        },
+        {
+            file: "src/modules/message/attachments/message-attachment.service.ts",
+            code: "const a = 1;",
+        }
+    ),
+    ...pair(
+        "file-naming",
+        {
+            file: "src/modules/message/attachments/attachment.repository.ts",
+            code: "const a = 1;",
+        },
+        {
+            file: "src/modules/message/message.service.ts",
+            code: "const a = 1;",
+        }
+    ),
+    ...pair(
+        "file-naming",
+        {
+            file: "src/modules/demo/sub/deep/mq/sub.worker.ts",
+            code: "const a = 1;",
+        },
+        { file: "src/modules/demo/sub/mq/sub.worker.ts", code: "const a = 1;" }
     ),
     {
         rule: "file-layout",

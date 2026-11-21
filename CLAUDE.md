@@ -55,7 +55,9 @@ wiring. A repository belongs to a module: `generate:repository <entity> --module
 (the module defaults to the entity). A module is flat or holds submodules
 (`src/modules/<module>/<submodule>/`, each laid out like a flat module; ARCHITECTURE.md,
 "Modules with submodules") — wherever these rules say `<name>`, read the flat module or the
-submodule. Run the generator
+submodule. A large unit may sort services, schemas, constants, types and utils into internal
+folders below it; `index.ts`, routes, handlers, repositories and `mq/` stay in the unit
+(ARCHITECTURE.md, "Internal folders"). Run the generator
 first, then edit the files it produced. If the generator cannot produce what the task needs,
 stop and ask — fixing the generator is a valid answer; bypassing it is not.
 
