@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-// One flat module and one module with a submodule: both layouts are generated.
+// One flat module and one module with a feature: both layouts are generated.
 const MODULE_DIRS = [
     "src/modules/generator-probe",
     "src/modules/generator-probe-group",

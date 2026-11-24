@@ -209,8 +209,8 @@ fastify.post(
 
 ### ⚙️ Repository Generation
 
-`npm run generate:repository <entityName> [--module <moduleName>[/<submoduleName>]]` scaffolds a repository for
-a Prisma model inside a module or submodule (the module defaults to the entity name and must exist): it
+`npm run generate:repository <entityName> [--module <moduleName>[/<featureName>]]` scaffolds a repository for
+a Prisma model inside a module or feature (the module defaults to the entity name and must exist): it
 adds the domain type (`id`, `createdAt`, `updatedAt` — extend it with the model's fields) to
 the module's `<module>.type.ts` and creates `<entity>.repository.ts` with `findByIdOrFail`. Repositories expose domain
 methods only: a service never passes Prisma arguments or receives Prisma types.
@@ -277,7 +277,7 @@ This directory manages everything related to data persistence and interaction wi
 
 #### `src/modules`:
 
-This directory contains feature-based modules which encapsulate business logic along with the HTTP layer.  
+This directory contains modules which encapsulate business logic along with the HTTP layer.  
 Each module includes:
 
 - **Routes**: Define endpoint paths and attach them to the appropriate handlers (e.g., `message.route.ts` for message-related endpoints).
@@ -343,16 +343,16 @@ This directory contains all test files organized to mirror the structure of the 
 │   ├── lib
 │   │   ├── ...
 │   │   └── validation
-│   │       └── feature
+│   │       └── message
 │   │           ├── index.ts
-│   │           └── feature.schema.ts
+│   │           └── message.schema.ts
 │   ├── modules
 │   │   ├── application.ts
-│   │   └── feature
+│   │   └── message
 │   │       ├── index.ts
-│   │       ├── feature.handler.ts
-│   │       ├── feature.route.ts
-│   │       └── feature.service.ts
+│   │       ├── message.handler.ts
+│   │       ├── message.route.ts
+│   │       └── message.service.ts
 │   ├── plugins
 │   │   ├── awilix.ts
 │   │   ├── cors.ts
@@ -376,8 +376,8 @@ This directory contains all test files organized to mirror the structure of the 
 │       ├── lib
 │       │   └── ...
 │       └── modules
-│           └── feature
-│               ├── feature-service.test.ts
+│           └── message
+│               ├── message-service.test.ts
 │               └── ...
 └── tsconfig.json
 ```

@@ -5,29 +5,29 @@ export const toNames = (name) => ({
 });
 
 /**
- * "message" is a flat module; "integrations/github" is the github submodule
+ * "message" is a flat module; "integrations/github" is the github feature
  * of the integrations module. `unit` names the files, `dir` is the folder
  * under src/modules/ and `module` owns public.ts.
  */
 export const resolveUnit = (arg) => {
     const parts = arg.split("/");
-    const [moduleName, submoduleName, ...deeper] = parts;
+    const [moduleName, featureName, ...deeper] = parts;
 
     if (deeper.length > 0 || parts.some((part) => !part || part === "mq")) {
         console.error(
-            `❌ "${arg}" is not a module path — use <module> or <module>/<submodule> (mq is reserved).`
+            `❌ "${arg}" is not a module path — use <module> or <module>/<feature> (mq is reserved).`
         );
 
         process.exit(1);
     }
 
     const module = toNames(moduleName);
-    const unit = submoduleName ? toNames(submoduleName) : module;
+    const unit = featureName ? toNames(featureName) : module;
 
     return {
         unit,
         module,
-        grouped: Boolean(submoduleName),
-        dir: submoduleName ? `${module.kebab}/${unit.kebab}` : unit.kebab,
+        grouped: Boolean(featureName),
+        dir: featureName ? `${module.kebab}/${unit.kebab}` : unit.kebab,
     };
 };

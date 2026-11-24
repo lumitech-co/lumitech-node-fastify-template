@@ -1052,7 +1052,7 @@ const CASES: Case[] = [
             code: 'import type { PrismaClient } from "@prisma/client";',
         }
     ),
-    // Submodules: src/modules/<module>/<submodule>/ is laid out like a flat module.
+    // Features: src/modules/<module>/<feature>/ is laid out like a flat module.
     ...pair(
         "file-naming",
         { file: "src/modules/demo/sub/demo.service.ts", code: "const a = 1;" },

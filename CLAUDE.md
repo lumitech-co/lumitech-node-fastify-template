@@ -13,8 +13,8 @@ Consult those on demand; do not duplicate their content here.
 ```bash
 # Scaffolding (never create these files by hand — see Rule 0)
 npm run generate:module <moduleName>                               # new flat module
-npm run generate:module <moduleName>/<submoduleName>               # new submodule of a module
-npm run generate:repository <entityName> [--module <moduleName>[/<submoduleName>]]   # new repository in a module
+npm run generate:module <moduleName>/<featureName>               # new feature of a module
+npm run generate:repository <entityName> [--module <moduleName>[/<featureName>]]   # new repository in a module
 
 # Migrations (never hand-write SQL — see Rule 9)
 npm run prisma:migrate:create              # create SQL migration (review before applying)
@@ -52,10 +52,10 @@ Never create a module (`src/modules/<name>/`) or a repository (`src/modules/<nam
 by hand — the generators also wire `src/types/di-container.type.ts`, the module's schema,
 `public.ts`, domain type and `RESPONSE_MESSAGES`, and hand-written files silently skip that
 wiring. A repository belongs to a module: `generate:repository <entity> --module <name>`
-(the module defaults to the entity). A module is flat or holds submodules
-(`src/modules/<module>/<submodule>/`, each laid out like a flat module; ARCHITECTURE.md,
-"Modules with submodules") — wherever these rules say `<name>`, read the flat module or the
-submodule. A large unit may sort services, schemas, constants, types and utils into internal
+(the module defaults to the entity). A module is flat or holds features
+(`src/modules/<module>/<feature>/`, each laid out like a flat module; ARCHITECTURE.md,
+"Modules with features") — wherever these rules say `<name>`, read the flat module or the
+feature. A large unit may sort services, schemas, constants, types and utils into internal
 folders below it; `index.ts`, routes, handlers, repositories and `mq/` stay in the unit
 (ARCHITECTURE.md, "Internal folders"). Run the generator
 first, then edit the files it produced. If the generator cannot produce what the task needs,
@@ -74,7 +74,7 @@ A module talks to another module only through that module's **public API**,
 modules may use, and other modules import only from it, only with `import type`; the
 implementation still arrives through the container (`arch/layer-direction`,
 `arch/public-api`). `public.ts` sits in the module root, also when the module holds
-submodules; the submodules of one module import each other directly.
+features; the features of one module import each other directly.
 
 ### 2. Database access only through repositories
 

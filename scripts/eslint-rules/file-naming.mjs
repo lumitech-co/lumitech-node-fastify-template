@@ -4,24 +4,24 @@ import fs from "node:fs";
 // with its folder, so this does.
 //
 // The folder that names a file is its unit: a flat module
-// (src/modules/<module>/) or a submodule (src/modules/<module>/<submodule>/).
+// (src/modules/<module>/) or a feature (src/modules/<module>/<feature>/).
 // mq/ is never a unit: its files are named after the unit above it.
 //
 // Below its unit a module may sort files into internal folders
-// (src/modules/<module>/[<submodule>/]<folder>/...). They hold code only:
+// (src/modules/<module>/[<feature>/]<folder>/...). They hold code only:
 // no index.ts (autoload would mount it), routes, handlers, repositories or
 // mq/, which stay in the unit itself. Their file names are not checked.
 const NAMED_FOLDERS =
     /^(.*\/src\/)(modules|lib\/validation|plugins\/mq)\/(.+)$/;
 
-// Depth of a unit below src/modules/: <module>/ or <module>/<submodule>/.
+// Depth of a unit below src/modules/: <module>/ or <module>/<feature>/.
 const UNIT_DEPTH = { flat: 1, grouped: 2 };
 
 const UNIT_ONLY_FILE =
     /^(index\.ts|.+\.(route|handler)\.ts|.+\.repository(\..+)?\.ts)$/;
 
 // A module root with its own index.ts is a flat module; otherwise it groups
-// submodules (the same test as the architecture tests and the generators).
+// features (the same test as the architecture tests and the generators).
 const isFlatModule = (src, module) =>
     fs.existsSync(`${src}modules/${module}/index.ts`);
 

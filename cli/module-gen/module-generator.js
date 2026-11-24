@@ -4,13 +4,13 @@ import { templates } from "./templates.js";
 
 const MODULES_DIR = path.join(process.cwd(), "src/modules");
 
-// A module with submodules holds only public.ts and README.md in its root.
+// A module with features holds only public.ts and README.md in its root.
 const ensureModuleRoot = (module) => {
     const rootPath = path.join(MODULES_DIR, module.kebab);
 
     if (fs.existsSync(path.join(rootPath, "index.ts"))) {
         console.error(
-            `❌ "${module.kebab}" is a flat module — it cannot hold submodules.`
+            `❌ "${module.kebab}" is a flat module — it cannot hold features.`
         );
 
         process.exit(1);

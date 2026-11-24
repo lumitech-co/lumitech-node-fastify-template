@@ -20,14 +20,14 @@ const listDirs = (dir: string): string[] =>
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name);
 
-// A unit is a flat module ("message") or a submodule ("integrations/github"):
-// a module without its own index.ts groups submodules.
+// A unit is a flat module ("message") or a feature ("integrations/github"):
+// a module without its own index.ts groups features.
 const unitDirs: string[] = listDirs("modules").flatMap((module) =>
     fs.existsSync(path.join(SRC, "modules", module, "index.ts"))
         ? [module]
         : listDirs(`modules/${module}`)
-              .filter((submodule) => submodule !== "mq")
-              .map((submodule) => `${module}/${submodule}`)
+              .filter((feature) => feature !== "mq")
+              .map((feature) => `${module}/${feature}`)
 );
 
 const groupedModules: string[] = listDirs("modules").filter(
@@ -499,7 +499,7 @@ describe("Rule 0: every module has the files the generator creates", () => {
     });
 
     it.each(groupedModules)(
-        "module %s holds only public.ts, README.md and its submodules in its root",
+        "module %s holds only public.ts, README.md and its features in its root",
         (module) => {
             const rootFiles = fs
                 .readdirSync(path.join(SRC, "modules", module), {

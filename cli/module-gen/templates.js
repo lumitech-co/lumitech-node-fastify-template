@@ -5,7 +5,7 @@ export const templates = {
         `// Public API: the only file other modules may import from this module.\n// Re-export types with \`export type { … } from "./${nameKebab}.<kind>.js"\`.\n`,
 
     modulePublic: () =>
-        `// Public API: the only file other modules may import from this module.\n// Re-export submodule types with \`export type { … } from "./<submodule>/<submodule>.<kind>.js"\`.\n`,
+        `// Public API: the only file other modules may import from this module.\n// Re-export feature types with \`export type { … } from "./<feature>/<feature>.<kind>.js"\`.\n`,
 
     moduleReadme: (namePascal) =>
         `
@@ -13,9 +13,9 @@ export const templates = {
 
 TODO: what this module is responsible for.
 
-## Submodules
+## Features
 
-| Submodule | Responsibility |
+| Feature | Responsibility |
 |-----------|----------------|
 `.trim(),
 

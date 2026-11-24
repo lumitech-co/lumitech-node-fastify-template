@@ -34,7 +34,7 @@ const relative =
         : "";
 
 const exists = relative !== "" && fs.existsSync(path.join(root, relative));
-// The unit a file belongs to: a flat module, or <module>/<submodule>.
+// The unit a file belongs to: a flat module, or <module>/<feature>.
 const unitMatch = relative.match(/^src\/modules\/([^/]+)\/(?:([^/]+)\/)?/);
 
 const moduleName =

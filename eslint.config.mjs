@@ -44,15 +44,15 @@ const __dirname = path.dirname(__filename);
 // per file, so a later block would silently replace an earlier one.
 const restrictedSyntax = builtinRules.get("no-restricted-syntax");
 
-// A unit is a flat module (src/modules/<module>/) or a submodule
-// (src/modules/<module>/<submodule>/); mq/ is never a submodule.
+// A unit is a flat module (src/modules/<module>/) or a feature
+// (src/modules/<module>/<feature>/); mq/ is never a feature.
 const UNIT_DIRS = ["src/modules/*", "src/modules/*/!(mq)"];
 
 const inUnits = (...paths) =>
     UNIT_DIRS.flatMap((dir) => paths.map((file) => `${dir}/${file}`));
 
 // Below its unit a module may sort code into internal folders. Globs can't
-// tell a flat module's internal folder from a submodule, so arch/file-naming
+// tell a flat module's internal folder from a feature, so arch/file-naming
 // keeps index.ts, routes, handlers, repositories and mq/ out of them.
 const IN_INTERNAL_FOLDERS =
     "src/modules/*/*/**/*.{service,schema,constant,type,util}.ts";
@@ -607,7 +607,7 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "A unit (a flat module, or a submodule src/modules/<module>/<submodule>/) holds only index.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts; internal folders below it hold only *.{service,schema,constant,type,util}.ts; public.ts sits in the module root (ARCHITECTURE.md, Module Structure).",
+                        "A unit (a flat module, or a feature src/modules/<module>/<feature>/) holds only index.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts; internal folders below it hold only *.{service,schema,constant,type,util}.ts; public.ts sits in the module root (ARCHITECTURE.md, Module Structure).",
                 },
             ],
         },

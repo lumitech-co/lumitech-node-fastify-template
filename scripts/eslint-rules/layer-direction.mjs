@@ -1,7 +1,7 @@
 // lib/ and database/ never reach up into modules/; a module reaches another
 // module only through that module's public.ts, and only for types — the
 // rest comes through the container. The module is the first folder under
-// src/modules/, so the submodules of one module import each other freely.
+// src/modules/, so the features of one module import each other freely.
 //
 // Optional `order`: module names, most basic first. A listed module may
 // import only listed modules above it, so the modules cannot form a cycle.

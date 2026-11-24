@@ -8,7 +8,7 @@ const [, , entityName, flag, moduleFlagValue] = process.argv;
 
 if (!entityName || (flag !== undefined && flag !== "--module")) {
     console.error(
-        "❌ Usage: npm run generate:repository <entityName> [--module <moduleName>|<moduleName>/<submoduleName>]"
+        "❌ Usage: npm run generate:repository <entityName> [--module <moduleName>|<moduleName>/<featureName>]"
     );
 
     process.exit(1);

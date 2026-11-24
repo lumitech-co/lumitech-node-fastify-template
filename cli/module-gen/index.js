@@ -8,7 +8,7 @@ const modulePath = process.argv[2];
 
 if (!modulePath) {
     console.error(
-        "❌ Please provide a module name. Example: npm run generate:module moduleName (or moduleName/submoduleName)"
+        "❌ Please provide a module name. Example: npm run generate:module moduleName (or moduleName/featureName)"
     );
 
     process.exit(1);
