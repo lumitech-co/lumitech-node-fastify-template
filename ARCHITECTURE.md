@@ -44,6 +44,75 @@ Each module in `src/modules/<name>/`:
 `index.ts` is a Fastify plugin entry point (autoload + `autoPrefix`), **not** a barrel file —
 it is required in every module.
 
+### Modules with features
+
+A module starts flat. When a domain grows into several parts (one module per
+integration provider, say), group them as **features** of one module instead of adding
+more top-level folders:
+
+```
+src/modules/integrations/        # the module: one domain, one public API
+├── public.ts                    # export type { … } from "./github/github.service.js"
+├── README.md                    # what the domain does and its features
+├── github/                      # a feature: laid out exactly like a flat module
+│   ├── index.ts
+│   ├── github.route.ts
+│   ├── github.service.ts
+│   ├── github-commit.repository.ts
+│   └── mq/
+└── jira/
+```
+
+- **The module is the boundary.** Other modules import only `@/modules/integrations/public.js`;
+  features of one module import each other freely (`arch/layer-direction`).
+- **A module is either flat or grouped, never both.** A grouped module's root holds only
+  `public.ts`, `README.md` and its feature folders; it has no `index.ts` and no code
+  (`test/unit/architecture/`). `mq` is never a feature name.
+- **Two unit levels, no more.** A feature's files are named after the feature
+  (`arch/file-naming`). Folders below a unit are internal folders (next section), never
+  features.
+- **DI names stay global.** A feature registers `<feature>Service` / `<feature>Handler`
+  like a flat module, so two features in different modules need different names.
+- Generate with `npm run generate:module integrations/github` (creates the module root on
+  first use) and `npm run generate:repository githubCommit -- --module integrations/github`.
+- Worker plugins stay under `src/plugins/mq/<feature>/`; tests mirror the source path
+  (`test/unit/modules/integrations/github/`).
+
+### Internal folders
+
+A large unit (a flat module or a feature) may sort its code into folders of its own,
+at any depth:
+
+```
+src/modules/signals/card-summary/          # the unit
+├── index.ts, card-summary.route.ts, …     # entry points stay here
+└── llm/                                    # an internal folder
+    ├── card-summary-llm.service.ts
+    └── prompts/
+        └── card-summary-prompt.constant.ts
+```
+
+- **Code only.** An internal folder holds `*.{service,schema,constant,type,util}.ts`
+  (`arch/file-layout`). `index.ts`, routes, handlers, repositories and `mq/` stay in the
+  unit itself (`arch/file-naming`): autoload would mount an internal `index.ts`, and the
+  unit's routes and data access should be found in one place.
+- **Not a boundary.** An internal folder has no `public.ts` and no README of its own; the
+  unit's README describes it. Code outside the module still goes through `public.ts`.
+- **Free file names.** File names in internal folders are not checked; prefix them with the
+  unit (`card-summary-llm.service.ts`) and keep DI names unique across the app
+  (`cardSummaryLlmService`).
+- Promote an internal folder to a feature when it gets routes of its own.
+
+**Optional module order.** A large project can list its modules from the most basic up and
+pass the list to `arch/layer-direction`; a listed module then imports only modules above it,
+so the modules cannot form a cycle:
+
+```js
+"arch/layer-direction": ["error", { order: ["access", "organization", "integrations"] }],
+```
+
+The template orders nothing; a module missing from the list is not ordered.
+
 The module's factories are named `createService`, `createHandler` and `create<Name>Routes`
 in every module — the DI name passed to `addDIResolverName()` is what makes them unique,
 not the function name. See `src/modules/message/` as the reference module.
@@ -470,18 +539,18 @@ src/
 │   ├── safeFetch/       # SSRF-safe fetch of user-supplied URLs
 │   ├── secretCipher/    # AES-GCM encryption of stored secrets
 │   └── validation/      # Zod schemas of lib code (module schemas live in the module)
-├── modules/             # Feature modules: routes, handlers, services, repositories, schemas
+├── modules/             # Modules: routes, handlers, services, repositories, schemas
 ├── plugins/             # Fastify plugins
 └── types/               # Global TypeScript definitions
 ```
 
 ## Common Tasks
 
-### Add a new feature module
+### Add a new module
 
-1. Run `npm run generate:module featureName`
+1. Run `npm run generate:module moduleName`
 2. Define Prisma model in `src/database/prisma/schema.prisma`
-3. Run `npm run generate:repository featureName`, then add the model's fields to the domain
+3. Run `npm run generate:repository entityName`, then add the model's fields to the domain
    type in the module's `<name>.type.ts` and the repository methods the service needs
 4. Implement service logic against those repository methods
 5. Define routes with Zod schemas

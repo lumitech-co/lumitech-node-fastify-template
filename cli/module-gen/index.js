@@ -1,32 +1,31 @@
+import { resolveUnit } from "../unit-path.js";
 import { extendCradle } from "./extend-cradle.js";
 import { lintGenerated } from "../lint-generated.js";
 import { generateSchema } from "./shema-generator.js";
 import { generateModule } from "./module-generator.js";
 
-const moduleName = process.argv[2];
+const modulePath = process.argv[2];
 
-if (!moduleName) {
+if (!modulePath) {
     console.error(
-        "❌ Please provide a module name. Example: npm run generate:module moduleName"
+        "❌ Please provide a module name. Example: npm run generate:module moduleName (or moduleName/featureName)"
     );
 
     process.exit(1);
 }
 
-const nameCamel = moduleName.charAt(0).toLowerCase() + moduleName.slice(1);
-const namePascal = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
-
-const nameKebab = moduleName
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .toLowerCase();
+const target = resolveUnit(modulePath);
 
 // MODULE
-generateModule(nameCamel, namePascal, nameKebab);
+generateModule(target);
 
 // VALIDATION SCHEMA
-generateSchema(nameKebab);
+generateSchema(target);
 
 // EXTEND Cradle TYPE
-extendCradle(namePascal, nameCamel, nameKebab);
+extendCradle(target);
 
-lintGenerated([`src/modules/${nameKebab}`, "src/types/di-container.type.ts"]);
+lintGenerated([
+    `src/modules/${target.module.kebab}`,
+    "src/types/di-container.type.ts",
+]);

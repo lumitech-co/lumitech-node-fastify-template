@@ -1050,6 +1050,85 @@ const CASES: Case[] = [
             code: 'import type { PrismaClient } from "@prisma/client";',
         }
     ),
+    // Features: src/modules/<module>/<feature>/ is laid out like a flat module.
+    ...pair(
+        "file-naming",
+        { file: "src/modules/demo/sub/demo.service.ts", code: "const a = 1;" },
+        { file: "src/modules/demo/sub/sub.service.ts", code: "const a = 1;" }
+    ),
+    {
+        rule: "file-naming",
+        file: "src/modules/demo/sub/mq/sub.worker.ts",
+        code: "const a = 1;",
+        reports: false,
+    },
+    ...pair(
+        "file-layout",
+        {
+            file: "src/modules/demo/sub/deep/deep.route.ts",
+            code: "const a = 1;",
+        },
+        {
+            file: "src/modules/demo/sub/deep/nested/sub-deep.service.ts",
+            code: "const a = 1;",
+        }
+    ),
+    // Internal folders: code only, any file name; entry points stay in the unit.
+    ...pair(
+        "file-naming",
+        { file: "src/modules/demo/sub/deep/index.ts", code: "const a = 1;" },
+        {
+            file: "src/modules/demo/sub/deep/sub-deep.util.ts",
+            code: "const a = 1;",
+        }
+    ),
+    ...pair(
+        "file-naming",
+        {
+            file: "src/modules/message/attachments/index.ts",
+            code: "const a = 1;",
+        },
+        {
+            file: "src/modules/message/attachments/message-attachment.service.ts",
+            code: "const a = 1;",
+        }
+    ),
+    ...pair(
+        "file-naming",
+        {
+            file: "src/modules/message/attachments/attachment.repository.ts",
+            code: "const a = 1;",
+        },
+        {
+            file: "src/modules/message/message.service.ts",
+            code: "const a = 1;",
+        }
+    ),
+    ...pair(
+        "file-naming",
+        {
+            file: "src/modules/demo/sub/deep/mq/sub.worker.ts",
+            code: "const a = 1;",
+        },
+        { file: "src/modules/demo/sub/mq/sub.worker.ts", code: "const a = 1;" }
+    ),
+    {
+        rule: "file-layout",
+        file: "src/modules/demo/sub/public.ts",
+        code: 'export type { SubService } from "./sub.service.js";',
+        reports: true,
+    },
+    ...pair(
+        "layer-direction",
+        {
+            file: "src/modules/demo/sub/sub.service.ts",
+            code: 'import type { MessageService } from "@/modules/message/message.service.js";',
+        },
+        {
+            file: "src/modules/demo/sub/sub.service.ts",
+            code: 'import { OTHER_LIMIT } from "@/modules/demo/other/other.constant.js";',
+        }
+    ),
 ];
 
 // Fixtures are linted without a TS program, so every rule that needs type
@@ -1107,4 +1186,46 @@ describe("arch/* ESLint rules", () => {
 
         expect(rules.includes(`arch/${testCase.rule}`)).toBe(testCase.reports);
     });
+});
+
+// The template orders no modules; a project that does passes `order`.
+describe("arch/layer-direction order option", () => {
+    const orderedEslint = new ESLint({
+        overrideConfig: {
+            languageOptions: { parserOptions: { projectService: false } },
+            rules: {
+                ...Object.fromEntries(
+                    TYPE_AWARE_RULES.map((rule) => [rule, "off"])
+                ),
+                "arch/layer-direction": [
+                    "error",
+                    { order: ["access", "billing"] },
+                ],
+            },
+        },
+    });
+
+    it.each([
+        ["src/modules/billing/billing.service.ts", "access", false],
+        ["src/modules/billing/plan/plan.service.ts", "access", false],
+        ["src/modules/access/access.service.ts", "billing", true],
+        ["src/modules/access/access.service.ts", "reports", false],
+    ])(
+        "%s importing %s reports=%s",
+        { timeout: 30_000 },
+        async (file, target, reports) => {
+            const [result] = await orderedEslint.lintText(
+                `import type { X } from "@/modules/${target}/public.js";`,
+                { filePath: path.join(process.cwd(), file) }
+            );
+
+            expect(
+                result!.messages.some((message) =>
+                    message.message.includes(
+                        "may import only modules listed above it"
+                    )
+                )
+            ).toBe(reports);
+        }
+    );
 });

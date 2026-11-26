@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-export const extendCradle = ({ entity, module }) => {
+export const extendCradle = ({ entity, target }) => {
     const { pascal: namePascal, camel: nameCamel, kebab: nameKebab } = entity;
 
     const diContainerPath = path.join(
@@ -15,7 +15,7 @@ export const extendCradle = ({ entity, module }) => {
         const importMarker = 'import type { EnvConfig } from "./env.type.js";';
 
         const newImports = `
-import type { ${namePascal}Repository } from "@/modules/${module.kebab}/${nameKebab}.repository.js";`;
+import type { ${namePascal}Repository } from "@/modules/${target.dir}/${nameKebab}.repository.js";`;
 
         diContent = diContent.replace(
             importMarker,

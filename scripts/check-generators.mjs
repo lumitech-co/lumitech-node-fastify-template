@@ -7,7 +7,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const MODULE_DIR = "src/modules/generator-probe";
+// One flat module and one module with a feature: both layouts are generated.
+const MODULE_DIRS = [
+    "src/modules/generator-probe",
+    "src/modules/generator-probe-group",
+];
 
 const WIRED_FILES = [
     "src/database/prisma/schema.prisma",
@@ -48,13 +52,16 @@ try {
         "npx prisma generate",
         "npm run generate:module generatorProbe",
         "npm run generate:repository generatorProbe",
-        "npm run generate:repository generatorProbeItem -- --module generatorProbe",
-        `npx eslint --max-warnings 0 ${MODULE_DIR} src/types/di-container.type.ts`,
+        "npm run generate:module generatorProbeGroup/generatorProbeItem",
+        "npm run generate:repository generatorProbeItem -- --module generatorProbeGroup/generatorProbeItem",
+        `npx eslint --max-warnings 0 ${MODULE_DIRS.join(" ")} src/types/di-container.type.ts`,
         "npx tsc --noEmit",
         "npx vitest run -c vitest-unit.config.ts test/unit/architecture",
     ].every(run);
 } finally {
-    fs.rmSync(path.resolve(MODULE_DIR), { recursive: true, force: true });
+    for (const dir of MODULE_DIRS) {
+        fs.rmSync(path.resolve(dir), { recursive: true, force: true });
+    }
 
     for (const [file, content] of backups) {
         fs.writeFileSync(file, content);

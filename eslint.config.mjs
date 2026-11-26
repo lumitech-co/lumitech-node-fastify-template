@@ -44,6 +44,21 @@ const __dirname = path.dirname(__filename);
 // per file, so a later block would silently replace an earlier one.
 const restrictedSyntax = builtinRules.get("no-restricted-syntax");
 
+// A unit is a flat module (src/modules/<module>/) or a feature
+// (src/modules/<module>/<feature>/); mq/ is never a feature.
+const UNIT_DIRS = ["src/modules/*", "src/modules/*/!(mq)"];
+
+const inUnits = (...paths) =>
+    UNIT_DIRS.flatMap((dir) => paths.map((file) => `${dir}/${file}`));
+
+// Below its unit a module may sort code into internal folders. Globs can't
+// tell a flat module's internal folder from a feature, so arch/file-naming
+// keeps index.ts, routes, handlers, repositories and mq/ out of them.
+const IN_INTERNAL_FOLDERS =
+    "src/modules/*/*/**/*.{service,schema,constant,type,util}.ts";
+
+const MODULE_SCHEMAS = "src/modules/**/*.schema.ts";
+
 const HTTP_METHOD_CALL =
     "CallExpression[callee.object.name='fastify'][callee.property.name=/^(get|post|put|patch|delete|head|options)$/]";
 
@@ -573,9 +588,13 @@ export default [
     {
         files: ["src/modules/**/*.{ts,js}"],
         ignores: [
-            "src/modules/*/{index,public}.ts",
-            "src/modules/*/*.{route,handler,service,repository,schema,constant,type,util}.ts",
-            "src/modules/*/mq/*.{queue,worker,service,constant,type}.ts",
+            "src/modules/*/public.ts",
+            ...inUnits(
+                "index.ts",
+                "*.{route,handler,service,repository,schema,constant,type,util}.ts",
+                "mq/*.{queue,worker,service,constant,type}.ts"
+            ),
+            IN_INTERNAL_FOLDERS,
         ],
 
         rules: {
@@ -584,7 +603,7 @@ export default [
                 {
                     selector: "Program",
                     message:
-                        "A module holds only index.ts, public.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts (ARCHITECTURE.md, Directory layout).",
+                        "A unit (a flat module, or a feature src/modules/<module>/<feature>/) holds only index.ts, <name>.{route,handler,service,schema,constant,type,util}.ts, <entity>.repository.ts and mq/<name>.{queue,worker,service,constant,type}.ts; internal folders below it hold only *.{service,schema,constant,type,util}.ts; public.ts sits in the module root (ARCHITECTURE.md, Module Structure).",
                 },
             ],
         },
@@ -736,7 +755,7 @@ export default [
     },
     {
         files: ["src/**/*.ts"],
-        ignores: ["src/lib/validation/**", "src/modules/*/*.schema.ts"],
+        ignores: ["src/lib/validation/**", MODULE_SCHEMAS],
 
         rules: {
             "arch/zod-placement": [
@@ -959,10 +978,7 @@ export default [
         },
     },
     {
-        files: [
-            "src/lib/validation/**/*.schema.ts",
-            "src/modules/*/*.schema.ts",
-        ],
+        files: ["src/lib/validation/**/*.schema.ts", MODULE_SCHEMAS],
 
         rules: {
             "arch/schema-types": [
@@ -1089,7 +1105,7 @@ export default [
         },
     },
     {
-        files: ["src/modules/*/index.ts"],
+        files: [...inUnits("index.ts")],
 
         rules: {
             "arch/entry-points": [
@@ -1116,7 +1132,7 @@ export default [
     },
     {
         files: ["src/**/*.ts"],
-        ignores: ["src/plugins/**", "src/modules/*/index.ts"],
+        ignores: ["src/plugins/**", ...inUnits("index.ts")],
 
         rules: {
             "arch/entry-points": [
@@ -1539,7 +1555,7 @@ export default [
         // Fastify requires a plugin body to be async even when it awaits nothing.
         files: [
             "src/plugins/**/*.ts",
-            "src/modules/*/index.ts",
+            ...inUnits("index.ts"),
             "src/modules/**/mq/*.{queue,worker}.ts",
         ],
 
@@ -1591,10 +1607,7 @@ export default [
         },
     },
     {
-        files: [
-            "src/lib/validation/**/*.schema.ts",
-            "src/modules/*/*.schema.ts",
-        ],
+        files: ["src/lib/validation/**/*.schema.ts", MODULE_SCHEMAS],
 
         rules: {
             "arch/bounded-pagination": [
@@ -1705,10 +1718,7 @@ export default [
     {
         // healthCheck answers probes with a bare string; cached is the cache
         // plugin's storage shape, not an HTTP response.
-        files: [
-            "src/lib/validation/**/*.schema.ts",
-            "src/modules/*/*.schema.ts",
-        ],
+        files: ["src/lib/validation/**/*.schema.ts", MODULE_SCHEMAS],
 
         rules: {
             "arch/response-envelope": [
@@ -1723,7 +1733,7 @@ export default [
         },
     },
     {
-        files: ["src/modules/*/*.route.ts"],
+        files: [...inUnits("*.route.ts")],
 
         rules: {
             "arch/route-registrar": [
@@ -1738,7 +1748,7 @@ export default [
         },
     },
     {
-        files: ["src/modules/*/index.ts"],
+        files: [...inUnits("index.ts")],
 
         rules: {
             "arch/route-registrar": [
@@ -1773,7 +1783,7 @@ export default [
         // Rule 5: a repository file holds its <Name>Repository type, the
         // factory, select constants and private Prisma helpers declared as
         // `function name() {}`; domain types go to the module's type file.
-        files: ["src/modules/*/*.repository.ts"],
+        files: [...inUnits("*.repository.ts")],
 
         rules: {
             "arch/repository-layout": [
@@ -1820,7 +1830,7 @@ export default [
         },
     },
     {
-        files: ["src/modules/*/*.repository.ts"],
+        files: [...inUnits("*.repository.ts")],
 
         rules: {
             "arch/domain-repository-types": [

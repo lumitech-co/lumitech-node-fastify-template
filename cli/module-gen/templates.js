@@ -4,6 +4,21 @@ export const templates = {
     public: (nameKebab) =>
         `// Public API: the only file other modules may import from this module.\n// Re-export types with \`export type { … } from "./${nameKebab}.<kind>.js"\`.\n`,
 
+    modulePublic: () =>
+        `// Public API: the only file other modules may import from this module.\n// Re-export feature types with \`export type { … } from "./<feature>/<feature>.<kind>.js"\`.\n`,
+
+    moduleReadme: (namePascal) =>
+        `
+# ${namePascal} Module
+
+TODO: what this module is responsible for.
+
+## Features
+
+| Feature | Responsibility |
+|-----------|----------------|
+`.trim(),
+
     readme: (namePascal, nameKebab) =>
         `
 # ${namePascal} Module
