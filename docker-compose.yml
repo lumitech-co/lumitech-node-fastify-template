@@ -47,6 +47,20 @@ services:
         volumes:
             - "./scripts/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh"
 
+    azure-blob:
+        image: mcr.microsoft.com/azure-storage/azurite:3.37.0
+        container_name: app-azure-blob
+        restart: no
+        command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data
+        ports:
+            - "10000:10000"
+        expose:
+            - "10000"
+        networks:
+            - primary
+        volumes:
+            - "./.volumes/azure-blob:/data"
+
     redis:
         image: redis:7.4-alpine
         container_name: app-redis

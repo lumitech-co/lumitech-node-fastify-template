@@ -88,8 +88,7 @@
             "minimatch": "^11.0.4"
         },
         "qs": "^6.16.1",
-        "effect": "^3.22.1",
-        "fast-xml-parser": "^5.12.0"
+        "effect": "3.22.1"
     },
     "devDependencies": {
         "@commitlint/cli": "^19.8.1",
@@ -132,6 +131,7 @@
     "dependencies": {
         "@aws-sdk/client-s3": "^3.1090.0",
         "@aws-sdk/s3-request-presigner": "^3.1090.0",
+        "@azure/storage-blob": "^12.34.0",
         "@fastify/autoload": "^6.3.1",
         "@fastify/basic-auth": "^6.2.0",
         "@fastify/cors": "^11.1.0",

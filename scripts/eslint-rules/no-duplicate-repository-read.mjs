@@ -1,8 +1,6 @@
-// Flags >=2 identical reads on one execution path — the same domain repository
-// method with the same argument, or the same Prisma delegate with the same
-// `where`: fetch once and derive the rest in memory. A write or an early exit
-// splits the path; count/exists and cursor reads never count.
-// Ported from tolmete-api.
+// Flags 2+ identical reads on one path (same method and argument, or the same
+// `where`). A write or an early exit splits the path; count, exists and cursor
+// reads never count.
 const isRepositoryReceiver = (node) => {
     if (node.type === "Identifier") {
         return /Repository$/.test(node.name);
@@ -55,11 +53,8 @@ const isDatabaseReceiver = (node) => {
     return false;
 };
 
-// A write, by naming convention. `$transaction` / `$execute*` cover Prisma's
-// transactional and raw-mutation entry points. The receiver must be the database:
-// `cache.delete(k)` / `map.delete(k)` / `queue.create(j)` are not DB writes, and
-// matching them let an unrelated method name silently switch the rule off for the
-// rest of the block (a real duplicate right after went unreported).
+// A write, by name, on the database only: `cache.delete(k)` is not a DB write
+// and must not end the segment.
 const isWriteCall = (node) =>
     node.type === "CallExpression" &&
     node.callee.type === "MemberExpression" &&
@@ -140,9 +135,7 @@ const asRepositoryRead = (node, sourceCode) => {
     return read(arg ? sourceCode.getText(arg) : "");
 };
 
-// Depth-first walk of `node`'s subtree calling `visit` on each node, not
-// descending into any node for which `skipInto` is true (the node itself is
-// still visited).
+// Visits every node; does not descend into a node for which `skipInto` is true.
 const walk = (node, visit, skipInto) => {
     if (!node || typeof node.type !== "string") {
         return;
@@ -171,10 +164,8 @@ const walk = (node, visit, skipInto) => {
     }
 };
 
-// Which parts of a branching expression always run, and which run only on some
-// paths: a ternary's test always runs and its arms are alternatives; the
-// left-hand side of `&&` / `||` / `??` always runs and the right-hand side is
-// conditional on it. Returns null for everything else.
+// The part of a ternary or `&&` / `||` / `??` that always runs, and the
+// conditional parts; null for any other node.
 const splitBranchingExpression = (node) => {
     if (node.type === "ConditionalExpression") {
         return {
@@ -190,11 +181,8 @@ const splitBranchingExpression = (node) => {
     return null;
 };
 
-// Reads on `statement`'s own unconditional path, plus the conditional sub-paths
-// to scan separately. Nested blocks and functions are their own scopes; a
-// conditional path is its own execution, so two reads on sibling paths (a
-// ternary's arms, or `findFirst(…) || findFirst(…)`) are never the same read
-// twice — only one of them runs.
+// Reads on the unconditional path, plus the conditional paths to scan apart:
+// two reads on sibling paths never both run.
 const collectOwnReads = (statement, sourceCode) => {
     const reads = [];
     const conditionalPaths = [];
@@ -235,9 +223,7 @@ const collectOwnReads = (statement, sourceCode) => {
     return { reads, conditionalPaths };
 };
 
-// Does executing `statement` end the current segment? True if it can mutate the
-// DB or divert control flow. Nested functions are not our control flow, so they
-// are not scanned.
+// A DB write or an early exit ends the segment; nested functions are skipped.
 const isBarrierStatement = (statement) => {
     let barrier = false;
 

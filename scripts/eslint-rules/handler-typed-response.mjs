@@ -1,16 +1,6 @@
 /**
- * Handlers must hand `reply.send()` a value bound to an explicitly-typed `const`,
- * so the route's response contract is checked at the handler — a drift in the
- * service's return shape errors here instead of silently shipping.
- *
- *   ✗  return reply.send(await svc.getThing(args));          // inline, untyped
- *   ✗  const data = await svc.getThing(args); return reply.send(data);  // const, no type
- *   ✓  const response: GetThingResponse = await svc.getThing(args);
- *      return reply.status(200).send(response);
- *
- * Non-JSON bodies (streams / buffers / zips) are exempt by name.
- *
- * Ported from tolmete-api.
+ * `reply.send()` takes a `const` with an explicit type, so a change in the
+ * service's return shape fails at the handler. Streams, buffers and zips are exempt.
  *
  * @type {import("eslint").Rule.RuleModule}
  */

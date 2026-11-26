@@ -1,0 +1,344 @@
+name: Node CI
+
+# Called from each repository's ci.yml; steps whose script or file is missing are skipped.
+on:
+    workflow_call:
+        inputs:
+            runner:
+                type: string
+                default: ubuntu-latest
+            node-version:
+                type: string
+                default: "22"
+            run-osv:
+                type: boolean
+                default: true
+            run-integration:
+                type: boolean
+                default: true
+            timeout-minutes:
+                type: number
+                default: 40
+
+permissions:
+    contents: read
+
+concurrency:
+    group: node-ci-${{ github.repository }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+    # Inverted on purpose: `cond && 0 || 1` always gives 1, since 0 is falsy.
+    FETCH_DEPTH: ${{ github.event_name != 'pull_request' && 1 || 0 }}
+    NODE_MODULES_KEY: node-modules-${{ inputs.runner }}-node${{ inputs.node-version }}
+
+jobs:
+    # One job: every job is billed per started minute and repeats checkout and install.
+    ci:
+        name: CI
+        if: ${{ !github.event.pull_request.draft && (github.event_name != 'push' || github.ref_name == github.event.repository.default_branch) }}
+        runs-on: ${{ inputs.runner }}
+        timeout-minutes: ${{ inputs.timeout-minutes }}
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: ${{ env.FETCH_DEPTH }}
+
+            # Changes to docs only (*.md, docs/, .vscode/, .idea/, LICENSE) skip every later
+            # step. Decided here, not in each repository's ci.yml, so the rule lives in one place.
+            - name: Skip docs-only changes
+              env:
+                  BASE_REF: ${{ github.base_ref }}
+                  BEFORE: ${{ github.event.before }}
+              run: |
+                  if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+                      files=$(git diff --name-only "origin/$BASE_REF...HEAD")
+                  elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+                      && git fetch -q --depth=1 origin "$BEFORE"; then
+                      files=$(git diff --name-only "$BEFORE" HEAD)
+                  else
+                      files=""
+                  fi
+                  if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '\.md$|^docs/|^\.vscode/|^\.idea/|^LICENSE$'; then
+                      echo "docs-only change, skipping the checks"
+                      echo "CI_SKIP=true" >> "$GITHUB_ENV"
+                  fi
+
+            - name: Prefetch test images in the background
+              if: ${{ env.CI_SKIP != 'true' && (inputs.run-integration && hashFiles('docker-compose.test.yml') != '') }}
+              run: |
+                  nohup docker compose -f docker-compose.test.yml pull -q \
+                      > "$RUNNER_TEMP/pull.log" 2>&1 &
+                  echo $! > "$RUNNER_TEMP/pull.pid"
+
+            # Accepted findings go in osv-scanner.toml with a reason and an expiry date.
+            - name: Scan dependencies for known vulnerabilities (OSV)
+              if: ${{ env.CI_SKIP != 'true' && (inputs.run-osv && hashFiles('package-lock.json') != '') }}
+              env:
+                  OSV_VERSION: "2.7.0"
+                  OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+              run: |
+                  curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
+                      "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+                  echo "${OSV_SHA256}  $RUNNER_TEMP/osv-scanner" | sha256sum --check --quiet
+                  chmod +x "$RUNNER_TEMP/osv-scanner"
+                  CONFIG=""
+                  if [ -f osv-scanner.toml ]; then CONFIG="--config osv-scanner.toml"; fi
+                  "$RUNNER_TEMP/osv-scanner" scan source \
+                      --lockfile package-lock.json \
+                      $CONFIG \
+                      --verbosity error
+
+            - name: Set up Node.js
+              if: ${{ env.CI_SKIP != 'true' }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ inputs.node-version }}
+                  cache: "npm"
+
+            - name: Restore node_modules
+              if: ${{ env.CI_SKIP != 'true' }}
+              id: node-modules
+              uses: actions/cache/restore@v4
+              with:
+                  path: node_modules
+                  key: ${{ env.NODE_MODULES_KEY }}-${{ hashFiles('package-lock.json') }}
+
+            - name: Install dependencies
+              id: install
+              if: ${{ env.CI_SKIP != 'true' && (steps.node-modules.outputs.cache-hit != 'true') }}
+              run: npm ci --prefer-offline --no-audit --no-fund
+
+            # Not a post step: GitHub skips those after a failure.
+            - name: Save node_modules
+              if: ${{ env.CI_SKIP != 'true' && (always() && steps.install.outcome == 'success') }}
+              uses: actions/cache/save@v4
+              with:
+                  path: node_modules
+                  key: ${{ env.NODE_MODULES_KEY }}-${{ hashFiles('package-lock.json') }}
+
+            # npm pkg prints {} for a missing script.
+            - name: Detect available scripts
+              if: ${{ env.CI_SKIP != 'true' }}
+              id: has
+              run: |
+                  for s in check:branch tsc-check format:check knip check:generators check:migrations lint:migrations prisma:generate test:unit:ci test:int:ci; do
+                      if [ "$(npm pkg get "scripts.$s")" = "{}" ]; then r=false; else r=true; fi
+                      echo "${s//[:-]/_}=$r" >> "$GITHUB_OUTPUT"
+                  done
+                  if npm pkg get scripts.lint | grep -q '^"eslint '; then
+                      echo "eslint_cache=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "eslint_cache=false" >> "$GITHUB_OUTPUT"
+                  fi
+                  if [ -d node_modules/@vitest/coverage-v8 ] || [ -d node_modules/@vitest/coverage-istanbul ]; then
+                      echo "coverage=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "coverage=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Check branch name
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name == 'pull_request' && steps.has.outputs.check_branch == 'true') }}
+              env:
+                  BRANCH_NAME: ${{ github.head_ref }}
+              run: npm run check:branch
+
+            # Also on a cache hit: the cached client may belong to an older schema.
+            - name: Generate Prisma Client
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.prisma_generate == 'true') }}
+              run: npm run prisma:generate
+
+            - name: Restore ESLint cache
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.eslint_cache == 'true') }}
+              uses: actions/cache/restore@v4
+              with:
+                  path: .eslintcache
+                  key: eslintcache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', '.eslintrc*') }}-${{ github.run_id }}
+                  restore-keys: |
+                      eslintcache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', '.eslintrc*') }}-
+
+            - name: Lint application
+              if: ${{ env.CI_SKIP != 'true' }}
+              id: lint
+              env:
+                  CACHE_ARGS: ${{ steps.has.outputs.eslint_cache == 'true' && '--cache --cache-location .eslintcache' || '' }}
+              run: npm run lint -- $CACHE_ARGS
+
+            - name: Save ESLint cache
+              if: ${{ env.CI_SKIP != 'true' && (always() && steps.has.outputs.eslint_cache == 'true' && steps.lint.conclusion != 'skipped') }}
+              uses: actions/cache/save@v4
+              with:
+                  path: .eslintcache
+                  key: eslintcache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', '.eslintrc*') }}-${{ github.run_id }}
+
+            - name: Type-check application and tests
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.tsc_check == 'true') }}
+              run: npm run tsc-check
+
+            - name: Check formatting
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.format_check == 'true') }}
+              run: npm run format:check
+
+            - name: Find unused files, exports and dependencies
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.knip == 'true') }}
+              run: npm run knip
+
+            - name: Validate Prisma schema
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.prisma_generate == 'true') }}
+              run: npx prisma validate && npm run prisma:format -- --check
+              env:
+                  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+            - name: Check migrations (CLAUDE.md Rule 9)
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name == 'pull_request' && steps.has.outputs.check_migrations == 'true') }}
+              run: npm run check:migrations
+              env:
+                  MIGRATIONS_BASE_REF: origin/${{ github.base_ref }}
+
+            - name: Lint new migrations for locking and data loss
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name == 'pull_request' && steps.has.outputs.lint_migrations == 'true') }}
+              run: |
+                  git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'src/database/prisma/migrations/*/migration.sql' \
+                      | xargs --no-run-if-empty npm run lint:migrations --
+
+            - name: Check generated code against the rules (CLAUDE.md Rule 0)
+              if: ${{ env.CI_SKIP != 'true' && (steps.has.outputs.check_generators == 'true') }}
+              run: npm run check:generators
+
+            - name: Build application
+              if: ${{ env.CI_SKIP != 'true' }}
+              run: npm run build
+
+            # Coverage only for changed services and utils: a partial run would skew the totals.
+            - name: Run unit tests affected by the change
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name == 'pull_request' && steps.has.outputs.test_unit_ci == 'true') }}
+              env:
+                  BASE_REF: origin/${{ github.base_ref }}
+                  COVERAGE: ${{ steps.has.outputs.coverage }}
+              run: |
+                  COVERAGE_ARGS=""
+                  if [ "$COVERAGE" = "true" ]; then
+                      COVERAGE_ARGS=$(git diff --name-only --diff-filter=d "$BASE_REF...HEAD" \
+                          | grep -E '^src/(modules|lib)/.+\.(service|util)\.ts$' \
+                          | sed 's/^/--coverage.include=/' || true)
+                  fi
+                  npm run test:unit:ci -- --changed "$BASE_REF" \
+                      --exclude 'test/unit/architecture/**' \
+                      ${COVERAGE_ARGS:+--coverage $COVERAGE_ARGS}
+
+            # They read src/ from disk, so --changed cannot see what they depend on.
+            - name: Run architecture tests
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name == 'pull_request' && steps.has.outputs.test_unit_ci == 'true' && hashFiles('test/unit/architecture/**') != '') }}
+              run: npm run test:unit:ci -- test/unit/architecture
+
+            # Coverage only where a @vitest/coverage-* provider is installed.
+            - name: Run all unit tests
+              if: ${{ env.CI_SKIP != 'true' && (github.event_name != 'pull_request' && steps.has.outputs.test_unit_ci == 'true') }}
+              env:
+                  COVERAGE_FLAG: ${{ steps.has.outputs.coverage == 'true' && '--coverage' || '' }}
+              run: npm run test:unit:ci -- $COVERAGE_FLAG
+
+            # The selection rules live only in the template, at the very commit of
+            # this workflow, so every repository uses the same version of them.
+            - name: Fetch the integration test selection from the template
+              if: ${{ env.CI_SKIP != 'true' && (inputs.run-integration && github.event_name == 'pull_request') }}
+              uses: actions/checkout@v4
+              with:
+                  repository: ${{ job.workflow_repository }}
+                  ref: ${{ job.workflow_sha }}
+                  path: .ci-template
+                  sparse-checkout: scripts
+                  persist-credentials: false
+
+            # Moved out of the workspace so it does not count as a changed file.
+            - name: Select integration tests
+              id: select
+              if: ${{ env.CI_SKIP != 'true' && (inputs.run-integration && github.event_name == 'pull_request') }}
+              env:
+                  BASE_REF: origin/${{ github.base_ref }}
+              run: |
+                  mv .ci-template "$RUNNER_TEMP/ci-template"
+                  node "$RUNNER_TEMP/ci-template/scripts/select-int-tests.mjs" --base "$BASE_REF" --format github >> "$GITHUB_OUTPUT"
+
+            - name: Report selection
+              if: ${{ env.CI_SKIP != 'true' && (steps.select.outcome == 'success') }}
+              env:
+                  RUN: ${{ steps.select.outputs.run }}
+                  REASON: ${{ steps.select.outputs.reason }}
+                  TARGETS: ${{ steps.select.outputs.targets }}
+              run: |
+                  if [ "$RUN" != "true" ]; then
+                      echo "$REASON -> nothing to run"
+                  elif [ -z "$TARGETS" ]; then
+                      echo "$REASON -> whole suite"
+                  else
+                      echo "$REASON -> $TARGETS"
+                  fi
+
+            # Services come from docker-compose.test.yml when the repository has one;
+            # without it the tests start their own (e.g. testcontainers).
+            - name: Decide whether to run integration tests
+              if: ${{ env.CI_SKIP != 'true' }}
+              env:
+                  ENABLED: ${{ inputs.run-integration && steps.has.outputs.test_int_ci == 'true' }}
+                  SELECTED: ${{ steps.select.outputs.run }}
+              run: |
+                  if [ "$ENABLED" != "true" ] || [ "$SELECTED" = "false" ]; then
+                      echo "RUN_INT=false" >> "$GITHUB_ENV"
+                  else
+                      echo "RUN_INT=true" >> "$GITHUB_ENV"
+                  fi
+                  if [ -f docker-compose.test.yml ]; then
+                      echo "INT_COMPOSE=true" >> "$GITHUB_ENV"
+                  else
+                      echo "INT_COMPOSE=false" >> "$GITHUB_ENV"
+                  fi
+
+            - name: Set up Docker Buildx
+              if: ${{ env.CI_SKIP != 'true' && (env.RUN_INT == 'true' && env.INT_COMPOSE == 'true') }}
+              uses: docker/setup-buildx-action@v3
+
+            - name: Start Docker Compose services
+              if: ${{ env.CI_SKIP != 'true' && (env.RUN_INT == 'true' && env.INT_COMPOSE == 'true') }}
+              run: |
+                  if [ -s "$RUNNER_TEMP/pull.pid" ]; then
+                      while kill -0 "$(cat "$RUNNER_TEMP/pull.pid")" 2>/dev/null; do
+                          sleep 1
+                      done
+                      cat "$RUNNER_TEMP/pull.log" || true
+                  fi
+                  docker compose -f docker-compose.test.yml up -d --wait
+
+            # A repository whose integration tests need real credentials keeps them in
+            # one multi-line INT_TEST_ENV secret (KEY=value lines).
+            - name: Write integration test env from the INT_TEST_ENV secret
+              if: ${{ env.CI_SKIP != 'true' && (env.RUN_INT == 'true') }}
+              env:
+                  INT_TEST_ENV: ${{ secrets.INT_TEST_ENV }}
+              run: |
+                  if [ -n "$INT_TEST_ENV" ]; then
+                      printf '%s\n' "$INT_TEST_ENV" > .env.test.local
+                      echo "wrote $(grep -c '=' .env.test.local) variable(s) to .env.test.local"
+                  fi
+
+            - name: Check migrations reproduce schema.prisma
+              if: ${{ env.CI_SKIP != 'true' && (env.RUN_INT == 'true' && hashFiles('scripts/check-drift.mjs') != '') }}
+              run: npm run check:drift
+
+            - name: Run integration tests
+              if: ${{ env.CI_SKIP != 'true' && (env.RUN_INT == 'true') }}
+              env:
+                  TARGETS: ${{ steps.select.outputs.targets }}
+              run: |
+                  read -r -a filters <<< "$TARGETS"
+                  npm run test:int:ci -- "${filters[@]}"
+
+            - name: Docker logs on failure
+              if: ${{ env.CI_SKIP != 'true' && (failure() && env.RUN_INT == 'true' && env.INT_COMPOSE == 'true') }}
+              run: docker compose -f docker-compose.test.yml logs
+
+            - name: Stop Docker Compose services
+              if: ${{ env.CI_SKIP != 'true' && (always() && env.RUN_INT == 'true' && env.INT_COMPOSE == 'true') }}
+              run: docker compose -f docker-compose.test.yml down -v
